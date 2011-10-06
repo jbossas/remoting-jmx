@@ -28,6 +28,8 @@ import java.io.IOException;
 import java.util.Map;
 
 /**
+ * The JMXConnectorProvider implementation for use with Remoting.
+ *
  * @author <a href="mailto:darran.lofthouse@jboss.com">Darran Lofthouse</a>
  */
 public class RemotingConnectorProvider implements JMXConnectorProvider {
@@ -47,7 +49,7 @@ public class RemotingConnectorProvider implements JMXConnectorProvider {
      * @return the version string.
      */
     public static String getVersionString() {
-        return "NOT SET";
+        return Version.getVersionString();
     }
 
 }

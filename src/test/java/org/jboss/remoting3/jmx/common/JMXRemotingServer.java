@@ -22,6 +22,7 @@
 package org.jboss.remoting3.jmx.common;
 
 import javax.management.MBeanServer;
+import javax.management.remote.JMXConnectorServer;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.net.InetAddress;
@@ -36,6 +37,7 @@ import org.jboss.remoting3.Endpoint;
 import org.jboss.remoting3.OpenListener;
 import org.jboss.remoting3.Registration;
 import org.jboss.remoting3.Remoting;
+import org.jboss.remoting3.jmx.RemotingConnectorServer;
 import org.jboss.remoting3.jmx.Version;
 import org.jboss.remoting3.remote.RemoteConnectionProviderFactory;
 import org.jboss.remoting3.security.SimpleServerAuthenticationProvider;
@@ -63,8 +65,11 @@ public class JMXRemotingServer {
 
     private final int listenerPort;
 
+
     private Endpoint endpoint;
+    // TODO - This may not live here - maybe in the RemotingConnectorServer
     private AcceptingChannel<? extends ConnectedStreamChannel> server;
+    private JMXConnectorServer connectorServer;
 
     /**
      * Constructor to instantiate a JMXRemotingServer with a
@@ -100,13 +105,21 @@ public class JMXRemotingServer {
         // TODO - Create a dummy impl for the purpose of testing.
         MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
         // TODO - Create Service to wrap the MBeanServer
+        connectorServer = new RemotingConnectorServer(mbeanServer, endpoint);
         // TODO - the following line to associate it
         // endpoint.registerService("jboss.ejb", new OpenListener() {
 
     }
 
-    public void stop() {
+    public void stop() throws IOException {
         log.infof("Stopping JMX Remoting Server %s", Version.getVersionString());
+
+        // Services using an existing Remoting installation only need to stop the JMXConnectorServer
+        // to disassociate it from Remoting.
+        connectorServer.stop();
+
+        // TODO - Also tear down the remoting portion as that was specific to the test case.
+
     }
 
 }

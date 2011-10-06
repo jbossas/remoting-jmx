@@ -54,7 +54,7 @@ public class ClientTest {
     }
 
     @AfterClass
-    public static void tearDownServer() {
+    public static void tearDownServer() throws IOException {
         try {
             remotingServer.stop();
         } finally {

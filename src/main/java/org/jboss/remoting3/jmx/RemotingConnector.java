@@ -39,6 +39,7 @@ public class RemotingConnector implements JMXConnector {
         System.out.println("connect()");
     }
 
+    // TODO - Do we embed the name of the channel in the URL?
     public void connect(Map<String, ?> env) throws IOException {
 
         StringBuffer sb = new StringBuffer("connect(");
