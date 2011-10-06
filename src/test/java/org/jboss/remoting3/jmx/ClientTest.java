@@ -27,14 +27,41 @@ import javax.management.remote.JMXConnector;
 import javax.management.remote.JMXConnectorFactory;
 import javax.management.remote.JMXServiceURL;
 
+import java.io.IOException;
+
+import org.jboss.remoting3.jmx.common.JMXRemotingServer;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 /**
+ * Test case to test the client side of the interactions.
+ *
  * @author <a href="mailto:darran.lofthouse@jboss.com">Darran Lofthouse</a>
  */
 public class ClientTest {
 
-    private static final String URL = "service:jmx:remoting://localhost:9999";
+    private static final int PORT = 12345;
+
+    private static final String URL = "service:jmx:remoting://localhost:" + PORT;
+
+    private static JMXRemotingServer remotingServer;
+
+    @BeforeClass
+    public static void setupServer() throws IOException {
+        remotingServer = new JMXRemotingServer(PORT);
+        remotingServer.start();
+    }
+
+    @AfterClass
+    public static void tearDownServer() {
+        try {
+            remotingServer.stop();
+        } finally {
+            remotingServer = null;
+        }
+
+    }
 
     @Test
     public void testNewJMXConnector() throws Exception {
