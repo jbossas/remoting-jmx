@@ -62,7 +62,6 @@ import org.jboss.remoting3.Channel;
 import org.jboss.remoting3.CloseHandler;
 import org.jboss.remoting3.Connection;
 import org.jboss.remoting3.Endpoint;
-import org.jboss.remoting3.MessageInputStream;
 import org.jboss.remoting3.Registration;
 import org.jboss.remoting3.Remoting;
 import org.jboss.remoting3.remote.RemoteConnectionProviderFactory;
@@ -85,11 +84,14 @@ class RemotingConnector implements JMXConnector {
 
     private Connection connection;
     private boolean closed = false;
+    private Channel channel;
+    private MBeanServerConnection serverConnection;
 
     RemotingConnector(JMXServiceURL serviceURL, Map<String, ?> environment) throws IOException {
         this.serviceUrl = serviceURL;
         this.environment = Collections.unmodifiableMap(environment);
 
+        // TODO - Need to review what we need to do regarding Executory, especially with notification handling.
         endpoint = Remoting.createEndpoint("endpoint", Executors.newSingleThreadExecutor(), OptionMap.EMPTY);
         final Xnio xnio = Xnio.getInstance();
         registration = endpoint.addConnectionProvider("remote", new RemoteConnectionProviderFactory(xnio), OptionMap.create(Options.SSL_ENABLED, false));
@@ -135,7 +137,7 @@ class RemotingConnector implements JMXConnector {
 
         // TODO - Supported environment properties.
         // The credentials.
-        // Connection timeout.
+        // Connection timeout - maybe a total timeout?  Reducing on each await.
 
         // open a connection
         final IoFuture<Connection> futureConnection = endpoint.connect(convert(serviceUrl), OptionMap.create(Options.SASL_POLICY_NOANONYMOUS, Boolean.FALSE), new AnonymousCallbackHandler());
@@ -154,16 +156,22 @@ class RemotingConnector implements JMXConnector {
         final IoFuture<Channel> futureChannel = connection.openChannel("jmx", OptionMap.EMPTY);
         result = futureChannel.await(5, TimeUnit.SECONDS);
         if (result == IoFuture.Status.DONE) {
-            Channel channel = futureChannel.get();
-            channel.receiveMessage(new ClientVersionReceiver());
+            channel = futureChannel.get();
         } else if (result == IoFuture.Status.FAILED) {
             throw new IOException(futureChannel.getException());
         } else {
             throw new RuntimeException("Operation failed with status " + result);
         }
 
-        // TODO - This shouldn't really return until the version has completed being negotiated.
-        // Maybe we need an IOFuture here that makes the MBeanServerConnection available once it is initialised.
+        final IoFuture<MBeanServerConnection> futureMBeanConnection = MBeanServerConectionFactory.createMBeanServerConnection(channel);
+        result = futureMBeanConnection.await(5, TimeUnit.SECONDS);
+        if (result == IoFuture.Status.DONE) {
+            serverConnection = futureMBeanConnection.get();
+        } else if (result == IoFuture.Status.FAILED) {
+            throw new IOException(futureChannel.getException());
+        } else {
+            throw new RuntimeException("Operation failed with status " + result);
+        }
     }
 
     private URI convert(final JMXServiceURL serviceUrl) throws IOException {
@@ -234,37 +242,6 @@ class RemotingConnector implements JMXConnector {
             log.info("Client handleClose", e);
             // TODO - any clean up client side to inform that the channel is closed - notifications may need to be considered.
         }
-
-    }
-
-
-    /**
-     * A Channel.Receiver to handle the initial negotiation of the version to use.
-     * <p/>
-     * The client will initially receive a list of versions supported by the server, from this list
-     * the highest version supported by the client should be selected - this will allow older clients
-     * to operate against later servers.
-     */
-    private class ClientVersionReceiver implements Channel.Receiver {
-
-        /**
-         * Verify the header received, confirm to the server the version selected, create the
-         * client channel receiver and assign it to the channel.
-         */
-        public void handleMessage(Channel channel, MessageInputStream messageInputStream) {
-
-        }
-
-        public void handleError(Channel channel, IOException e) {
-            log.error("Error on channel", e);
-            // TODO - At this point the connection is still opening so probably don't want to completely close future interatcion.
-        }
-
-        public void handleEnd(Channel channel) {
-            log.error("Channel ended.");
-            // TODO - At this point the connection is still opening so probably don't want to completely close future interatcion.
-        }
-
 
     }
 

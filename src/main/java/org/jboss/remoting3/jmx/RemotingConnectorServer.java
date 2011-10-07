@@ -23,6 +23,7 @@ package org.jboss.remoting3.jmx;
 
 import static org.jboss.remoting3.jmx.Constants.SNAPSHOT;
 import static org.jboss.remoting3.jmx.Constants.STABLE;
+import static org.jboss.remoting3.jmx.Constants.JMX;
 
 import javax.management.MBeanServer;
 import javax.management.remote.JMXConnectorServer;
@@ -154,7 +155,7 @@ public class RemotingConnectorServer extends JMXConnectorServer {
         try {
             dos.writeBytes("JMX");
             byte[] versions = Versions.getSupportedVersions();
-            dos.writeByte(versions.length);
+            dos.write(versions.length);
             dos.write(versions);
             if (Version.isSnapshot()) {
                 dos.write(SNAPSHOT);

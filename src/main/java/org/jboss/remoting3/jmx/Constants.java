@@ -26,7 +26,9 @@ package org.jboss.remoting3.jmx;
  */
 class Constants {
 
-    static byte STABLE = 0x00;
-    static byte SNAPSHOT = 0x01;
+    static final byte STABLE = 0x00;
+    static final byte SNAPSHOT = 0x01;
+
+    static final byte[] JMX = "JMX".getBytes();
 
 }
