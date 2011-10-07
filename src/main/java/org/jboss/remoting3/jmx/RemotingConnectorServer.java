@@ -71,6 +71,7 @@ public class RemotingConnectorServer extends JMXConnectorServer {
      */
 
     public void start() throws IOException {
+        log.info("start()");
         if (stopped) {
             throw new IOException("Unable to start connector as already stopped.");
         }
@@ -80,8 +81,8 @@ public class RemotingConnectorServer extends JMXConnectorServer {
             return;
         }
 
+        log.info("Registering service");
         registration = endpoint.registerService(JMX_CHANNEL_NAME, new ChannelOpenListener(), OptionMap.EMPTY);
-
         started = true;
     }
 

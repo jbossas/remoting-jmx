@@ -106,9 +106,7 @@ public class JMXRemotingServer {
         MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
         // TODO - Create Service to wrap the MBeanServer
         connectorServer = new RemotingConnectorServer(mbeanServer, endpoint);
-        // TODO - the following line to associate it
-        // endpoint.registerService("jboss.ejb", new OpenListener() {
-
+        connectorServer.start();
     }
 
     public void stop() throws IOException {

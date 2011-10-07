@@ -21,27 +21,83 @@
  */
 package org.jboss.remoting3.jmx;
 
+import javax.management.Attribute;
+import javax.management.AttributeList;
+import javax.management.AttributeNotFoundException;
+import javax.management.InstanceAlreadyExistsException;
+import javax.management.InstanceNotFoundException;
+import javax.management.IntrospectionException;
+import javax.management.InvalidAttributeValueException;
 import javax.management.ListenerNotFoundException;
+import javax.management.MBeanException;
+import javax.management.MBeanInfo;
+import javax.management.MBeanRegistrationException;
 import javax.management.MBeanServerConnection;
+import javax.management.NotCompliantMBeanException;
 import javax.management.NotificationFilter;
 import javax.management.NotificationListener;
+import javax.management.ObjectInstance;
+import javax.management.ObjectName;
+import javax.management.QueryExp;
+import javax.management.ReflectionException;
 import javax.management.remote.JMXConnector;
+import javax.management.remote.JMXServiceURL;
 import javax.security.auth.Subject;
+import javax.security.auth.callback.Callback;
+import javax.security.auth.callback.CallbackHandler;
+import javax.security.auth.callback.NameCallback;
+import javax.security.auth.callback.UnsupportedCallbackException;
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+
+import org.jboss.logging.Logger;
+import org.jboss.remoting3.Channel;
+import org.jboss.remoting3.Connection;
+import org.jboss.remoting3.Endpoint;
+import org.jboss.remoting3.Registration;
+import org.jboss.remoting3.Remoting;
+import org.jboss.remoting3.remote.RemoteConnectionProviderFactory;
+import org.xnio.IoFuture;
+import org.xnio.OptionMap;
+import org.xnio.Options;
+import org.xnio.Xnio;
 
 /**
  * @author <a href="mailto:darran.lofthouse@jboss.com">Darran Lofthouse</a>
  */
-public class RemotingConnector implements JMXConnector {
+class RemotingConnector implements JMXConnector {
+
+    private static final Logger log = Logger.getLogger(RemotingConnectorServer.class);
+
+    private final JMXServiceURL serviceUrl;
+    private final Map<String, ?> environment;
+    private final Endpoint endpoint;
+    private final Registration registration;
+
+    private Connection connection;
+
+    RemotingConnector(JMXServiceURL serviceURL, Map<String, ?> environment) throws IOException {
+        this.serviceUrl = serviceURL;
+        this.environment = Collections.unmodifiableMap(environment);
+
+        endpoint = Remoting.createEndpoint("endpoint", Executors.newSingleThreadExecutor(), OptionMap.EMPTY);
+        final Xnio xnio = Xnio.getInstance();
+        registration = endpoint.addConnectionProvider("remote", new RemoteConnectionProviderFactory(xnio), OptionMap.create(Options.SSL_ENABLED, false));
+    }
 
     public void connect() throws IOException {
-        System.out.println("connect()");
+        connect(null);
     }
 
     // TODO - Do we embed the name of the channel in the URL?
     public void connect(Map<String, ?> env) throws IOException {
-
         StringBuffer sb = new StringBuffer("connect(");
         if (env != null) {
             for (String key : env.keySet()) {
@@ -59,46 +115,195 @@ public class RemotingConnector implements JMXConnector {
             sb.append("null");
         }
         sb.append(")");
-        System.out.println(sb.toString());
+        log.info(sb.toString());
+
+        Map<String, Object> combinedEnvironment = new HashMap(environment);
+        if (env != null) {
+            for (String key : env.keySet()) {
+                combinedEnvironment.put(key, env.get(key));
+            }
+        }
+
+        // TODO - Supported environment properties.
+        // The credentials.
+        // Connection timeout.
+
+        // open a connection
+        final IoFuture<Connection> futureConnection = endpoint.connect(convert(serviceUrl), OptionMap.create(Options.SASL_POLICY_NOANONYMOUS, Boolean.FALSE), new AnonymousCallbackHandler());
+        IoFuture.Status result = futureConnection.await(5, TimeUnit.SECONDS);
+
+        if (result == IoFuture.Status.DONE) {
+            connection = futureConnection.get();
+        } else if (result == IoFuture.Status.FAILED) {
+            throw new IOException(futureConnection.getException());
+        } else {
+            throw new RuntimeException("Operation failed with status " + result);
+        }
+
+        // TODO - Do we use the URI to specify the channel name?
+        final IoFuture<Channel> futureChannel = connection.openChannel("jmx", OptionMap.EMPTY);
+        result = futureChannel.await(5, TimeUnit.SECONDS);
     }
 
-    @Override
+    private URI convert(final JMXServiceURL serviceUrl) throws IOException {
+        String host = serviceUrl.getHost();
+        int port = serviceUrl.getPort();
+
+        try {
+            return new URI("remote://" + host + ":" + port);
+        } catch (URISyntaxException e) {
+            throw new IOException("Unable to create connection URI", e);
+        }
+    }
+
     public MBeanServerConnection getMBeanServerConnection() throws IOException {
         System.out.println("getMBeanServerConnection()");
         return null;
     }
 
-    @Override
     public MBeanServerConnection getMBeanServerConnection(Subject delegationSubject) throws IOException {
         System.out.println("getMBeanServerConnection(Subject)");
         return null;
     }
 
-    @Override
     public void close() throws IOException {
         System.out.println("close()");
     }
 
-    @Override
     public void addConnectionNotificationListener(NotificationListener listener, NotificationFilter filter, Object handback) {
         System.out.println("addConnectionNotificationListener()");
     }
 
-    @Override
     public void removeConnectionNotificationListener(NotificationListener listener) throws ListenerNotFoundException {
         System.out.println("removeConnectionNotificationListener()");
     }
 
-    @Override
     public void removeConnectionNotificationListener(NotificationListener l, NotificationFilter f, Object handback)
             throws ListenerNotFoundException {
         System.out.println("removeConnectionNotificationListener()");
     }
 
-    @Override
     public String getConnectionId() throws IOException {
         System.out.println("getConnectionId()");
         return null;
+    }
+
+    public class AnonymousCallbackHandler implements CallbackHandler {
+
+        public void handle(Callback[] callbacks) throws IOException, UnsupportedCallbackException {
+            for (Callback current : callbacks) {
+                if (current instanceof NameCallback) {
+                    NameCallback ncb = (NameCallback) current;
+                    ncb.setName("anonymous");
+                } else {
+                    throw new UnsupportedCallbackException(current);
+                }
+            }
+        }
+
+    }
+
+    private class RemotingMBeanServerConnection implements MBeanServerConnection {
+
+        public ObjectInstance createMBean(String className, ObjectName name) throws ReflectionException, InstanceAlreadyExistsException, MBeanRegistrationException, MBeanException, NotCompliantMBeanException, IOException {
+            return null;
+        }
+
+        public ObjectInstance createMBean(String className, ObjectName name, ObjectName loaderName) throws ReflectionException, InstanceAlreadyExistsException, MBeanRegistrationException, MBeanException, NotCompliantMBeanException, InstanceNotFoundException, IOException {
+            return null;
+        }
+
+        public ObjectInstance createMBean(String className, ObjectName name, Object[] params, String[] signature) throws ReflectionException, InstanceAlreadyExistsException, MBeanRegistrationException, MBeanException, NotCompliantMBeanException, IOException {
+            return null;
+        }
+
+        public ObjectInstance createMBean(String className, ObjectName name, ObjectName loaderName, Object[] params, String[] signature) throws ReflectionException, InstanceAlreadyExistsException, MBeanRegistrationException, MBeanException, NotCompliantMBeanException, InstanceNotFoundException, IOException {
+            return null;
+        }
+
+        public void unregisterMBean(ObjectName name) throws InstanceNotFoundException, MBeanRegistrationException, IOException {
+
+        }
+
+        public ObjectInstance getObjectInstance(ObjectName name) throws InstanceNotFoundException, IOException {
+            return null;
+        }
+
+        public Set<ObjectInstance> queryMBeans(ObjectName name, QueryExp query) throws IOException {
+            return null;
+        }
+
+        public Set<ObjectName> queryNames(ObjectName name, QueryExp query) throws IOException {
+            return null;
+        }
+
+        public boolean isRegistered(ObjectName name) throws IOException {
+            return false;
+        }
+
+        public Integer getMBeanCount() throws IOException {
+            return null;
+        }
+
+        public Object getAttribute(ObjectName name, String attribute) throws MBeanException, AttributeNotFoundException, InstanceNotFoundException, ReflectionException, IOException {
+            return null;
+        }
+
+        public AttributeList getAttributes(ObjectName name, String[] attributes) throws InstanceNotFoundException, ReflectionException, IOException {
+            return null;
+        }
+
+        public void setAttribute(ObjectName name, Attribute attribute) throws InstanceNotFoundException, AttributeNotFoundException, InvalidAttributeValueException, MBeanException, ReflectionException, IOException {
+
+        }
+
+        public AttributeList setAttributes(ObjectName name, AttributeList attributes) throws InstanceNotFoundException, ReflectionException, IOException {
+            return null;
+        }
+
+        public Object invoke(ObjectName name, String operationName, Object[] params, String[] signature) throws InstanceNotFoundException, MBeanException, ReflectionException, IOException {
+            return null;
+        }
+
+        public String getDefaultDomain() throws IOException {
+            return null;
+        }
+
+        public String[] getDomains() throws IOException {
+            return new String[0];
+        }
+
+        public void addNotificationListener(ObjectName name, NotificationListener listener, NotificationFilter filter, Object handback) throws InstanceNotFoundException, IOException {
+
+        }
+
+        public void addNotificationListener(ObjectName name, ObjectName listener, NotificationFilter filter, Object handback) throws InstanceNotFoundException, IOException {
+
+        }
+
+        public void removeNotificationListener(ObjectName name, ObjectName listener) throws InstanceNotFoundException, ListenerNotFoundException, IOException {
+
+        }
+
+        public void removeNotificationListener(ObjectName name, ObjectName listener, NotificationFilter filter, Object handback) throws InstanceNotFoundException, ListenerNotFoundException, IOException {
+
+        }
+
+        public void removeNotificationListener(ObjectName name, NotificationListener listener) throws InstanceNotFoundException, ListenerNotFoundException, IOException {
+
+        }
+
+        public void removeNotificationListener(ObjectName name, NotificationListener listener, NotificationFilter filter, Object handback) throws InstanceNotFoundException, ListenerNotFoundException, IOException {
+
+        }
+
+        public MBeanInfo getMBeanInfo(ObjectName name) throws InstanceNotFoundException, IntrospectionException, ReflectionException, IOException {
+            return null;
+        }
+
+        public boolean isInstanceOf(ObjectName name, String className) throws InstanceNotFoundException, IOException {
+            return false;
+        }
     }
 
 }
