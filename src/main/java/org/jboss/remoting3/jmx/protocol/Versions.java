@@ -19,27 +19,38 @@
  * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
-package org.jboss.remoting3.jmx;
+package org.jboss.remoting3.jmx.protocol;
+
+import org.jboss.remoting3.Channel;
 
 /**
- * Placeholder for version information inserted during the build.
+ * Single access point to locate the supported versions.
+ * <p/>
+ * As the client and server are written in parallel this makes no distinction between clients
+ * and servers when listing the supported versions.
  *
  * @author <a href="mailto:darran.lofthouse@jboss.com">Darran Lofthouse</a>
  */
-public class Version {
+public class Versions {
 
     /**
-     * Private constructor as only the static getVersionString is
-     * intended to be used.
+     * Private constructor, static methods will be used to locate
+     * the supported versions and instantiate them.
      */
-    private Version() {}
-
-    public static boolean isSnapshot() {
-        return getVersionString().contains("SNAPSHOT");
+    private Versions() {
     }
 
-    public static String getVersionString() {
-        return "MASTER SNAPSHOT";
+    public static byte[] getSupportedVersions() {
+        // At a later point a more complex registry or discovery could be implemented.
+        return new byte[]{VersionOne.getVersionIdentifier()};
+    }
+
+    public static Channel.Receiver getServerReceiver(final byte version) {
+        if (version == VersionOne.getVersionIdentifier()) {
+            return VersionOne.serverReceiverInstance();
+        }
+
+        throw new IllegalArgumentException("Unsupported protocol version.");
     }
 
 }

@@ -19,27 +19,36 @@
  * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
-package org.jboss.remoting3.jmx;
+package org.jboss.remoting3.jmx.protocol;
+
+import java.io.IOException;
+
+import org.jboss.remoting3.Channel;
+import org.jboss.remoting3.MessageInputStream;
 
 /**
- * Placeholder for version information inserted during the build.
- *
  * @author <a href="mailto:darran.lofthouse@jboss.com">Darran Lofthouse</a>
  */
-public class Version {
+class VersionOne {
 
-    /**
-     * Private constructor as only the static getVersionString is
-     * intended to be used.
-     */
-    private Version() {}
-
-    public static boolean isSnapshot() {
-        return getVersionString().contains("SNAPSHOT");
+    static byte getVersionIdentifier() {
+        return 0x01;
     }
 
-    public static String getVersionString() {
-        return "MASTER SNAPSHOT";
+    static Channel.Receiver serverReceiverInstance() {
+        return new Channel.Receiver() {
+            public void handleError(Channel channel, IOException e) {
+                //To change body of implemented methods use File | Settings | File Templates.
+            }
+
+            public void handleEnd(Channel channel) {
+                //To change body of implemented methods use File | Settings | File Templates.
+            }
+
+            public void handleMessage(Channel channel, MessageInputStream messageInputStream) {
+                //To change body of implemented methods use File | Settings | File Templates.
+            }
+        };
     }
 
 }

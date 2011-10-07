@@ -22,24 +22,11 @@
 package org.jboss.remoting3.jmx;
 
 /**
- * Placeholder for version information inserted during the build.
- *
  * @author <a href="mailto:darran.lofthouse@jboss.com">Darran Lofthouse</a>
  */
-public class Version {
+class Constants {
 
-    /**
-     * Private constructor as only the static getVersionString is
-     * intended to be used.
-     */
-    private Version() {}
-
-    public static boolean isSnapshot() {
-        return getVersionString().contains("SNAPSHOT");
-    }
-
-    public static String getVersionString() {
-        return "MASTER SNAPSHOT";
-    }
+    static byte STABLE = 0x00;
+    static byte SNAPSHOT = 0x01;
 
 }

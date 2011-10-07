@@ -59,8 +59,10 @@ import java.util.concurrent.TimeUnit;
 
 import org.jboss.logging.Logger;
 import org.jboss.remoting3.Channel;
+import org.jboss.remoting3.CloseHandler;
 import org.jboss.remoting3.Connection;
 import org.jboss.remoting3.Endpoint;
+import org.jboss.remoting3.MessageInputStream;
 import org.jboss.remoting3.Registration;
 import org.jboss.remoting3.Remoting;
 import org.jboss.remoting3.remote.RemoteConnectionProviderFactory;
@@ -82,6 +84,7 @@ class RemotingConnector implements JMXConnector {
     private final Registration registration;
 
     private Connection connection;
+    private boolean closed = false;
 
     RemotingConnector(JMXServiceURL serviceURL, Map<String, ?> environment) throws IOException {
         this.serviceUrl = serviceURL;
@@ -98,6 +101,12 @@ class RemotingConnector implements JMXConnector {
 
     // TODO - Do we embed the name of the channel in the URL?
     public void connect(Map<String, ?> env) throws IOException {
+        // Once closed a connector is not allowed to connect again.
+        // NB If a connect call fails clients are permitted to try the call again.
+        if (closed) {
+            throw new IOException("Connector already closed.");
+        }
+
         StringBuffer sb = new StringBuffer("connect(");
         if (env != null) {
             for (String key : env.keySet()) {
@@ -140,9 +149,21 @@ class RemotingConnector implements JMXConnector {
             throw new RuntimeException("Operation failed with status " + result);
         }
 
+        // Now open the channel
         // TODO - Do we use the URI to specify the channel name?
         final IoFuture<Channel> futureChannel = connection.openChannel("jmx", OptionMap.EMPTY);
         result = futureChannel.await(5, TimeUnit.SECONDS);
+        if (result == IoFuture.Status.DONE) {
+            Channel channel = futureChannel.get();
+            channel.receiveMessage(new ClientVersionReceiver());
+        } else if (result == IoFuture.Status.FAILED) {
+            throw new IOException(futureChannel.getException());
+        } else {
+            throw new RuntimeException("Operation failed with status " + result);
+        }
+
+        // TODO - This shouldn't really return until the version has completed being negotiated.
+        // Maybe we need an IOFuture here that makes the MBeanServerConnection available once it is initialised.
     }
 
     private URI convert(final JMXServiceURL serviceUrl) throws IOException {
@@ -188,7 +209,11 @@ class RemotingConnector implements JMXConnector {
         return null;
     }
 
-    public class AnonymousCallbackHandler implements CallbackHandler {
+    /*
+     *  The inner classes for use by the RemotingConnector.
+     */
+
+    private class AnonymousCallbackHandler implements CallbackHandler {
 
         public void handle(Callback[] callbacks) throws IOException, UnsupportedCallbackException {
             for (Callback current : callbacks) {
@@ -203,6 +228,52 @@ class RemotingConnector implements JMXConnector {
 
     }
 
+    private class ChannelCloseHandler implements CloseHandler<Channel> {
+
+        public void handleClose(Channel channel, IOException e) {
+            log.info("Client handleClose", e);
+            // TODO - any clean up client side to inform that the channel is closed - notifications may need to be considered.
+        }
+
+    }
+
+
+    /**
+     * A Channel.Receiver to handle the initial negotiation of the version to use.
+     * <p/>
+     * The client will initially receive a list of versions supported by the server, from this list
+     * the highest version supported by the client should be selected - this will allow older clients
+     * to operate against later servers.
+     */
+    private class ClientVersionReceiver implements Channel.Receiver {
+
+        /**
+         * Verify the header received, confirm to the server the version selected, create the
+         * client channel receiver and assign it to the channel.
+         */
+        public void handleMessage(Channel channel, MessageInputStream messageInputStream) {
+
+        }
+
+        public void handleError(Channel channel, IOException e) {
+            log.error("Error on channel", e);
+            // TODO - At this point the connection is still opening so probably don't want to completely close future interatcion.
+        }
+
+        public void handleEnd(Channel channel) {
+            log.error("Channel ended.");
+            // TODO - At this point the connection is still opening so probably don't want to completely close future interatcion.
+        }
+
+
+    }
+
+
+    /**
+     * This class is going to need to wrap both sending messages using the correct version and waiting for the corresponding responses to be returned - again versioned.
+     * <p/>
+     * OR - Do I make this class versioned?
+     */
     private class RemotingMBeanServerConnection implements MBeanServerConnection {
 
         public ObjectInstance createMBean(String className, ObjectName name) throws ReflectionException, InstanceAlreadyExistsException, MBeanRegistrationException, MBeanException, NotCompliantMBeanException, IOException {

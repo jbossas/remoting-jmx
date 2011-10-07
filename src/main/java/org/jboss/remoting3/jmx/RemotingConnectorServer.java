@@ -21,18 +21,26 @@
  */
 package org.jboss.remoting3.jmx;
 
+import static org.jboss.remoting3.jmx.Constants.SNAPSHOT;
+import static org.jboss.remoting3.jmx.Constants.STABLE;
+
 import javax.management.MBeanServer;
 import javax.management.remote.JMXConnectorServer;
 import javax.management.remote.JMXServiceURL;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.Map;
 
 import org.jboss.logging.Logger;
 import org.jboss.remoting3.Channel;
+import org.jboss.remoting3.CloseHandler;
 import org.jboss.remoting3.Endpoint;
+import org.jboss.remoting3.MessageInputStream;
 import org.jboss.remoting3.OpenListener;
 import org.jboss.remoting3.Registration;
+import org.jboss.remoting3.jmx.protocol.Versions;
+import org.xnio.IoUtils;
 import org.xnio.OptionMap;
 
 /**
@@ -124,6 +132,42 @@ public class RemotingConnectorServer extends JMXConnectorServer {
     }
 
     /*
+     *  RemotingConnectorServer specific methods.
+     */
+
+    /**
+     * Write the header message to the client.
+     * <p/>
+     * The header message will contain the following items to allow the client to select a version: -
+     * <p/>
+     * - The bytes for the characters 'JMX' - not completely fail safe but will allow early detection the client
+     * is connected to the correct channel.
+     * - The number of versions supported by the server. (single byte)  // TODO - Do we anticipate ever having over 127 versions supported simultaneously?
+     * - The versions listed sequentially.
+     * - A single byte to identify if the server is a SNAPSHOT release 0x00 = Stable, 0x01 - Snapshot
+     *
+     * @param channel
+     * @throws IOException
+     */
+    private void writeHeader(final Channel channel) throws IOException {
+        DataOutputStream dos = new DataOutputStream(channel.writeMessage());
+        try {
+            dos.writeBytes("JMX");
+            byte[] versions = Versions.getSupportedVersions();
+            dos.writeByte(versions.length);
+            dos.write(versions);
+            if (Version.isSnapshot()) {
+                dos.write(SNAPSHOT);
+            } else {
+                dos.write(STABLE);
+            }
+
+        } finally {
+            dos.close();
+        }
+    }
+
+    /*
      *  Handlers and Recievers
      */
 
@@ -134,11 +178,50 @@ public class RemotingConnectorServer extends JMXConnectorServer {
 
         public void channelOpened(Channel channel) {
             log.info("Channel Opened");
+
+            // Add a close handler so we can ensure we clean up when clients disconnect.
+            channel.addCloseHandler(new ChannelCloseHandler());
+            try {
+                writeHeader(channel);
+                channel.receiveMessage(new ClientVersionReceiver());
+            } catch (IOException e) {
+                log.error("Unable to send header, closing channel", e);
+                IoUtils.safeClose(channel);
+            }
+
         }
 
         public void registrationTerminated() {
             //To change body of implemented methods use File | Settings | File Templates.
         }
+    }
+
+    private class ClientVersionReceiver implements Channel.Receiver {
+
+        public void handleMessage(Channel channel, MessageInputStream messageInputStream) {
+            //To change body of implemented methods use File | Settings | File Templates.
+        }
+
+        public void handleError(Channel channel, IOException e) {
+            //To change body of implemented methods use File | Settings | File Templates.
+        }
+
+        public void handleEnd(Channel channel) {
+            //To change body of implemented methods use File | Settings | File Templates.
+        }
+
+    }
+
+    /**
+     * Handler to perform required clean up when channel is closed.
+     */
+    private class ChannelCloseHandler implements CloseHandler<Channel> {
+
+        public void handleClose(Channel channel, IOException e) {
+            log.info("Server handleClose");
+            // TODO - Perform Clean Up - possibly notification registrations and even connection registrations.
+        }
+
     }
 
 }
