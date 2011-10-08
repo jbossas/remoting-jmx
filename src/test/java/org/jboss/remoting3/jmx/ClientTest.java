@@ -22,6 +22,7 @@
 package org.jboss.remoting3.jmx;
 
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 import javax.management.remote.JMXConnector;
 import javax.management.remote.JMXConnectorFactory;
@@ -76,5 +77,15 @@ public class ClientTest {
         JMXConnector connector = JMXConnectorFactory.connect(serviceUrl);
 
         assertNotNull(connector);
+    }
+
+    @Test
+    public void testConnectId() throws Exception {
+        JMXServiceURL serviceUrl = new JMXServiceURL(URL);
+        JMXConnector connector = JMXConnectorFactory.connect(serviceUrl);
+
+        String connectionId = connector.getConnectionId();
+        assertNotNull("connectionId", connectionId);
+        assertTrue("connectionId length", connectionId.length() > 0);
     }
 }

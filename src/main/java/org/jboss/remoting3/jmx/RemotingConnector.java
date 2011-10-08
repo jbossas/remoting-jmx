@@ -85,7 +85,7 @@ class RemotingConnector implements JMXConnector {
     private Connection connection;
     private boolean closed = false;
     private Channel channel;
-    private MBeanServerConnection serverConnection;
+    private VersionedConnection versionedConnection;
 
     RemotingConnector(JMXServiceURL serviceURL, Map<String, ?> environment) throws IOException {
         this.serviceUrl = serviceURL;
@@ -163,10 +163,10 @@ class RemotingConnector implements JMXConnector {
             throw new RuntimeException("Operation failed with status " + result);
         }
 
-        final IoFuture<MBeanServerConnection> futureMBeanConnection = MBeanServerConectionFactory.createMBeanServerConnection(channel);
+        final IoFuture<VersionedConnection> futureMBeanConnection = VersionedConectionFactory.createMBeanServerConnection(channel);
         result = futureMBeanConnection.await(5, TimeUnit.SECONDS);
         if (result == IoFuture.Status.DONE) {
-            serverConnection = futureMBeanConnection.get();
+            versionedConnection = futureMBeanConnection.get();
         } else if (result == IoFuture.Status.FAILED) {
             throw new IOException(futureChannel.getException());
         } else {
@@ -185,14 +185,25 @@ class RemotingConnector implements JMXConnector {
         }
     }
 
+    private void verifyConnected() throws IOException {
+        if (closed) {
+            throw new IOException("Connector already closed.");
+        } else if (versionedConnection == null) {
+            throw new IOException("Connector not connected.");
+        }
+    }
+
     public MBeanServerConnection getMBeanServerConnection() throws IOException {
-        System.out.println("getMBeanServerConnection()");
-        return null;
+        log.info("getMBeanServerConnection()");
+
+        return getMBeanServerConnection(null);
     }
 
     public MBeanServerConnection getMBeanServerConnection(Subject delegationSubject) throws IOException {
-        System.out.println("getMBeanServerConnection(Subject)");
-        return null;
+        log.info("getMBeanServerConnection(Subject)");
+        verifyConnected();
+
+        return versionedConnection.getMBeanServerConnection(delegationSubject);
     }
 
     public void close() throws IOException {
@@ -213,8 +224,10 @@ class RemotingConnector implements JMXConnector {
     }
 
     public String getConnectionId() throws IOException {
-        System.out.println("getConnectionId()");
-        return null;
+        log.info("getConnectionId()");
+        verifyConnected();
+
+        return versionedConnection.getConnectionId();
     }
 
     /*

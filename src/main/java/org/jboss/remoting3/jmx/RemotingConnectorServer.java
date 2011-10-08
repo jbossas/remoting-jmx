@@ -199,6 +199,11 @@ public class RemotingConnectorServer extends JMXConnectorServer {
 
     private class ClientVersionReceiver implements Channel.Receiver {
 
+        // TODO - Server side multiple versions need to be supported concurrently,
+        // client side 1:1 but here we may want some proxy interacting with the other
+        // versions.
+
+
         public void handleMessage(Channel channel, MessageInputStream messageInputStream) {
             //To change body of implemented methods use File | Settings | File Templates.
         }

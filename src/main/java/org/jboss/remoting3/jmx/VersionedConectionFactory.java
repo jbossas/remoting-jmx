@@ -25,8 +25,6 @@ import static org.jboss.remoting3.jmx.Constants.SNAPSHOT;
 import static org.jboss.remoting3.jmx.Constants.STABLE;
 import static org.jboss.remoting3.jmx.Constants.JMX;
 
-import javax.management.MBeanServerConnection;
-
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.util.Arrays;
@@ -35,14 +33,14 @@ import org.jboss.logging.Logger;
 import org.jboss.remoting3.Channel;
 
 import org.jboss.remoting3.MessageInputStream;
+import org.jboss.remoting3.jmx.protocol.Versions;
 import org.xnio.AbstractIoFuture;
 import org.xnio.IoFuture;
 import org.xnio.IoUtils;
-import sun.misc.IOUtils;
 
 /**
- * The MBeanServerConnectionFactory to negotiate the version on the client side and
- * return an appropriate MBeanServerConnection for the negotiated version.
+ * The VersionedConnectionFactory to negotiate the version on the client side and
+ * return an appropriate VersionedConnection for the negotiated version.
  * <p/>
  * As the only entry point to this class is the create method and as that method creates
  * a new instance for each call it is guaranteed there will not be concurrent
@@ -50,24 +48,24 @@ import sun.misc.IOUtils;
  *
  * @author <a href="mailto:darran.lofthouse@jboss.com">Darran Lofthouse</a>
  */
-class MBeanServerConectionFactory {
+class VersionedConectionFactory {
 
-    private static final Logger log = Logger.getLogger(MBeanServerConectionFactory.class);
+    private static final Logger log = Logger.getLogger(VersionedConectionFactory.class);
 
-    private IoFuture<MBeanServerConnection> future;
+    private VersionedIoFuture<VersionedConnection> future;
     private Channel channel;
 
-    private MBeanServerConectionFactory(final IoFuture<MBeanServerConnection> future, final Channel channel) {
+    private VersionedConectionFactory(final VersionedIoFuture<VersionedConnection> future, final Channel channel) {
         this.future = future;
         this.channel = channel;
     }
 
 
-    static IoFuture<MBeanServerConnection> createMBeanServerConnection(final Channel channel) {
-        IoFuture<MBeanServerConnection> future = new AbstractIoFuture<MBeanServerConnection>() {
+    static IoFuture<VersionedConnection> createMBeanServerConnection(final Channel channel) {
+        VersionedIoFuture<VersionedConnection> future = new VersionedIoFuture<VersionedConnection>() {
         };
 
-        MBeanServerConectionFactory factory = new MBeanServerConectionFactory(future, channel);
+        VersionedConectionFactory factory = new VersionedConectionFactory(future, channel);
         factory.startVersionNegotiation();
 
         return future;
@@ -121,12 +119,21 @@ class MBeanServerConectionFactory {
                         log.warn("Calling a snapshot server");
                         break;
                     default:
-                        throw new IOException("Unrecogniesed stability value.");
+                        throw new IOException("Unrecognised stability value.");
                 }
 
+                // Find the highest version.
+                byte highest = 0x00;
+                for (byte current : versions) {
+                    if (current > highest) {
+                        highest = current;
+                    }
+                }
+
+                future.setResult(Versions.getVersionedConnection(highest, channel));
             } catch (IOException e) {
-                // TODO - Not sure yet!!
                 log.error("Unable to read version negotiation header.", e);
+                future.setException(e);
             } finally {
                 IoUtils.safeClose(dis);
             }
@@ -142,6 +149,19 @@ class MBeanServerConectionFactory {
             // TODO - At this point the connection is still opening so probably don't want to completely close future interatcion.
         }
 
+    }
+
+    private static class VersionedIoFuture<T> extends AbstractIoFuture<T> {
+
+        @Override
+        protected boolean setResult(T result) {
+            return super.setResult(result);
+        }
+
+        @Override
+        protected boolean setException(IOException exception) {
+            return super.setException(exception);
+        }
 
     }
 }

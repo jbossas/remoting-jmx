@@ -19,39 +19,22 @@
  * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
-package org.jboss.remoting3.jmx.protocol;
+package org.jboss.remoting3.jmx;
 
-import org.jboss.remoting3.Channel;
-import org.jboss.remoting3.jmx.VersionedConnection;
+import javax.management.MBeanServerConnection;
+import javax.security.auth.Subject;
 
 /**
- * Single access point to locate the supported versions.
- * <p/>
- * As the client and server are written in parallel this makes no distinction between clients
- * and servers when listing the supported versions.
+ * A bridge between the JMXConnector implementation and the underlying remoting connections.
  *
  * @author <a href="mailto:darran.lofthouse@jboss.com">Darran Lofthouse</a>
  */
-public class Versions {
+public interface VersionedConnection {
 
-    /**
-     * Private constructor, static methods will be used to locate
-     * the supported versions and instantiate them.
-     */
-    private Versions() {
-    }
+    String getConnectionId();
 
-    public static byte[] getSupportedVersions() {
-        // At a later point a more complex registry or discovery could be implemented.
-        return new byte[]{VersionOne.getVersionIdentifier()};
-    }
+    MBeanServerConnection getMBeanServerConnection(Subject subject);
 
-    public static VersionedConnection getVersionedConnection(final byte version, final Channel channel) {
-        if (version == VersionOne.getVersionIdentifier()) {
-            return VersionOne.getConnection(channel);
-        }
-
-        throw new IllegalArgumentException("Unsupported protocol version.");
-    }
+    void close();
 
 }

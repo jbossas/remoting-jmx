@@ -21,34 +21,63 @@
  */
 package org.jboss.remoting3.jmx.protocol;
 
-import java.io.IOException;
-
+import javax.management.MBeanServerConnection;
+import javax.security.auth.Subject;
 import org.jboss.remoting3.Channel;
-import org.jboss.remoting3.MessageInputStream;
+
+import org.jboss.remoting3.jmx.VersionedConnection;
 
 /**
  * @author <a href="mailto:darran.lofthouse@jboss.com">Darran Lofthouse</a>
  */
 class VersionOne {
 
+    private VersionOne() {
+    }
+
     static byte getVersionIdentifier() {
         return 0x01;
     }
 
-    static Channel.Receiver serverReceiverInstance() {
-        return new Channel.Receiver() {
-            public void handleError(Channel channel, IOException e) {
-                //To change body of implemented methods use File | Settings | File Templates.
-            }
+    static VersionedConnection getConnection(final Channel channel) {
+        ClientConnection connection = new ClientConnection(channel);
+        connection.start();
 
-            public void handleEnd(Channel channel) {
-                //To change body of implemented methods use File | Settings | File Templates.
-            }
-
-            public void handleMessage(Channel channel, MessageInputStream messageInputStream) {
-                //To change body of implemented methods use File | Settings | File Templates.
-            }
-        };
+        return connection;
     }
 
+}
+
+
+class ClientConnection implements VersionedConnection {
+
+    private final Channel channel;
+    private String connectionId;
+
+    ClientConnection(final Channel channel) {
+        this.channel = channel;
+    }
+
+    void start() {
+
+
+        // TODO - Don't return until the connectionId has been set - at that point message exchange can begin.
+    }
+
+
+    public String getConnectionId() {
+        if (connectionId == null) {
+            throw new IllegalStateException("Connection ID not set");
+        }
+
+        return connectionId;
+    }
+
+    public MBeanServerConnection getMBeanServerConnection(Subject subject) {
+        return null;
+    }
+
+    public void close() {
+
+    }
 }
