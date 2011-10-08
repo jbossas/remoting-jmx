@@ -92,7 +92,8 @@ class RemotingConnector implements JMXConnector {
         this.environment = Collections.unmodifiableMap(environment);
 
         // TODO - Need to review what we need to do regarding Executory, especially with notification handling.
-        endpoint = Remoting.createEndpoint("endpoint", Executors.newSingleThreadExecutor(), OptionMap.EMPTY);
+        // TODO - A single thread was not enough !!
+        endpoint = Remoting.createEndpoint("endpoint", Executors.newFixedThreadPool(5), OptionMap.EMPTY);
         final Xnio xnio = Xnio.getInstance();
         registration = endpoint.addConnectionProvider("remote", new RemoteConnectionProviderFactory(xnio), OptionMap.create(Options.SSL_ENABLED, false));
     }
