@@ -28,6 +28,7 @@ import static org.jboss.remoting3.jmx.Constants.JMX;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.concurrent.TimeUnit;
 
 import org.jboss.logging.Logger;
 import org.jboss.remoting3.Channel;
@@ -52,37 +53,55 @@ class VersionedConectionFactory {
 
     private static final Logger log = Logger.getLogger(VersionedConectionFactory.class);
 
-    private VersionedIoFuture<VersionedConnection> future;
-    private Channel channel;
+    static VersionedConnection createVersionedConnection(final Channel channel) throws IOException {
+        // We don't want to start chaining the use of IoFutures otherwise multiple threads are tied up
+        // for a single negotiation process so negotiate the connection sequentially.
 
-    private VersionedConectionFactory(final VersionedIoFuture<VersionedConnection> future, final Channel channel) {
-        this.future = future;
-        this.channel = channel;
+        IoFuture<InitialHeader> futureHeader = ClientVersionReceiver.getInitialHeader(channel);
+        IoFuture.Status result = futureHeader.await(5, TimeUnit.SECONDS);
+        switch (result) {
+            case DONE:
+                break;
+            case FAILED:
+                throw futureHeader.getException();
+            default:
+                throw new IOException("Timeout out waiting for header, status=" + result.toString());
+        }
+
+        InitialHeader header = futureHeader.get();
+
+
+        // Find the highest version.
+        byte highest = 0x00;
+        for (byte current : header.versions) {
+            if (current > highest) {
+                highest = current;
+            }
+        }
+
+        // getVersionedConnection may also make use of an IoFuture but our previous use of one has ended.
+        return Versions.getVersionedConnection(highest, channel);
     }
 
-
-    static IoFuture<VersionedConnection> createMBeanServerConnection(final Channel channel) {
-        VersionedIoFuture<VersionedConnection> future = new VersionedIoFuture<VersionedConnection>() {
-        };
-
-        VersionedConectionFactory factory = new VersionedConectionFactory(future, channel);
-        factory.startVersionNegotiation();
-
-        return future;
-    }
-
-    private void startVersionNegotiation() {
-        channel.receiveMessage(new ClientVersionReceiver());
-    }
 
     /**
-     * A Channel.Receiver to handle the initial negotiation of the version to use.
-     * <p/>
-     * The client will initially receive a list of versions supported by the server, from this list
-     * the highest version supported by the client should be selected - this will allow older clients
-     * to operate against later servers.
+     * A Channel.Receiver to receive the list of versions supported by the remote server.
      */
-    private class ClientVersionReceiver implements org.jboss.remoting3.Channel.Receiver {
+    private static class ClientVersionReceiver implements org.jboss.remoting3.Channel.Receiver {
+
+        private final VersionedIoFuture<InitialHeader> future;
+
+        private ClientVersionReceiver(VersionedIoFuture<InitialHeader> future) {
+            this.future = future;
+        }
+
+        public static IoFuture<InitialHeader> getInitialHeader(final Channel channel) {
+            VersionedIoFuture<InitialHeader> future = new VersionedIoFuture<InitialHeader>();
+
+            channel.receiveMessage(new ClientVersionReceiver(future));
+
+            return future;
+        }
 
         /**
          * Verify the header received, confirm to the server the version selected, create the
@@ -122,15 +141,10 @@ class VersionedConectionFactory {
                         throw new IOException("Unrecognised stability value.");
                 }
 
-                // Find the highest version.
-                byte highest = 0x00;
-                for (byte current : versions) {
-                    if (current > highest) {
-                        highest = current;
-                    }
-                }
-
-                future.setResult(Versions.getVersionedConnection(highest, channel));
+                InitialHeader ih = new InitialHeader();
+                ih.versions = versions;
+                ih.stability = stability;
+                future.setResult(ih);
             } catch (IOException e) {
                 log.error("Unable to negotiate connection.", e);
                 future.setException(e);
@@ -141,14 +155,19 @@ class VersionedConectionFactory {
 
         public void handleError(org.jboss.remoting3.Channel channel, IOException e) {
             log.error("Error on channel", e);
-            // TODO - At this point the connection is still opening so probably don't want to completely close future interatcion.
+            future.setException(e);
         }
 
         public void handleEnd(org.jboss.remoting3.Channel channel) {
             log.error("Channel ended.");
-            // TODO - At this point the connection is still opening so probably don't want to completely close future interatcion.
+            future.setException(new IOException("Channel ended"));
         }
 
+    }
+
+    private static class InitialHeader {
+        private byte[] versions;
+        private byte stability;
     }
 
     private static class VersionedIoFuture<T> extends AbstractIoFuture<T> {

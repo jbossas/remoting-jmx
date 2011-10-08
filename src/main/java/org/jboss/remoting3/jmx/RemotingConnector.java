@@ -92,8 +92,8 @@ class RemotingConnector implements JMXConnector {
         this.environment = Collections.unmodifiableMap(environment);
 
         // TODO - Need to review what we need to do regarding Executory, especially with notification handling.
-        // TODO - A single thread was not enough !!
-        endpoint = Remoting.createEndpoint("endpoint", Executors.newFixedThreadPool(5), OptionMap.EMPTY);
+        // TODO - Sometimes one is not enough but if that occurs it may be due to an inappropriate nesting of IoFutures
+        endpoint = Remoting.createEndpoint("endpoint", Executors.newSingleThreadExecutor(), OptionMap.EMPTY);
         final Xnio xnio = Xnio.getInstance();
         registration = endpoint.addConnectionProvider("remote", new RemoteConnectionProviderFactory(xnio), OptionMap.create(Options.SSL_ENABLED, false));
     }
@@ -164,15 +164,7 @@ class RemotingConnector implements JMXConnector {
             throw new RuntimeException("Operation failed with status " + result);
         }
 
-        final IoFuture<VersionedConnection> futureMBeanConnection = VersionedConectionFactory.createMBeanServerConnection(channel);
-        result = futureMBeanConnection.await(5, TimeUnit.SECONDS);
-        if (result == IoFuture.Status.DONE) {
-            versionedConnection = futureMBeanConnection.get();
-        } else if (result == IoFuture.Status.FAILED) {
-            throw new IOException(futureChannel.getException());
-        } else {
-            throw new RuntimeException("Operation failed with status " + result);
-        }
+        versionedConnection = VersionedConectionFactory.createVersionedConnection(channel);
     }
 
     private URI convert(final JMXServiceURL serviceUrl) throws IOException {
@@ -228,7 +220,10 @@ class RemotingConnector implements JMXConnector {
         log.info("getConnectionId()");
         verifyConnected();
 
-        return versionedConnection.getConnectionId();
+        String connectionId = versionedConnection.getConnectionId();
+
+        log.infof("Our connection id is '%s'", connectionId);
+        return connectionId;
     }
 
     /*
