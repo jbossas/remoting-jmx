@@ -132,7 +132,7 @@ class VersionedConectionFactory {
 
                 future.setResult(Versions.getVersionedConnection(highest, channel));
             } catch (IOException e) {
-                log.error("Unable to read version negotiation header.", e);
+                log.error("Unable to negotiate connection.", e);
                 future.setException(e);
             } finally {
                 IoUtils.safeClose(dis);

@@ -21,8 +21,14 @@
  */
 package org.jboss.remoting3.jmx.protocol;
 
+import javax.management.remote.JMXConnectorServer;
+
+import java.io.IOException;
+
 import org.jboss.remoting3.Channel;
+import org.jboss.remoting3.jmx.RemotingConnectorServer;
 import org.jboss.remoting3.jmx.VersionedConnection;
+import org.jboss.remoting3.jmx.VersionedProxy;
 
 /**
  * Single access point to locate the supported versions.
@@ -46,12 +52,21 @@ public class Versions {
         return new byte[]{VersionOne.getVersionIdentifier()};
     }
 
-    public static VersionedConnection getVersionedConnection(final byte version, final Channel channel) {
+    public static VersionedConnection getVersionedConnection(final byte version, final Channel channel) throws IOException {
         if (version == VersionOne.getVersionIdentifier()) {
             return VersionOne.getConnection(channel);
         }
 
         throw new IllegalArgumentException("Unsupported protocol version.");
     }
+
+    public static VersionedProxy getVersionedProxy(final byte version, final Channel channel, final RemotingConnectorServer server) throws IOException {
+        if (version == VersionOne.getVersionIdentifier()) {
+            return VersionOne.getProxy(channel, server);
+        }
+
+        throw new IllegalArgumentException("Unsupported protocol version.");
+    }
+
 
 }

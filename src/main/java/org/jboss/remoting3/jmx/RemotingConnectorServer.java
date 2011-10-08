@@ -21,16 +21,20 @@
  */
 package org.jboss.remoting3.jmx;
 
+import static org.jboss.remoting3.jmx.Constants.CHANNEL_NAME;
+import static org.jboss.remoting3.jmx.Constants.JMX;
 import static org.jboss.remoting3.jmx.Constants.SNAPSHOT;
 import static org.jboss.remoting3.jmx.Constants.STABLE;
-import static org.jboss.remoting3.jmx.Constants.JMX;
 
 import javax.management.MBeanServer;
 import javax.management.remote.JMXConnectorServer;
 import javax.management.remote.JMXServiceURL;
+import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 
 import org.jboss.logging.Logger;
@@ -54,15 +58,16 @@ public class RemotingConnectorServer extends JMXConnectorServer {
 
     private static final Logger log = Logger.getLogger(RemotingConnectorServer.class);
 
-    /**
-     * The default channel name for JMX
-     */
-    private static final String JMX_CHANNEL_NAME = "jmx";
     // TODO - We may need this to be configurable to expose multiple MBeanServers
     // TODO - Either that or selection of MBean server is on marshalled message but not sure if that is correct.
 
     private boolean started = false;
     private boolean stopped = false;
+
+    /**
+     * A map of the connections registered with this RemotingConnectorServer
+     */  // TODO - Not sure if really needed but lets maintain for now.
+    private final Map<String, VersionedProxy> registeredConnections = new HashMap<String, VersionedProxy>();
 
     /**
      * The Remoting Endpoint this ConnectorServer will register against when it is started.
@@ -91,7 +96,7 @@ public class RemotingConnectorServer extends JMXConnectorServer {
         }
 
         log.info("Registering service");
-        registration = endpoint.registerService(JMX_CHANNEL_NAME, new ChannelOpenListener(), OptionMap.EMPTY);
+        registration = endpoint.registerService(CHANNEL_NAME, new ChannelOpenListener(), OptionMap.EMPTY);
         started = true;
     }
 
@@ -135,6 +140,13 @@ public class RemotingConnectorServer extends JMXConnectorServer {
     /*
      *  RemotingConnectorServer specific methods.
      */
+
+    public void connectionOpened(final VersionedProxy proxy) {
+        String connectionId = proxy.getConnectionId();
+        log.infof("Connection '%s' now opened.", connectionId);
+        registeredConnections.put(connectionId, proxy);
+        connectionOpened(connectionId, "", null);
+    }
 
     /**
      * Write the header message to the client.
@@ -205,15 +217,38 @@ public class RemotingConnectorServer extends JMXConnectorServer {
 
 
         public void handleMessage(Channel channel, MessageInputStream messageInputStream) {
-            //To change body of implemented methods use File | Settings | File Templates.
+            // The incoming message will be in the form [JMX {selected version}], once verified
+            // the correct versioned proxy should be created and left to continue the communication.
+            DataInputStream dis = new DataInputStream(messageInputStream);
+            try {
+                log.infof("Bytes Available %d", dis.available());
+                byte[] firstThree = new byte[3];
+                dis.read(firstThree);
+                log.infof("First Three %s", new String(firstThree));
+                if (Arrays.equals(firstThree, JMX) == false) {
+                    throw new IOException("Invalid leading bytes in header.");
+                }
+                log.infof("Bytes Available %d", dis.available());
+                byte version = dis.readByte();
+                log.infof("Chosen version 0x0%d", version);
+
+                // The VersionedProxy is responsible for registering with the RemotingConnectorServer which
+                // could vary depending on the version of the protocol.
+                Versions.getVersionedProxy(version, channel, RemotingConnectorServer.this);
+            } catch (IOException e) {
+                // TODO - What should happen now?
+                log.error("Error determining version selected by client.");
+            } finally {
+                IoUtils.safeClose(dis);
+            }
         }
 
         public void handleError(Channel channel, IOException e) {
-            //To change body of implemented methods use File | Settings | File Templates.
+            // TODO - something?
         }
 
         public void handleEnd(Channel channel) {
-            //To change body of implemented methods use File | Settings | File Templates.
+            // TODO - something?
         }
 
     }

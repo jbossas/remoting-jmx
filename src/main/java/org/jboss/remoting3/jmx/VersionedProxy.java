@@ -22,15 +22,16 @@
 package org.jboss.remoting3.jmx;
 
 /**
+ * The versioned proxy is the server side of the connection proxying incoming
+ * requests to the exposed MBeanServer.
+ *
+ * The proxy is handling the requests for a single open channel, this means that on the server
+ * side the proxy can register itself with the MBeanServer for any notifications the client subscribes to.
+ *
  * @author <a href="mailto:darran.lofthouse@jboss.com">Darran Lofthouse</a>
  */
-class Constants {
+public interface VersionedProxy {
 
-    static final String CHANNEL_NAME = "jmx";
-
-    static final byte STABLE = 0x00;
-    static final byte SNAPSHOT = 0x01;
-
-    static final byte[] JMX = "JMX".getBytes();
+    String getConnectionId();
 
 }

@@ -1,0 +1,24 @@
+This document contains a brief description of the messages exchanged between the two
+sides of the connection after the Remoting channel has been selected.
+
+* All Versions *
+
+ Server advertises it's capabilities
+Server -> Client  -  JMX {version count} {list of versions} {stability indicator}
+
+ Client selects a version.
+Client -> Server  -  JMX {selected version}
+
+* Version One *
+
+ Welcome Message
+Server -> Client  -  JMX {connection id}
+
+At this point the connection is established and bi-directional communication can begin, however in general
+the client is going to need to send in some registrations first before notifications are emitted althoug
+the first message from the server could be to indicate a shut down.
+
+
+
+
+
