@@ -24,10 +24,14 @@ package org.jboss.remoting3.jmx;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
+import javax.management.MBeanServer;
+import javax.management.ObjectName;
 import javax.management.remote.JMXConnector;
 import javax.management.remote.JMXConnectorFactory;
 import javax.management.remote.JMXServiceURL;
 import java.io.IOException;
+import java.lang.management.ManagementFactory;
+import java.util.Set;
 
 import org.jboss.remoting3.jmx.common.JMXRemotingServer;
 import org.junit.AfterClass;
@@ -87,5 +91,14 @@ public class ClientTest {
         String connectionId = connector.getConnectionId();
         assertNotNull("connectionId", connectionId);
         assertTrue("connectionId length", connectionId.length() > 0);
+    }
+
+    @Test
+    public void testWhatIsRegistered() throws Exception {
+        MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
+        Set<ObjectName> names = mbeanServer.queryNames(null, null);
+        for (ObjectName current : names) {
+            System.out.println(" - " + current.toString());
+        }
     }
 }
