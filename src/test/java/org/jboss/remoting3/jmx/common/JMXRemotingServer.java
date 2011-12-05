@@ -21,21 +21,18 @@
  */
 package org.jboss.remoting3.jmx.common;
 
-import javax.management.MBeanServer;
-import javax.management.remote.JMXConnectorServer;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.security.Security;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+
+import javax.management.MBeanServer;
+import javax.management.remote.JMXConnectorServer;
 
 import org.jboss.logging.Logger;
 import org.jboss.remoting3.Endpoint;
-import org.jboss.remoting3.OpenListener;
-import org.jboss.remoting3.Registration;
 import org.jboss.remoting3.Remoting;
 import org.jboss.remoting3.jmx.RemotingConnectorServer;
 import org.jboss.remoting3.jmx.Version;
@@ -87,17 +84,16 @@ public class JMXRemotingServer {
 
         // Initialise general Remoting - this step would be implemented elsewhere when
         // running within an application server.
-        final ExecutorService es = Executors.newFixedThreadPool(5);
-        endpoint = Remoting.createEndpoint("JMXRemoting", es, OptionMap.EMPTY);
         final Xnio xnio = Xnio.getInstance();
-        endpoint.addConnectionProvider("remote", new RemoteConnectionProviderFactory(xnio), OptionMap.create(Options.SSL_ENABLED, false));
+        endpoint = Remoting.createEndpoint("JMXRemoting", xnio, OptionMap.EMPTY);
+        endpoint.addConnectionProvider("remote", new RemoteConnectionProviderFactory(), OptionMap.create(Options.SSL_ENABLED, false));
 
         final NetworkServerProvider nsp = endpoint.getConnectionProviderInterface("remote", NetworkServerProvider.class);
         final SocketAddress bindAddress = new InetSocketAddress(InetAddress.getLocalHost(), listenerPort);
         final SimpleServerAuthenticationProvider authenticationProvider = new SimpleServerAuthenticationProvider();
         final OptionMap serverOptions = OptionMap.create(Options.SASL_MECHANISMS, Sequence.of("ANONYMOUS"), Options.SASL_POLICY_NOANONYMOUS, Boolean.FALSE);
 
-        server = nsp.createServer(bindAddress, serverOptions, authenticationProvider);
+        server = nsp.createServer(bindAddress, serverOptions, authenticationProvider, null);
 
         // Initialise the components that will provide JMX connectivity.
 

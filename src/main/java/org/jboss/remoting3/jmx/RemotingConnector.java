@@ -21,6 +21,15 @@
  */
 package org.jboss.remoting3.jmx;
 
+import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
+
 import javax.management.Attribute;
 import javax.management.AttributeList;
 import javax.management.AttributeNotFoundException;
@@ -47,15 +56,6 @@ import javax.security.auth.callback.Callback;
 import javax.security.auth.callback.CallbackHandler;
 import javax.security.auth.callback.NameCallback;
 import javax.security.auth.callback.UnsupportedCallbackException;
-import java.io.IOException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 
 import org.jboss.logging.Logger;
 import org.jboss.remoting3.Channel;
@@ -91,11 +91,9 @@ class RemotingConnector implements JMXConnector {
         this.serviceUrl = serviceURL;
         this.environment = Collections.unmodifiableMap(environment);
 
-        // TODO - Need to review what we need to do regarding Executory, especially with notification handling.
-        // TODO - Sometimes one is not enough but if that occurs it may be due to an inappropriate nesting of IoFutures
-        endpoint = Remoting.createEndpoint("endpoint", Executors.newSingleThreadExecutor(), OptionMap.EMPTY);
         final Xnio xnio = Xnio.getInstance();
-        registration = endpoint.addConnectionProvider("remote", new RemoteConnectionProviderFactory(xnio), OptionMap.create(Options.SSL_ENABLED, false));
+        endpoint = Remoting.createEndpoint("endpoint", xnio, OptionMap.EMPTY);
+        registration = endpoint.addConnectionProvider("remote", new RemoteConnectionProviderFactory(), OptionMap.create(Options.SSL_ENABLED, false));
     }
 
     public void connect() throws IOException {
