@@ -1,0 +1,7 @@
+This file documents the protocol in use for Version 0 messages.
+
+The majority of the methods of the MBeanServerConnection are Request/Response
+based with the request originating from the client, however there needs to be
+support for concurrent access and notifications.
+
+

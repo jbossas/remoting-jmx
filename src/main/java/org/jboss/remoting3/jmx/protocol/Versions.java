@@ -21,8 +21,6 @@
  */
 package org.jboss.remoting3.jmx.protocol;
 
-import javax.management.remote.JMXConnectorServer;
-
 import java.io.IOException;
 
 import org.jboss.remoting3.Channel;
