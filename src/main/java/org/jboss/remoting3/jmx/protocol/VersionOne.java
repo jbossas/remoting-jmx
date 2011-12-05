@@ -113,6 +113,7 @@ class ClientConnection implements VersionedConnection {
     }
 
     public MBeanServerConnection getMBeanServerConnection(Subject subject) {
+        // It is normal for only a single instance of MBeanServerConnection to be used.
         return null;
     }
 

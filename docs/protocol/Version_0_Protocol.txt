@@ -3,5 +3,244 @@ This file documents the protocol in use for Version 0 messages.
 The majority of the methods of the MBeanServerConnection are Request/Response
 based with the request originating from the client, however there needs to be
 support for concurrent access and notifications.
+  
+* Message IDs
+
+The Message IDs will be defined in the context of the initiating side of the message exchange, for most messages the message 
+will originate on the remote client to be sent to the server for the server to send a response.
+
+The messages IDs will be defined in the range 00 to 7F.  The response id will be in the form {message id} ^ 0x80.  
+Using this format will make it very easy to detect by only checking the most significant bit of the first byte if the message
+just read is a new request or in response to an existing request/response exchange. 
+
+The general message format will be: -
+
+* Request Messages * 
+{message id}{correlation id}{payload}
+
+(Where the {payload} definition is specific to the message)
+
+* Response Messages *
+{response id}{correlation id}{outcome}{payload}
+
+(where {payload} definition is specific to both the response id and the outcome)
+
+As defined below the payload of a message will contain a type identifier for each parameter, this means messages can be overloaded
+and a single message ID can correspond to multiple payload formats.
+
+
+**********
+* Fields *
+**********
+
+correlation id -  used to match a response id with the corresponding request.
+
+message id     -  Identifier for the message 00 to 7F 
+
+                  createMBean         - 0x01
+                  unregisterMBean     - 0x02
+                  getObjectInstance   - 0x03
+                  queryMBeans         - 0x04
+                  queryNames          - 0x05
+                  isRegistered        - 0x06
+                  getMBeanCount       - 0x07
+                  getAttribute        - 0x08
+                  getAttributes       - 0x09
+                  setAttribute        - 0x0A
+                  setAttributes       - 0x0B
+                  invoke              - 0x0C
+                  getDefaultDomain    - 0x0D
+                  getDomains          - 0x0E
+                  getMBeanInfo        - 0x0F
+                  instanceOf          - 0x10
+                                                                                                          
+
+outcome        -  Success = 0x00  // payload will be return type or if void return type method will return.
+                  Failure = 0x01  // payload will be an exception.
+
+parameter      -  {type id}{length}{data}
+                  (length could be omitted for types where a different mechanism can be used to detect termination e.g. null terminated string) 
+                  
+payload        -  0 or more parameters.
+
+                  For the methods being directly marshaled from the MBeanServerConnection interface the supported paramters and order of parameters 
+                  will match the method definitions on the interface. 
+                  
+              
+response id    -  ID of response message ( {message id} ^ 0x80 )
+
+type           -
+                  Attribute       - 0x01
+                  AttributeList   - 0x02
+                  Exception       - 0x03
+                  Object          - 0x04
+                  Object[]        - 0x05
+                  ObjectName      - 0x06
+                  QueryExp        - 0x07
+                  String          - 0x08
+                  String[]        - 0x09
+                  
+                                  
+            
+
+
+****************
+*  RPC Methods *
+****************
+These are the methods that directly call the server from the client and then pass a response
+back to the client.
+
+    public ObjectInstance createMBean(String className, ObjectName name)
+	    throws ReflectionException, InstanceAlreadyExistsException,
+		   MBeanRegistrationException, MBeanException,
+		   NotCompliantMBeanException, IOException;
+    public ObjectInstance createMBean(String className, ObjectName name,
+				      ObjectName loaderName) 
+	    throws ReflectionException, InstanceAlreadyExistsException,
+		   MBeanRegistrationException, MBeanException,
+		   NotCompliantMBeanException, InstanceNotFoundException,
+		   IOException;
+    public ObjectInstance createMBean(String className, ObjectName name,
+				      Object params[], String signature[]) 
+	    throws ReflectionException, InstanceAlreadyExistsException,
+	    	   MBeanRegistrationException, MBeanException,
+	    	   NotCompliantMBeanException, IOException;
+    public ObjectInstance createMBean(String className, ObjectName name,
+				      ObjectName loaderName, Object params[],
+				      String signature[]) 
+	    throws ReflectionException, InstanceAlreadyExistsException,
+	    	   MBeanRegistrationException, MBeanException,
+	    	   NotCompliantMBeanException, InstanceNotFoundException,
+	    	   IOException;
+
+    public void unregisterMBean(ObjectName name)
+	    throws InstanceNotFoundException, MBeanRegistrationException,
+	    	   IOException;
+	    	   
+    public ObjectInstance getObjectInstance(ObjectName name)
+	    throws InstanceNotFoundException, IOException;
+	    
+    public Set<ObjectInstance> queryMBeans(ObjectName name, QueryExp query)
+	    throws IOException;
+	    
+    public Set<ObjectName> queryNames(ObjectName name, QueryExp query)
+	    throws IOException;
+	    
+    public boolean isRegistered(ObjectName name)
+	    throws IOException;
+	    
+    public Integer getMBeanCount()
+	    throws IOException;
+	    
+    public Object getAttribute(ObjectName name, String attribute)
+	    throws MBeanException, AttributeNotFoundException,
+	    	   InstanceNotFoundException, ReflectionException,
+	    	   IOException;
+	    	   
+    public AttributeList getAttributes(ObjectName name, String[] attributes)
+	    throws InstanceNotFoundException, ReflectionException,
+		   IOException;
+		   
+    public void setAttribute(ObjectName name, Attribute attribute)
+	    throws InstanceNotFoundException, AttributeNotFoundException,
+		   InvalidAttributeValueException, MBeanException, 
+		   ReflectionException, IOException;
+		   
+    public AttributeList setAttributes(ObjectName name,
+				       AttributeList attributes)
+	throws InstanceNotFoundException, ReflectionException, IOException;
+	
+    public Object invoke(ObjectName name, String operationName,
+			 Object params[], String signature[])
+	    throws InstanceNotFoundException, MBeanException,
+		   ReflectionException, IOException;
+		   
+    public String getDefaultDomain()
+	    throws IOException;
+	    
+    public String[] getDomains()
+	    throws IOException;
+	    
+    public MBeanInfo getMBeanInfo(ObjectName name)
+	    throws InstanceNotFoundException, IntrospectionException,
+	    	   ReflectionException, IOException;
+	    	   
+    public boolean isInstanceOf(ObjectName name, String className)
+	    throws InstanceNotFoundException, IOException;	    	   	    
+	    
+	    	    		   			   		   	    	   	    	    	    	    	    	    	   	    	   	    	   		   		   
+
+
+
+***************************
+*  Notification Messages  *
+***************************
+The handling of notifications are slightly more complex as both the client side and server
+side are responsible for handling the correlation of the Notifier registrations and passing
+appropriate messages to an from the server.
+
+In addition to the RPC correlation ID there will also be longer living registration ID for any
+registered NotificationListener instances.
+
+    public void addNotificationListener(ObjectName name,
+					NotificationListener listener,
+					NotificationFilter filter,
+					Object handback)
+	    throws InstanceNotFoundException, IOException;
+	    
+    public void addNotificationListener(ObjectName name,
+					ObjectName listener,
+					NotificationFilter filter,
+					Object handback)
+	    throws InstanceNotFoundException, IOException;
+	    
+    public void removeNotificationListener(ObjectName name,
+					   ObjectName listener) 
+	throws InstanceNotFoundException, ListenerNotFoundException,
+	       IOException;
+	       
+    public void removeNotificationListener(ObjectName name,
+					   ObjectName listener,
+					   NotificationFilter filter,
+					   Object handback)
+	    throws InstanceNotFoundException, ListenerNotFoundException,
+		   IOException;
+		   
+    public void removeNotificationListener(ObjectName name,
+					   NotificationListener listener)
+	    throws InstanceNotFoundException, ListenerNotFoundException,
+		   IOException;
+		   
+    public void removeNotificationListener(ObjectName name,
+					   NotificationListener listener,
+					   NotificationFilter filter,
+					   Object handback)
+	    throws InstanceNotFoundException, ListenerNotFoundException,
+		   IOException;
+		   
+		   		   		   	       	    	    
+
+***********************
+*  Internal Messages  *
+***********************
+These are the internal messages that do not directly tie in to the RPC methods or notification 
+messages.
+
+  disconnect  - To notify the other side of the connection that a non-optional disconnect will now occur.
+  
+                This could be client deciding to close the connection or could be the server shutting down,
+                additional management could be added to the server to terminate existing connection.
+                
+                Once received the receiving side of the message should clean up all state related to 
+                the connection and emit notifications as required.
+
+
+
+
+
+
+
+
+
 
 
