@@ -21,11 +21,12 @@
  */
 package org.jboss.remoting3.jmx;
 
+import java.io.IOException;
+import java.util.Map;
+
 import javax.management.remote.JMXConnector;
 import javax.management.remote.JMXConnectorProvider;
 import javax.management.remote.JMXServiceURL;
-import java.io.IOException;
-import java.util.Map;
 
 /**
  * The JMXConnectorProvider implementation for use with Remoting.

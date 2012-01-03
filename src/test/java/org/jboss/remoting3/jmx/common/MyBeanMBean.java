@@ -1,6 +1,6 @@
 /*
  * JBoss, Home of Professional Open Source.
- * Copyright 2011, Red Hat, Inc., and individual contributors
+ * Copyright 2012, Red Hat, Inc., and individual contributors
  * as indicated by the @author tags. See the copyright.txt file in the
  * distribution for a full listing of individual contributors.
  *
@@ -19,18 +19,24 @@
  * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
-package org.jboss.remoting3.jmx;
+
+package org.jboss.remoting3.jmx.common;
 
 /**
- * The versioned proxy is the server side of the connection proxying incoming requests to the exposed MBeanServer.
- *
- * The proxy is handling the requests for a single open channel, this means that on the server side the proxy can register
- * itself with the MBeanServer for any notifications the client subscribes to.
+ * The MBean interface to MyBean
  *
  * @author <a href="mailto:darran.lofthouse@jboss.com">Darran Lofthouse</a>
  */
-public interface VersionedProxy {
+public interface MyBeanMBean {
 
-    String getConnectionId();
+    String getSomeValue();
+
+    void setSomeValue(final String someValue);
+
+    String getAnotherValue();
+
+    void setAnotherValue(final String anotherValue);
+
+    String transpose(final String message);
 
 }

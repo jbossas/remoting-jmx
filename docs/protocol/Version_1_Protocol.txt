@@ -3,6 +3,10 @@ This file documents the protocol in use for Version 0 messages.
 The majority of the methods of the MBeanServerConnection are Request/Response
 based with the request originating from the client, however there needs to be
 support for concurrent access and notifications.
+
+By this stage the version of the exchange will have been negotiated so the JMX prefix can now
+be dropped, the purpose of thise 3 bytes was to make it easier to detect a mis-connection but once
+negotiation is complete we know the connection is correctly established.
   
 * Message IDs
 
@@ -28,14 +32,16 @@ The general message format will be: -
 As defined below the payload of a message will contain a type identifier for each parameter, this means messages can be overloaded
 and a single message ID can correspond to multiple payload formats.
 
+A response message contains a single payload.
+
 
 **********
 * Fields *
 **********
 
-correlation id -  used to match a response id with the corresponding request.
+correlation id -  used to match a response id with the corresponding request. (integer, 4 bytes)
 
-message id     -  Identifier for the message 00 to 7F 
+message id     -  Identifier for the message 00 to 7F (byte, 1 byte)
 
                   createMBean         - 0x01
                   unregisterMBean     - 0x02
@@ -58,31 +64,36 @@ message id     -  Identifier for the message 00 to 7F
 outcome        -  Success = 0x00  // payload will be return type or if void return type method will return.
                   Failure = 0x01  // payload will be an exception.
 
-parameter      -  {type id}{length}{data}
-                  (length could be omitted for types where a different mechanism can be used to detect termination e.g. null terminated string) 
+parameter      -  {type id}{element count}{data}
+                    - element count is only applicable to arrays and collections where multiple items are returned, for these types data will be repeated once for each element. 
                   
 payload        -  0 or more parameters.
 
                   For the methods being directly marshaled from the MBeanServerConnection interface the supported paramters and order of parameters 
                   will match the method definitions on the interface. 
+
+                  Overloaded methods will contain one additional paramter before the method paramters to indicate the number of parameters being passed, this will be of 
+                  type int and the value will be the number of paramters passed.
                   
               
 response id    -  ID of response message ( {message id} ^ 0x80 )
 
 type           -
-                  Attribute       - 0x01
-                  AttributeList   - 0x02
-                  Exception       - 0x03
-                  Object          - 0x04
-                  Object[]        - 0x05
-                  ObjectName      - 0x06
-                  QueryExp        - 0x07
-                  String          - 0x08
-                  String[]        - 0x09
-                  
-                                  
-            
-
+                  Attribute            - 0x01
+                  AttributeList        - 0x02
+                  Exception            - 0x03
+                  Object               - 0x04
+                  Object[]             - 0x05
+                  ObjectName           - 0x06
+                  QueryExp             - 0x07
+                  String               - 0x08
+                  String[]             - 0x09
+                  boolean              - 0x0A
+                  int                  - 0x0B 
+                  ObjectInstance       - 0x0C
+                  ObjectInstance (Set) - 0x0D
+                  MBeanInfo            - 0x0E
+                  ObjectName (Set)     - 0x0F                            
 
 ****************
 *  RPC Methods *
@@ -129,7 +140,7 @@ back to the client.
     public boolean isRegistered(ObjectName name)
 	    throws IOException;
 	    
-    public Integer getMBeanCount()
+    public Integer getMBeanCount()                                        ****
 	    throws IOException;
 	    
     public Object getAttribute(ObjectName name, String attribute)
@@ -155,7 +166,7 @@ back to the client.
 	    throws InstanceNotFoundException, MBeanException,
 		   ReflectionException, IOException;
 		   
-    public String getDefaultDomain()
+    public String getDefaultDomain()                                        ****
 	    throws IOException;
 	    
     public String[] getDomains()

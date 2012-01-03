@@ -29,10 +29,10 @@ package org.jboss.remoting3.jmx;
 public class Version {
 
     /**
-     * Private constructor as only the static getVersionString is
-     * intended to be used.
+     * Private constructor as only the static getVersionString is intended to be used.
      */
-    private Version() {}
+    private Version() {
+    }
 
     public static boolean isSnapshot() {
         return getVersionString().contains("SNAPSHOT");

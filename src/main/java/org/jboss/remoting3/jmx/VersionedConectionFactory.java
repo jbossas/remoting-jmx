@@ -21,9 +21,9 @@
  */
 package org.jboss.remoting3.jmx;
 
+import static org.jboss.remoting3.jmx.Constants.JMX;
 import static org.jboss.remoting3.jmx.Constants.SNAPSHOT;
 import static org.jboss.remoting3.jmx.Constants.STABLE;
-import static org.jboss.remoting3.jmx.Constants.JMX;
 
 import java.io.DataInputStream;
 import java.io.IOException;
@@ -32,7 +32,6 @@ import java.util.concurrent.TimeUnit;
 
 import org.jboss.logging.Logger;
 import org.jboss.remoting3.Channel;
-
 import org.jboss.remoting3.MessageInputStream;
 import org.jboss.remoting3.jmx.protocol.Versions;
 import org.xnio.AbstractIoFuture;
@@ -40,12 +39,11 @@ import org.xnio.IoFuture;
 import org.xnio.IoUtils;
 
 /**
- * The VersionedConnectionFactory to negotiate the version on the client side and
- * return an appropriate VersionedConnection for the negotiated version.
+ * The VersionedConnectionFactory to negotiate the version on the client side and return an appropriate VersionedConnection for
+ * the negotiated version.
  * <p/>
- * As the only entry point to this class is the create method and as that method creates
- * a new instance for each call it is guaranteed there will not be concurrent
- * negotiations occurring.
+ * As the only entry point to this class is the create method and as that method creates a new instance for each call it is
+ * guaranteed there will not be concurrent negotiations occurring.
  *
  * @author <a href="mailto:darran.lofthouse@jboss.com">Darran Lofthouse</a>
  */
@@ -70,7 +68,6 @@ class VersionedConectionFactory {
 
         InitialHeader header = futureHeader.get();
 
-
         // Find the highest version.
         byte highest = 0x00;
         for (byte current : header.versions) {
@@ -82,7 +79,6 @@ class VersionedConectionFactory {
         // getVersionedConnection may also make use of an IoFuture but our previous use of one has ended.
         return Versions.getVersionedConnection(highest, channel);
     }
-
 
     /**
      * A Channel.Receiver to receive the list of versions supported by the remote server.
@@ -104,8 +100,8 @@ class VersionedConectionFactory {
         }
 
         /**
-         * Verify the header received, confirm to the server the version selected, create the
-         * client channel receiver and assign it to the channel.
+         * Verify the header received, confirm to the server the version selected, create the client channel receiver and assign
+         * it to the channel.
          */
         public void handleMessage(org.jboss.remoting3.Channel channel, MessageInputStream messageInputStream) {
             DataInputStream dis = new DataInputStream(messageInputStream);

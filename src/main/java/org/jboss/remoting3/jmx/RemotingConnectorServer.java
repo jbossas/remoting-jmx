@@ -26,9 +26,6 @@ import static org.jboss.remoting3.jmx.Constants.JMX;
 import static org.jboss.remoting3.jmx.Constants.SNAPSHOT;
 import static org.jboss.remoting3.jmx.Constants.STABLE;
 
-import javax.management.MBeanServer;
-import javax.management.remote.JMXConnectorServer;
-import javax.management.remote.JMXServiceURL;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -36,6 +33,10 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+
+import javax.management.MBeanServer;
+import javax.management.remote.JMXConnectorServer;
+import javax.management.remote.JMXServiceURL;
 
 import org.jboss.logging.Logger;
 import org.jboss.remoting3.Channel;
@@ -49,8 +50,8 @@ import org.xnio.IoUtils;
 import org.xnio.OptionMap;
 
 /**
- * A JMXConnectorServer to handle the server side of the lifecycle relating to making
- * the provided MBeanServer accessible using JBoss Remoting.
+ * A JMXConnectorServer to handle the server side of the lifecycle relating to making the provided MBeanServer accessible using
+ * JBoss Remoting.
  *
  * @author <a href="mailto:darran.lofthouse@jboss.com">Darran Lofthouse</a>
  */
@@ -66,7 +67,8 @@ public class RemotingConnectorServer extends JMXConnectorServer {
 
     /**
      * A map of the connections registered with this RemotingConnectorServer
-     */  // TODO - Not sure if really needed but lets maintain for now.
+     */
+    // TODO - Not sure if really needed but lets maintain for now.
     private final Map<String, VersionedProxy> registeredConnections = new HashMap<String, VersionedProxy>();
 
     /**
@@ -138,7 +140,7 @@ public class RemotingConnectorServer extends JMXConnectorServer {
     }
 
     /*
-     *  RemotingConnectorServer specific methods.
+     * RemotingConnectorServer specific methods.
      */
 
     public void connectionOpened(final VersionedProxy proxy) {
@@ -153,11 +155,10 @@ public class RemotingConnectorServer extends JMXConnectorServer {
      * <p/>
      * The header message will contain the following items to allow the client to select a version: -
      * <p/>
-     * - The bytes for the characters 'JMX' - not completely fail safe but will allow early detection the client
-     * is connected to the correct channel.
-     * - The number of versions supported by the server. (single byte)  // TODO - Do we anticipate ever having over 127 versions supported simultaneously?
-     * - The versions listed sequentially.
-     * - A single byte to identify if the server is a SNAPSHOT release 0x00 = Stable, 0x01 - Snapshot
+     * - The bytes for the characters 'JMX' - not completely fail safe but will allow early detection the client is connected to
+     * the correct channel. - The number of versions supported by the server. (single byte) // TODO - Do we anticipate ever
+     * having over 127 versions supported simultaneously? - The versions listed sequentially. - A single byte to identify if the
+     * server is a SNAPSHOT release 0x00 = Stable, 0x01 - Snapshot
      *
      * @param channel
      * @throws IOException
@@ -181,7 +182,7 @@ public class RemotingConnectorServer extends JMXConnectorServer {
     }
 
     /*
-     *  Handlers and Recievers
+     * Handlers and Recievers
      */
 
     /**
@@ -205,7 +206,7 @@ public class RemotingConnectorServer extends JMXConnectorServer {
         }
 
         public void registrationTerminated() {
-            //To change body of implemented methods use File | Settings | File Templates.
+            // To change body of implemented methods use File | Settings | File Templates.
         }
     }
 
@@ -214,7 +215,6 @@ public class RemotingConnectorServer extends JMXConnectorServer {
         // TODO - Server side multiple versions need to be supported concurrently,
         // client side 1:1 but here we may want some proxy interacting with the other
         // versions.
-
 
         public void handleMessage(Channel channel, MessageInputStream messageInputStream) {
             // The incoming message will be in the form [JMX {selected version}], once verified

@@ -27,28 +27,12 @@ import java.net.URISyntaxException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
-import javax.management.Attribute;
-import javax.management.AttributeList;
-import javax.management.AttributeNotFoundException;
-import javax.management.InstanceAlreadyExistsException;
-import javax.management.InstanceNotFoundException;
-import javax.management.IntrospectionException;
-import javax.management.InvalidAttributeValueException;
 import javax.management.ListenerNotFoundException;
-import javax.management.MBeanException;
-import javax.management.MBeanInfo;
-import javax.management.MBeanRegistrationException;
 import javax.management.MBeanServerConnection;
-import javax.management.NotCompliantMBeanException;
 import javax.management.NotificationFilter;
 import javax.management.NotificationListener;
-import javax.management.ObjectInstance;
-import javax.management.ObjectName;
-import javax.management.QueryExp;
-import javax.management.ReflectionException;
 import javax.management.remote.JMXConnector;
 import javax.management.remote.JMXServiceURL;
 import javax.security.auth.Subject;
@@ -93,7 +77,8 @@ class RemotingConnector implements JMXConnector {
 
         final Xnio xnio = Xnio.getInstance();
         endpoint = Remoting.createEndpoint("endpoint", xnio, OptionMap.EMPTY);
-        registration = endpoint.addConnectionProvider("remote", new RemoteConnectionProviderFactory(), OptionMap.create(Options.SSL_ENABLED, false));
+        registration = endpoint.addConnectionProvider("remote", new RemoteConnectionProviderFactory(),
+                OptionMap.create(Options.SSL_ENABLED, false));
     }
 
     public void connect() throws IOException {
@@ -136,10 +121,11 @@ class RemotingConnector implements JMXConnector {
 
         // TODO - Supported environment properties.
         // The credentials.
-        // Connection timeout - maybe a total timeout?  Reducing on each await.
+        // Connection timeout - maybe a total timeout? Reducing on each await.
 
         // open a connection
-        final IoFuture<Connection> futureConnection = endpoint.connect(convert(serviceUrl), OptionMap.create(Options.SASL_POLICY_NOANONYMOUS, Boolean.FALSE), new AnonymousCallbackHandler());
+        final IoFuture<Connection> futureConnection = endpoint.connect(convert(serviceUrl),
+                OptionMap.create(Options.SASL_POLICY_NOANONYMOUS, Boolean.FALSE), new AnonymousCallbackHandler());
         IoFuture.Status result = futureConnection.await(5, TimeUnit.SECONDS);
 
         if (result == IoFuture.Status.DONE) {
@@ -225,7 +211,7 @@ class RemotingConnector implements JMXConnector {
     }
 
     /*
-     *  The inner classes for use by the RemotingConnector.
+     * The inner classes for use by the RemotingConnector.
      */
 
     private class AnonymousCallbackHandler implements CallbackHandler {
@@ -250,115 +236,6 @@ class RemotingConnector implements JMXConnector {
             // TODO - any clean up client side to inform that the channel is closed - notifications may need to be considered.
         }
 
-    }
-
-
-    /**
-     * This class is going to need to wrap both sending messages using the correct version and waiting for the corresponding responses to be returned - again versioned.
-     * <p/>
-     * OR - Do I make this class versioned?
-     */
-    private class RemotingMBeanServerConnection implements MBeanServerConnection {
-
-        public ObjectInstance createMBean(String className, ObjectName name) throws ReflectionException, InstanceAlreadyExistsException, MBeanRegistrationException, MBeanException, NotCompliantMBeanException, IOException {
-            return null;
-        }
-
-        public ObjectInstance createMBean(String className, ObjectName name, ObjectName loaderName) throws ReflectionException, InstanceAlreadyExistsException, MBeanRegistrationException, MBeanException, NotCompliantMBeanException, InstanceNotFoundException, IOException {
-            return null;
-        }
-
-        public ObjectInstance createMBean(String className, ObjectName name, Object[] params, String[] signature) throws ReflectionException, InstanceAlreadyExistsException, MBeanRegistrationException, MBeanException, NotCompliantMBeanException, IOException {
-            return null;
-        }
-
-        public ObjectInstance createMBean(String className, ObjectName name, ObjectName loaderName, Object[] params, String[] signature) throws ReflectionException, InstanceAlreadyExistsException, MBeanRegistrationException, MBeanException, NotCompliantMBeanException, InstanceNotFoundException, IOException {
-            return null;
-        }
-
-        public void unregisterMBean(ObjectName name) throws InstanceNotFoundException, MBeanRegistrationException, IOException {
-
-        }
-
-        public ObjectInstance getObjectInstance(ObjectName name) throws InstanceNotFoundException, IOException {
-            return null;
-        }
-
-        public Set<ObjectInstance> queryMBeans(ObjectName name, QueryExp query) throws IOException {
-            return null;
-        }
-
-        public Set<ObjectName> queryNames(ObjectName name, QueryExp query) throws IOException {
-            return null;
-        }
-
-        public boolean isRegistered(ObjectName name) throws IOException {
-            return false;
-        }
-
-        public Integer getMBeanCount() throws IOException {
-            return null;
-        }
-
-        public Object getAttribute(ObjectName name, String attribute) throws MBeanException, AttributeNotFoundException, InstanceNotFoundException, ReflectionException, IOException {
-            return null;
-        }
-
-        public AttributeList getAttributes(ObjectName name, String[] attributes) throws InstanceNotFoundException, ReflectionException, IOException {
-            return null;
-        }
-
-        public void setAttribute(ObjectName name, Attribute attribute) throws InstanceNotFoundException, AttributeNotFoundException, InvalidAttributeValueException, MBeanException, ReflectionException, IOException {
-
-        }
-
-        public AttributeList setAttributes(ObjectName name, AttributeList attributes) throws InstanceNotFoundException, ReflectionException, IOException {
-            return null;
-        }
-
-        public Object invoke(ObjectName name, String operationName, Object[] params, String[] signature) throws InstanceNotFoundException, MBeanException, ReflectionException, IOException {
-            return null;
-        }
-
-        public String getDefaultDomain() throws IOException {
-            return null;
-        }
-
-        public String[] getDomains() throws IOException {
-            return new String[0];
-        }
-
-        public void addNotificationListener(ObjectName name, NotificationListener listener, NotificationFilter filter, Object handback) throws InstanceNotFoundException, IOException {
-
-        }
-
-        public void addNotificationListener(ObjectName name, ObjectName listener, NotificationFilter filter, Object handback) throws InstanceNotFoundException, IOException {
-
-        }
-
-        public void removeNotificationListener(ObjectName name, ObjectName listener) throws InstanceNotFoundException, ListenerNotFoundException, IOException {
-
-        }
-
-        public void removeNotificationListener(ObjectName name, ObjectName listener, NotificationFilter filter, Object handback) throws InstanceNotFoundException, ListenerNotFoundException, IOException {
-
-        }
-
-        public void removeNotificationListener(ObjectName name, NotificationListener listener) throws InstanceNotFoundException, ListenerNotFoundException, IOException {
-
-        }
-
-        public void removeNotificationListener(ObjectName name, NotificationListener listener, NotificationFilter filter, Object handback) throws InstanceNotFoundException, ListenerNotFoundException, IOException {
-
-        }
-
-        public MBeanInfo getMBeanInfo(ObjectName name) throws InstanceNotFoundException, IntrospectionException, ReflectionException, IOException {
-            return null;
-        }
-
-        public boolean isInstanceOf(ObjectName name, String className) throws InstanceNotFoundException, IOException {
-            return false;
-        }
     }
 
 }

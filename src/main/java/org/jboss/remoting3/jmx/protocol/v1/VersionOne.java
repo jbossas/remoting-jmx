@@ -19,18 +19,41 @@
  * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
-package org.jboss.remoting3.jmx;
+package org.jboss.remoting3.jmx.protocol.v1;
+
+import java.io.IOException;
+
+import org.jboss.remoting3.Channel;
+import org.jboss.remoting3.jmx.RemotingConnectorServer;
+import org.jboss.remoting3.jmx.VersionedConnection;
+import org.jboss.remoting3.jmx.VersionedProxy;
 
 /**
- * The versioned proxy is the server side of the connection proxying incoming requests to the exposed MBeanServer.
- *
- * The proxy is handling the requests for a single open channel, this means that on the server side the proxy can register
- * itself with the MBeanServer for any notifications the client subscribes to.
+ * The entry point to VersionOne
  *
  * @author <a href="mailto:darran.lofthouse@jboss.com">Darran Lofthouse</a>
  */
-public interface VersionedProxy {
+public class VersionOne {
 
-    String getConnectionId();
+    private VersionOne() {
+    }
+
+    public static byte getVersionIdentifier() {
+        return 0x01;
+    }
+
+    public static VersionedConnection getConnection(final Channel channel) throws IOException {
+        ClientConnection connection = new ClientConnection(channel);
+        connection.start();
+
+        return connection;
+    }
+
+    public static VersionedProxy getProxy(final Channel channel, final RemotingConnectorServer server) throws IOException {
+        ServerProxy proxy = new ServerProxy(channel, server);
+        proxy.start();
+
+        return proxy;
+    }
 
 }

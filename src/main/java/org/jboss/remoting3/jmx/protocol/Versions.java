@@ -27,27 +27,27 @@ import org.jboss.remoting3.Channel;
 import org.jboss.remoting3.jmx.RemotingConnectorServer;
 import org.jboss.remoting3.jmx.VersionedConnection;
 import org.jboss.remoting3.jmx.VersionedProxy;
+import org.jboss.remoting3.jmx.protocol.v1.VersionOne;
 
 /**
  * Single access point to locate the supported versions.
  * <p/>
- * As the client and server are written in parallel this makes no distinction between clients
- * and servers when listing the supported versions.
+ * As the client and server are written in parallel this makes no distinction between clients and servers when listing the
+ * supported versions.
  *
  * @author <a href="mailto:darran.lofthouse@jboss.com">Darran Lofthouse</a>
  */
 public class Versions {
 
     /**
-     * Private constructor, static methods will be used to locate
-     * the supported versions and instantiate them.
+     * Private constructor, static methods will be used to locate the supported versions and instantiate them.
      */
     private Versions() {
     }
 
     public static byte[] getSupportedVersions() {
         // At a later point a more complex registry or discovery could be implemented.
-        return new byte[]{VersionOne.getVersionIdentifier()};
+        return new byte[] { VersionOne.getVersionIdentifier() };
     }
 
     public static VersionedConnection getVersionedConnection(final byte version, final Channel channel) throws IOException {
@@ -58,13 +58,13 @@ public class Versions {
         throw new IllegalArgumentException("Unsupported protocol version.");
     }
 
-    public static VersionedProxy getVersionedProxy(final byte version, final Channel channel, final RemotingConnectorServer server) throws IOException {
+    public static VersionedProxy getVersionedProxy(final byte version, final Channel channel,
+            final RemotingConnectorServer server) throws IOException {
         if (version == VersionOne.getVersionIdentifier()) {
             return VersionOne.getProxy(channel, server);
         }
 
         throw new IllegalArgumentException("Unsupported protocol version.");
     }
-
 
 }

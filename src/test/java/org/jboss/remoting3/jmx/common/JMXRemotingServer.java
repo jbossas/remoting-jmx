@@ -61,6 +61,7 @@ public class JMXRemotingServer {
     }
 
     private final int listenerPort;
+    private final MBeanServer mbeanServer;
 
 
     private Endpoint endpoint;
@@ -75,7 +76,12 @@ public class JMXRemotingServer {
      * @param port
      */
     public JMXRemotingServer(final int port) {
+        this(port, ManagementFactory.getPlatformMBeanServer());
+    }
+    
+    public JMXRemotingServer(final int port, final MBeanServer mbeanServer) {
         this.listenerPort = port;
+        this.mbeanServer = mbeanServer;        
     }
 
     public void start() throws IOException {
@@ -96,11 +102,6 @@ public class JMXRemotingServer {
         server = nsp.createServer(bindAddress, serverOptions, authenticationProvider, null);
 
         // Initialise the components that will provide JMX connectivity.
-
-        // This is the MBeanServer client requests will be delegated to.
-        // TODO - Create a dummy impl for the purpose of testing.
-        MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
-        // TODO - Create Service to wrap the MBeanServer
         connectorServer = new RemotingConnectorServer(mbeanServer, endpoint);
         connectorServer.start();
     }
