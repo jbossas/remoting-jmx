@@ -49,7 +49,7 @@ import org.xnio.channels.ConnectedStreamChannel;
 
 /**
  * A test server to test exposing the local MBeanServer using Remoting.
- *
+ * 
  * @author <a href="mailto:darran.lofthouse@jboss.com">Darran Lofthouse</a>
  */
 public class JMXRemotingServer {
@@ -63,41 +63,40 @@ public class JMXRemotingServer {
     private final int listenerPort;
     private final MBeanServer mbeanServer;
 
-
     private Endpoint endpoint;
     // TODO - This may not live here - maybe in the RemotingConnectorServer
     private AcceptingChannel<? extends ConnectedStreamChannel> server;
     private JMXConnectorServer connectorServer;
 
     /**
-     * Constructor to instantiate a JMXRemotingServer with a
-     * specified listener port.
-     *
+     * Constructor to instantiate a JMXRemotingServer with a specified listener port.
+     * 
      * @param port
      */
     public JMXRemotingServer(final int port) {
         this(port, ManagementFactory.getPlatformMBeanServer());
     }
-    
+
     public JMXRemotingServer(final int port, final MBeanServer mbeanServer) {
         this.listenerPort = port;
-        this.mbeanServer = mbeanServer;        
+        this.mbeanServer = mbeanServer;
     }
 
     public void start() throws IOException {
         log.infof("Starting JMX Remoting Server %s", Version.getVersionString());
 
-
         // Initialise general Remoting - this step would be implemented elsewhere when
         // running within an application server.
         final Xnio xnio = Xnio.getInstance();
         endpoint = Remoting.createEndpoint("JMXRemoting", xnio, OptionMap.EMPTY);
-        endpoint.addConnectionProvider("remote", new RemoteConnectionProviderFactory(), OptionMap.create(Options.SSL_ENABLED, false));
+        endpoint.addConnectionProvider("remote", new RemoteConnectionProviderFactory(),
+                OptionMap.create(Options.SSL_ENABLED, false));
 
         final NetworkServerProvider nsp = endpoint.getConnectionProviderInterface("remote", NetworkServerProvider.class);
         final SocketAddress bindAddress = new InetSocketAddress(InetAddress.getLocalHost(), listenerPort);
         final SimpleServerAuthenticationProvider authenticationProvider = new SimpleServerAuthenticationProvider();
-        final OptionMap serverOptions = OptionMap.create(Options.SASL_MECHANISMS, Sequence.of("ANONYMOUS"), Options.SASL_POLICY_NOANONYMOUS, Boolean.FALSE);
+        final OptionMap serverOptions = OptionMap.create(Options.SASL_MECHANISMS, Sequence.of("ANONYMOUS"),
+                Options.SASL_POLICY_NOANONYMOUS, Boolean.FALSE);
 
         server = nsp.createServer(bindAddress, serverOptions, authenticationProvider, null);
 
@@ -114,7 +113,15 @@ public class JMXRemotingServer {
         connectorServer.stop();
 
         // TODO - Also tear down the remoting portion as that was specific to the test case.
+    }
 
+    public static void main(String[] args) throws IOException {
+        int port = 12345;
+        if (args.length == 1) {
+            port = Integer.parseInt(args[0]);
+        }
+        JMXRemotingServer server = new JMXRemotingServer(port);
+        server.start();
     }
 
 }
