@@ -20,12 +20,12 @@ just read is a new request or in response to an existing request/response exchan
 The general message format will be: -
 
 * Request Messages * 
-{message id}{corelation id}{payload}
+{message id}{correlation id}{payload}
 
 (Where the {payload} definition is specific to the message)
 
 * Response Messages *
-{response id}{corelation id}{outcome}{payload}
+{response id}{correlation id}{outcome}{payload}
 
 (where {payload} definition is specific to both the response id and the outcome)
 
@@ -39,9 +39,9 @@ A response message contains a single payload.
 * Fields *
 **********
 
-corelation id -  used to match a response id with the corresponding request. (integer, 4 bytes)
+correlation id -  used to match a response id with the corresponding request. (integer, 4 bytes)
 
-                  A corelation ID of 0 is used to indicate that the side sending the message is NOT expecting a response even on failure.
+                  A correlation ID of 0 is used to indicate that the side sending the message is NOT expecting a response even on failure.
 
 message id     -  Identifier for the message 00 to 7F (byte, 1 byte)
 
@@ -189,10 +189,10 @@ back to the client.
 *  Notification Messages  *
 ***************************
 The handling of notifications are slightly more complex as both the client side and server
-side are responsible for handling the corelation of the Notifier registrations and passing
+side are responsible for handling the correlation of the Notifier registrations and passing
 appropriate messages to an from the server.
 
-In addition to the RPC corelation ID there will also be longer living registration ID for any
+In addition to the RPC correlation ID there will also be longer living registration ID for any
 registered NotificationListener instances.
 
     public void addNotificationListener(ObjectName name,

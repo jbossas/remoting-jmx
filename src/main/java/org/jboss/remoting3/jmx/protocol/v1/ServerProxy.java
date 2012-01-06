@@ -159,7 +159,7 @@ class ServerProxy extends Common implements VersionedProxy {
             final DataInputStream dis = new DataInputStream(message);
             try {
                 final byte messageId = dis.readByte();
-                final int corelationId = dis.readInt();
+                final int correlationId = dis.readInt();
                 final Common.MessageHandler mh = handlerRegistry.get(messageId);
                 if (mh != null) {
                     executor.execute(new Runnable() {
@@ -167,9 +167,9 @@ class ServerProxy extends Common implements VersionedProxy {
                         @Override
                         public void run() {
                             try {
-                                mh.handle(dis, corelationId);
+                                mh.handle(dis, correlationId);
                             } catch (IOException e) {
-                                if (corelationId != 0x00) {
+                                if (correlationId != 0x00) {
                                     sendIOException(e);
                                 } else {
                                     e.printStackTrace();
@@ -185,7 +185,7 @@ class ServerProxy extends Common implements VersionedProxy {
                             try {
                                 dos = new DataOutputStream(channel.writeMessage());
                                 dos.writeByte(messageId ^ RESPONSE_MASK);
-                                dos.writeInt(corelationId);
+                                dos.writeInt(correlationId);
                                 dos.writeByte(FAILURE);
                                 dos.writeByte(EXCEPTION);
 
@@ -231,7 +231,7 @@ class ServerProxy extends Common implements VersionedProxy {
     private class CreateMBeanHandler implements Common.MessageHandler {
 
         @Override
-        public void handle(DataInput input, int corelationId) throws IOException {
+        public void handle(DataInput input, int correlationId) throws IOException {
             System.out.println("** CreateMBean");
             byte paramType = input.readByte();
             if (paramType != INTEGER) {
@@ -324,7 +324,7 @@ class ServerProxy extends Common implements VersionedProxy {
 
                 dos = new DataOutputStream(channel.writeMessage());
                 dos.writeByte(CREATE_MBEAN ^ RESPONSE_MASK);
-                dos.writeInt(corelationId);
+                dos.writeInt(correlationId);
                 dos.writeByte(SUCCESS);
                 dos.writeByte(OBJECT_INSTANCE);
 
@@ -334,7 +334,7 @@ class ServerProxy extends Common implements VersionedProxy {
             } catch (Exception e) {
                 dos = new DataOutputStream(channel.writeMessage());
                 dos.writeByte(UNREGISTER_MBEAN ^ RESPONSE_MASK);
-                dos.writeInt(corelationId);
+                dos.writeInt(correlationId);
                 dos.writeByte(FAILURE);
                 dos.writeByte(EXCEPTION);
 
@@ -356,7 +356,7 @@ class ServerProxy extends Common implements VersionedProxy {
     private class GetDefaultDomainHandler implements Common.MessageHandler {
 
         @Override
-        public void handle(DataInput input, int corelationId) throws IOException {
+        public void handle(DataInput input, int correlationId) throws IOException {
             System.out.println("** GetDefaultDomain");
 
             String defaultDomain = server.getMBeanServer().getDefaultDomain();
@@ -364,7 +364,7 @@ class ServerProxy extends Common implements VersionedProxy {
             DataOutputStream dos = new DataOutputStream(channel.writeMessage());
             try {
                 dos.writeByte(GET_DEFAULT_DOMAIN ^ RESPONSE_MASK);
-                dos.writeInt(corelationId);
+                dos.writeInt(correlationId);
                 dos.writeByte(SUCCESS);
                 dos.writeByte(STRING);
                 dos.writeUTF(defaultDomain);
@@ -379,7 +379,7 @@ class ServerProxy extends Common implements VersionedProxy {
     private class GetDomainsHandler implements Common.MessageHandler {
 
         @Override
-        public void handle(DataInput input, int corelationId) throws IOException {
+        public void handle(DataInput input, int correlationId) throws IOException {
             System.out.println("** GetDomains");
 
             String[] domains = server.getMBeanServer().getDomains();
@@ -387,7 +387,7 @@ class ServerProxy extends Common implements VersionedProxy {
             DataOutputStream dos = new DataOutputStream(channel.writeMessage());
             try {
                 dos.writeByte(GET_DOMAINS ^ RESPONSE_MASK);
-                dos.writeInt(corelationId);
+                dos.writeInt(correlationId);
                 dos.writeByte(SUCCESS);
                 dos.writeByte(STRING_ARRAY);
                 dos.writeInt(domains.length);
@@ -405,7 +405,7 @@ class ServerProxy extends Common implements VersionedProxy {
     private class GetMBeanCountHandler implements Common.MessageHandler {
 
         @Override
-        public void handle(DataInput input, int corelationId) throws IOException {
+        public void handle(DataInput input, int correlationId) throws IOException {
             System.out.println("** GetMBeanCount");
 
             Integer count = server.getMBeanServer().getMBeanCount();
@@ -413,7 +413,7 @@ class ServerProxy extends Common implements VersionedProxy {
             DataOutputStream dos = new DataOutputStream(channel.writeMessage());
             try {
                 dos.writeByte(GET_MBEAN_COUNT ^ RESPONSE_MASK);
-                dos.writeInt(corelationId);
+                dos.writeInt(correlationId);
                 dos.writeByte(SUCCESS);
                 dos.writeByte(INTEGER);
                 dos.writeInt(count);
@@ -428,7 +428,7 @@ class ServerProxy extends Common implements VersionedProxy {
     private class GetAttributeHandler implements Common.MessageHandler {
 
         @Override
-        public void handle(DataInput input, int corelationId) throws IOException {
+        public void handle(DataInput input, int correlationId) throws IOException {
             System.out.println("** GetAttribute");
 
             byte paramType = input.readByte();
@@ -456,7 +456,7 @@ class ServerProxy extends Common implements VersionedProxy {
                 Object attributeValue = server.getMBeanServer().getAttribute(objectName, attribute);
                 dos = new DataOutputStream(channel.writeMessage());
                 dos.writeByte(GET_ATTRIBUTE ^ RESPONSE_MASK);
-                dos.writeInt(corelationId);
+                dos.writeInt(correlationId);
                 dos.writeByte(SUCCESS);
 
                 dos.writeByte(OBJECT);
@@ -466,7 +466,7 @@ class ServerProxy extends Common implements VersionedProxy {
             } catch (Exception e) {
                 dos = new DataOutputStream(channel.writeMessage());
                 dos.writeByte(GET_ATTRIBUTE ^ RESPONSE_MASK);
-                dos.writeInt(corelationId);
+                dos.writeInt(correlationId);
                 dos.writeByte(FAILURE);
                 dos.writeByte(EXCEPTION);
 
@@ -488,7 +488,7 @@ class ServerProxy extends Common implements VersionedProxy {
     private class GetAttributesHandler implements Common.MessageHandler {
 
         @Override
-        public void handle(DataInput input, int corelationId) throws IOException {
+        public void handle(DataInput input, int correlationId) throws IOException {
             System.out.println("** GetAttributes");
 
             byte paramType = input.readByte();
@@ -520,7 +520,7 @@ class ServerProxy extends Common implements VersionedProxy {
                 AttributeList attributeValues = server.getMBeanServer().getAttributes(objectName, attributes);
                 dos = new DataOutputStream(channel.writeMessage());
                 dos.writeByte(GET_ATTRIBUTES ^ RESPONSE_MASK);
-                dos.writeInt(corelationId);
+                dos.writeInt(correlationId);
                 dos.writeByte(SUCCESS);
 
                 dos.writeByte(ATTRIBUTE_LIST);
@@ -530,7 +530,7 @@ class ServerProxy extends Common implements VersionedProxy {
             } catch (Exception e) {
                 dos = new DataOutputStream(channel.writeMessage());
                 dos.writeByte(GET_ATTRIBUTES ^ RESPONSE_MASK);
-                dos.writeInt(corelationId);
+                dos.writeInt(correlationId);
                 dos.writeByte(FAILURE);
                 dos.writeByte(EXCEPTION);
 
@@ -552,7 +552,7 @@ class ServerProxy extends Common implements VersionedProxy {
     private class GetMBeanInfoHandler implements Common.MessageHandler {
 
         @Override
-        public void handle(DataInput input, int corelationId) throws IOException {
+        public void handle(DataInput input, int correlationId) throws IOException {
             System.out.println("** GetMBeanInfo");
 
             byte paramType = input.readByte();
@@ -574,7 +574,7 @@ class ServerProxy extends Common implements VersionedProxy {
                 MBeanInfo info = server.getMBeanServer().getMBeanInfo(objectName);
                 dos = new DataOutputStream(channel.writeMessage());
                 dos.writeByte(GET_MBEAN_INFO ^ RESPONSE_MASK);
-                dos.writeInt(corelationId);
+                dos.writeInt(correlationId);
                 dos.writeByte(SUCCESS);
 
                 dos.writeByte(MBEAN_INFO);
@@ -584,7 +584,7 @@ class ServerProxy extends Common implements VersionedProxy {
             } catch (Exception e) {
                 dos = new DataOutputStream(channel.writeMessage());
                 dos.writeByte(GET_MBEAN_INFO ^ RESPONSE_MASK);
-                dos.writeInt(corelationId);
+                dos.writeInt(correlationId);
                 dos.writeByte(FAILURE);
                 dos.writeByte(EXCEPTION);
 
@@ -607,7 +607,7 @@ class ServerProxy extends Common implements VersionedProxy {
     private class GetObjectInstanceHandler implements Common.MessageHandler {
 
         @Override
-        public void handle(DataInput input, int corelationId) throws IOException {
+        public void handle(DataInput input, int correlationId) throws IOException {
             System.out.println("** GetObjectInstance");
 
             byte paramType = input.readByte();
@@ -629,7 +629,7 @@ class ServerProxy extends Common implements VersionedProxy {
                 ObjectInstance objectInstance = server.getMBeanServer().getObjectInstance(objectName);
                 dos = new DataOutputStream(channel.writeMessage());
                 dos.writeByte(GET_OBJECT_INSTANCE ^ RESPONSE_MASK);
-                dos.writeInt(corelationId);
+                dos.writeInt(correlationId);
                 dos.writeByte(SUCCESS);
                 dos.writeByte(OBJECT_INSTANCE);
                 Marshaller marshaller = prepareForMarshalling(dos);
@@ -638,7 +638,7 @@ class ServerProxy extends Common implements VersionedProxy {
             } catch (InstanceNotFoundException e) {
                 dos = new DataOutputStream(channel.writeMessage());
                 dos.writeByte(INSTANCE_OF ^ RESPONSE_MASK);
-                dos.writeInt(corelationId);
+                dos.writeInt(correlationId);
                 dos.writeByte(FAILURE);
                 dos.writeByte(EXCEPTION);
 
@@ -655,7 +655,7 @@ class ServerProxy extends Common implements VersionedProxy {
     private class InstanceofHandler implements Common.MessageHandler {
 
         @Override
-        public void handle(DataInput input, int corelationId) throws IOException {
+        public void handle(DataInput input, int correlationId) throws IOException {
             System.out.println("** IsInstanceOf");
 
             byte paramType = input.readByte();
@@ -683,14 +683,14 @@ class ServerProxy extends Common implements VersionedProxy {
                 boolean instanceOf = server.getMBeanServer().isInstanceOf(objectName, className);
                 dos = new DataOutputStream(channel.writeMessage());
                 dos.writeByte(INSTANCE_OF ^ RESPONSE_MASK);
-                dos.writeInt(corelationId);
+                dos.writeInt(correlationId);
                 dos.writeByte(SUCCESS);
                 dos.writeByte(BOOLEAN);
                 dos.writeBoolean(instanceOf);
             } catch (InstanceNotFoundException e) {
                 dos = new DataOutputStream(channel.writeMessage());
                 dos.writeByte(INSTANCE_OF ^ RESPONSE_MASK);
-                dos.writeInt(corelationId);
+                dos.writeInt(correlationId);
                 dos.writeByte(FAILURE);
                 dos.writeByte(EXCEPTION);
 
@@ -707,7 +707,7 @@ class ServerProxy extends Common implements VersionedProxy {
     private class IsRegisteredHandler implements Common.MessageHandler {
 
         @Override
-        public void handle(DataInput input, int corelationId) throws IOException {
+        public void handle(DataInput input, int correlationId) throws IOException {
             System.out.println("** IsRegistered");
 
             byte paramType = input.readByte();
@@ -729,7 +729,7 @@ class ServerProxy extends Common implements VersionedProxy {
             DataOutputStream dos = new DataOutputStream(channel.writeMessage());
             try {
                 dos.writeByte(IS_REGISTERED ^ RESPONSE_MASK);
-                dos.writeInt(corelationId);
+                dos.writeInt(correlationId);
                 dos.writeByte(SUCCESS);
                 dos.writeByte(BOOLEAN);
                 dos.writeBoolean(registered);
@@ -743,7 +743,7 @@ class ServerProxy extends Common implements VersionedProxy {
     private class InvokeHandler implements Common.MessageHandler {
 
         @Override
-        public void handle(DataInput input, int corelationId) throws IOException {
+        public void handle(DataInput input, int correlationId) throws IOException {
             System.out.println("** Invoke");
 
             byte paramType = input.readByte();
@@ -794,7 +794,7 @@ class ServerProxy extends Common implements VersionedProxy {
                 Object result = server.getMBeanServer().invoke(objectName, operationName, params, signature);
                 dos = new DataOutputStream(channel.writeMessage());
                 dos.writeByte(INVOKE ^ RESPONSE_MASK);
-                dos.writeInt(corelationId);
+                dos.writeInt(correlationId);
                 dos.writeByte(SUCCESS);
 
                 dos.writeByte(OBJECT);
@@ -804,7 +804,7 @@ class ServerProxy extends Common implements VersionedProxy {
             } catch (Exception e) {
                 dos = new DataOutputStream(channel.writeMessage());
                 dos.writeByte(INVOKE ^ RESPONSE_MASK);
-                dos.writeInt(corelationId);
+                dos.writeInt(correlationId);
                 dos.writeByte(FAILURE);
                 dos.writeByte(EXCEPTION);
 
@@ -826,7 +826,7 @@ class ServerProxy extends Common implements VersionedProxy {
     private class QueryMBeansHandler implements Common.MessageHandler {
 
         @Override
-        public void handle(DataInput input, int corelationId) throws IOException {
+        public void handle(DataInput input, int correlationId) throws IOException {
             System.out.println("** QueryMBeans");
 
             byte paramType = input.readByte();
@@ -854,7 +854,7 @@ class ServerProxy extends Common implements VersionedProxy {
             DataOutputStream dos = new DataOutputStream(channel.writeMessage());
             try {
                 dos.writeByte(QUERY_MBEANS ^ RESPONSE_MASK);
-                dos.writeInt(corelationId);
+                dos.writeInt(correlationId);
                 dos.writeByte(SUCCESS);
                 dos.writeByte(SET_OBJECT_INSTANCE);
 
@@ -871,7 +871,7 @@ class ServerProxy extends Common implements VersionedProxy {
     private class QueryNamesHandler implements Common.MessageHandler {
 
         @Override
-        public void handle(DataInput input, int corelationId) throws IOException {
+        public void handle(DataInput input, int correlationId) throws IOException {
             System.out.println("** QueryNames");
 
             byte paramType = input.readByte();
@@ -899,7 +899,7 @@ class ServerProxy extends Common implements VersionedProxy {
             DataOutputStream dos = new DataOutputStream(channel.writeMessage());
             try {
                 dos.writeByte(QUERY_NAMES ^ RESPONSE_MASK);
-                dos.writeInt(corelationId);
+                dos.writeInt(correlationId);
                 dos.writeByte(SUCCESS);
                 dos.writeByte(SET_OBJECT_NAME);
 
@@ -916,7 +916,7 @@ class ServerProxy extends Common implements VersionedProxy {
     private class SetAttributeHandler implements Common.MessageHandler {
 
         @Override
-        public void handle(DataInput input, int corelationId) throws IOException {
+        public void handle(DataInput input, int correlationId) throws IOException {
             System.out.println("** SetAttribute");
 
             byte paramType = input.readByte();
@@ -945,12 +945,12 @@ class ServerProxy extends Common implements VersionedProxy {
                 server.getMBeanServer().setAttribute(objectName, attr);
                 dos = new DataOutputStream(channel.writeMessage());
                 dos.writeByte(SET_ATTRIBUTE ^ RESPONSE_MASK);
-                dos.writeInt(corelationId);
+                dos.writeInt(correlationId);
                 dos.writeByte(SUCCESS);
             } catch (Exception e) {
                 dos = new DataOutputStream(channel.writeMessage());
                 dos.writeByte(SET_ATTRIBUTE ^ RESPONSE_MASK);
-                dos.writeInt(corelationId);
+                dos.writeInt(correlationId);
                 dos.writeByte(FAILURE);
                 dos.writeByte(EXCEPTION);
 
@@ -972,7 +972,7 @@ class ServerProxy extends Common implements VersionedProxy {
     private class SetAttributesHandler implements Common.MessageHandler {
 
         @Override
-        public void handle(DataInput input, int corelationId) throws IOException {
+        public void handle(DataInput input, int correlationId) throws IOException {
             System.out.println("** SetAttributes");
 
             byte paramType = input.readByte();
@@ -1001,7 +1001,7 @@ class ServerProxy extends Common implements VersionedProxy {
                 AttributeList attributeValues = server.getMBeanServer().setAttributes(objectName, attributes);
                 dos = new DataOutputStream(channel.writeMessage());
                 dos.writeByte(SET_ATTRIBUTES ^ RESPONSE_MASK);
-                dos.writeInt(corelationId);
+                dos.writeInt(correlationId);
                 dos.writeByte(SUCCESS);
 
                 dos.writeByte(ATTRIBUTE_LIST);
@@ -1011,7 +1011,7 @@ class ServerProxy extends Common implements VersionedProxy {
             } catch (Exception e) {
                 dos = new DataOutputStream(channel.writeMessage());
                 dos.writeByte(SET_ATTRIBUTES ^ RESPONSE_MASK);
-                dos.writeInt(corelationId);
+                dos.writeInt(correlationId);
                 dos.writeByte(FAILURE);
                 dos.writeByte(EXCEPTION);
 
@@ -1033,7 +1033,7 @@ class ServerProxy extends Common implements VersionedProxy {
     private class UnregisterMBeanHandler implements Common.MessageHandler {
 
         @Override
-        public void handle(DataInput input, int corelationId) throws IOException {
+        public void handle(DataInput input, int correlationId) throws IOException {
             System.out.println("** UnregisterMBean");
 
             byte paramType = input.readByte();
@@ -1055,12 +1055,12 @@ class ServerProxy extends Common implements VersionedProxy {
                 server.getMBeanServer().unregisterMBean(objectName);
                 dos = new DataOutputStream(channel.writeMessage());
                 dos.writeByte(UNREGISTER_MBEAN ^ RESPONSE_MASK);
-                dos.writeInt(corelationId);
+                dos.writeInt(correlationId);
                 dos.writeByte(SUCCESS);
             } catch (Exception e) {
                 dos = new DataOutputStream(channel.writeMessage());
                 dos.writeByte(UNREGISTER_MBEAN ^ RESPONSE_MASK);
-                dos.writeInt(corelationId);
+                dos.writeInt(correlationId);
                 dos.writeByte(FAILURE);
                 dos.writeByte(EXCEPTION);
 

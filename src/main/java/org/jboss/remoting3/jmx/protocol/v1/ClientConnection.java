@@ -109,7 +109,7 @@ class ClientConnection extends Common implements VersionedConnection {
     private String connectionId;
     private MBeanServerConnection mbeanServerConnection;
 
-    private int nextCorelationId = 1;
+    private int nextCorrelationId = 1;
 
     /**
      * The in-progress requests awaiting a response.
@@ -195,48 +195,48 @@ class ClientConnection extends Common implements VersionedConnection {
     }
 
     /**
-     * Get the next corelation ID, returning to the beginning once all integers have been used.
+     * Get the next correlation ID, returning to the beginning once all integers have been used.
      * <p/>
-     * THIS METHOD IS NOT TO BE USED DIRECTLY WHERE A CORELATION ID NEEDS TO BE RESERVED.
+     * THIS METHOD IS NOT TO BE USED DIRECTLY WHERE A CORRELATION ID NEEDS TO BE RESERVED.
      *
-     * @return The next corelationId.
+     * @return The next correlationId.
      */
-    private synchronized int getNextCorelationId() {
-        int next = nextCorelationId++;
+    private synchronized int getNextCorrelationId() {
+        int next = nextCorrelationId++;
         // After the maximum integer start back at the beginning.
         if (next < 0) {
-            nextCorelationId = 2;
+            nextCorrelationId = 2;
             next = 1;
         }
         return next;
     }
 
     /**
-     * Reserves a corelation ID by taking the next value and ensuring it is stored in the Map.
+     * Reserves a correlation ID by taking the next value and ensuring it is stored in the Map.
      *
      * @return the next reserved correlation ID
      */
-    private synchronized int reserveNextCorelationId(VersionedIoFuture future) {
-        Integer next = getNextCorelationId();
+    private synchronized int reserveNextCorrelationId(VersionedIoFuture future) {
+        Integer next = getNextCorrelationId();
 
         // Not likely but possible to use all IDs and start back at beginning while
         // old request still in progress.
         while (requests.containsKey(next)) {
-            next = getNextCorelationId();
+            next = getNextCorrelationId();
         }
         requests.put(next, future);
 
         return next;
     }
 
-    private synchronized <T> VersionedIoFuture<T> getFuture(int corelationId) {
+    private synchronized <T> VersionedIoFuture<T> getFuture(int correlationId) {
         // TODO - How to check this?
-        return requests.get(corelationId);
+        return requests.get(correlationId);
     }
 
-    private synchronized void releaseCorelationId(int corelationId) {
+    private synchronized void releaseCorrelationId(int correlationId) {
         // TODO - Will maybe move to not removing by default and timeout failed requests.
-        requests.remove(corelationId);
+        requests.remove(correlationId);
     }
 
     private class MessageReceiver implements Channel.Receiver {
@@ -246,7 +246,7 @@ class ClientConnection extends Common implements VersionedConnection {
             final DataInputStream dis = new DataInputStream(message);
             try {
                 byte messageId = dis.readByte();
-                final int corelationId = dis.readInt();
+                final int correlationId = dis.readInt();
                 final Common.MessageHandler mh = handlerRegistry.get(messageId);
                 if (mh != null) {
                     executor.execute(new Runnable() {
@@ -254,7 +254,7 @@ class ClientConnection extends Common implements VersionedConnection {
                         @Override
                         public void run() {
                             try {
-                                mh.handle(dis, corelationId);
+                                mh.handle(dis, correlationId);
                             } catch (IOException e) {
                                 e.printStackTrace();
                             } finally {
@@ -298,11 +298,11 @@ class ClientConnection extends Common implements VersionedConnection {
                 InstanceAlreadyExistsException, MBeanRegistrationException, MBeanException, NotCompliantMBeanException,
                 IOException {
             VersionedIoFuture<TypeExceptionHolder<ObjectInstance>> future = new VersionedIoFuture<TypeExceptionHolder<ObjectInstance>>();
-            int corelationId = reserveNextCorelationId(future);
+            int correlationId = reserveNextCorrelationId(future);
             try {
                 DataOutputStream output = new DataOutputStream(channel.writeMessage());
                 output.writeByte(CREATE_MBEAN);
-                output.writeInt(corelationId);
+                output.writeInt(correlationId);
 
                 output.writeByte(INTEGER);
                 output.writeInt(2); // Sening 2 parameters.
@@ -337,7 +337,7 @@ class ClientConnection extends Common implements VersionedConnection {
                         throw new IOException("Unable to obtain createMBean, status=" + result.toString());
                 }
             } finally {
-                releaseCorelationId(corelationId);
+                releaseCorrelationId(correlationId);
             }
         }
 
@@ -345,11 +345,11 @@ class ClientConnection extends Common implements VersionedConnection {
                 InstanceAlreadyExistsException, MBeanRegistrationException, MBeanException, NotCompliantMBeanException,
                 InstanceNotFoundException, IOException {
             VersionedIoFuture<TypeExceptionHolder<ObjectInstance>> future = new VersionedIoFuture<TypeExceptionHolder<ObjectInstance>>();
-            int corelationId = reserveNextCorelationId(future);
+            int correlationId = reserveNextCorrelationId(future);
             try {
                 DataOutputStream output = new DataOutputStream(channel.writeMessage());
                 output.writeByte(CREATE_MBEAN);
-                output.writeInt(corelationId);
+                output.writeInt(correlationId);
 
                 output.writeByte(INTEGER);
                 output.writeInt(3); // Sending 3 parameters.
@@ -387,7 +387,7 @@ class ClientConnection extends Common implements VersionedConnection {
                         throw new IOException("Unable to obtain isRegistered, status=" + result.toString());
                 }
             } finally {
-                releaseCorelationId(corelationId);
+                releaseCorrelationId(correlationId);
             }
         }
 
@@ -395,11 +395,11 @@ class ClientConnection extends Common implements VersionedConnection {
                 throws ReflectionException, InstanceAlreadyExistsException, MBeanRegistrationException, MBeanException,
                 NotCompliantMBeanException, IOException {
             VersionedIoFuture<TypeExceptionHolder<ObjectInstance>> future = new VersionedIoFuture<TypeExceptionHolder<ObjectInstance>>();
-            int corelationId = reserveNextCorelationId(future);
+            int correlationId = reserveNextCorrelationId(future);
             try {
                 DataOutputStream output = new DataOutputStream(channel.writeMessage());
                 output.writeByte(CREATE_MBEAN);
-                output.writeInt(corelationId);
+                output.writeInt(correlationId);
 
                 output.writeByte(INTEGER);
                 output.writeInt(4); // Sending 4 parameters.
@@ -446,7 +446,7 @@ class ClientConnection extends Common implements VersionedConnection {
                         throw new IOException("Unable to invoke createMBean, status=" + result.toString());
                 }
             } finally {
-                releaseCorelationId(corelationId);
+                releaseCorrelationId(correlationId);
             }
         }
 
@@ -454,11 +454,11 @@ class ClientConnection extends Common implements VersionedConnection {
                 String[] signature) throws ReflectionException, InstanceAlreadyExistsException, MBeanRegistrationException,
                 MBeanException, NotCompliantMBeanException, InstanceNotFoundException, IOException {
             VersionedIoFuture<TypeExceptionHolder<ObjectInstance>> future = new VersionedIoFuture<TypeExceptionHolder<ObjectInstance>>();
-            int corelationId = reserveNextCorelationId(future);
+            int correlationId = reserveNextCorrelationId(future);
             try {
                 DataOutputStream output = new DataOutputStream(channel.writeMessage());
                 output.writeByte(CREATE_MBEAN);
-                output.writeInt(corelationId);
+                output.writeInt(correlationId);
 
                 output.writeByte(INTEGER);
                 output.writeInt(5); // Sending 5 parameters.
@@ -507,17 +507,17 @@ class ClientConnection extends Common implements VersionedConnection {
                         throw new IOException("Unable to invoke createMBean, status=" + result.toString());
                 }
             } finally {
-                releaseCorelationId(corelationId);
+                releaseCorrelationId(correlationId);
             }
         }
 
         public void unregisterMBean(ObjectName name) throws InstanceNotFoundException, MBeanRegistrationException, IOException {
             VersionedIoFuture<TypeExceptionHolder<Void>> future = new VersionedIoFuture<TypeExceptionHolder<Void>>();
-            int corelationId = reserveNextCorelationId(future);
+            int correlationId = reserveNextCorrelationId(future);
             try {
                 DataOutputStream output = new DataOutputStream(channel.writeMessage());
                 output.writeByte(UNREGISTER_MBEAN);
-                output.writeInt(corelationId);
+                output.writeInt(correlationId);
 
                 output.writeByte(OBJECT_NAME);
                 Marshaller marshaller = prepareForMarshalling(output);
@@ -543,17 +543,17 @@ class ClientConnection extends Common implements VersionedConnection {
                         throw new IOException("Unable to invoke unregisterMBean, status=" + result.toString());
                 }
             } finally {
-                releaseCorelationId(corelationId);
+                releaseCorrelationId(correlationId);
             }
         }
 
         public ObjectInstance getObjectInstance(ObjectName name) throws InstanceNotFoundException, IOException {
             VersionedIoFuture<TypeExceptionHolder<ObjectInstance>> future = new VersionedIoFuture<TypeExceptionHolder<ObjectInstance>>();
-            int corelationId = reserveNextCorelationId(future);
+            int correlationId = reserveNextCorrelationId(future);
             try {
                 DataOutputStream output = new DataOutputStream(channel.writeMessage());
                 output.writeByte(GET_OBJECT_INSTANCE);
-                output.writeInt(corelationId);
+                output.writeInt(correlationId);
 
                 output.writeByte(OBJECT_NAME);
                 Marshaller marshaller = prepareForMarshalling(output);
@@ -577,17 +577,17 @@ class ClientConnection extends Common implements VersionedConnection {
                         throw new IOException("Unable to invoke getObjectInstance, status=" + result.toString());
                 }
             } finally {
-                releaseCorelationId(corelationId);
+                releaseCorrelationId(correlationId);
             }
         }
 
         public Set<ObjectInstance> queryMBeans(ObjectName name, QueryExp query) throws IOException {
             VersionedIoFuture<TypeExceptionHolder<Set<ObjectInstance>>> future = new VersionedIoFuture<TypeExceptionHolder<Set<ObjectInstance>>>();
-            int corelationId = reserveNextCorelationId(future);
+            int correlationId = reserveNextCorrelationId(future);
             try {
                 DataOutputStream output = new DataOutputStream(channel.writeMessage());
                 output.writeByte(QUERY_MBEANS);
-                output.writeInt(corelationId);
+                output.writeInt(correlationId);
 
                 output.writeByte(OBJECT_NAME);
                 Marshaller marshaller = prepareForMarshalling(output);
@@ -613,17 +613,17 @@ class ClientConnection extends Common implements VersionedConnection {
                         throw new IOException("Unable to invoke queryMBeans, status=" + result.toString());
                 }
             } finally {
-                releaseCorelationId(corelationId);
+                releaseCorrelationId(correlationId);
             }
         }
 
         public Set<ObjectName> queryNames(ObjectName name, QueryExp query) throws IOException {
             VersionedIoFuture<TypeExceptionHolder<Set<ObjectName>>> future = new VersionedIoFuture<TypeExceptionHolder<Set<ObjectName>>>();
-            int corelationId = reserveNextCorelationId(future);
+            int correlationId = reserveNextCorrelationId(future);
             try {
                 DataOutputStream output = new DataOutputStream(channel.writeMessage());
                 output.writeByte(QUERY_NAMES);
-                output.writeInt(corelationId);
+                output.writeInt(correlationId);
 
                 output.writeByte(OBJECT_NAME);
                 Marshaller marshaller = prepareForMarshalling(output);
@@ -649,17 +649,17 @@ class ClientConnection extends Common implements VersionedConnection {
                         throw new IOException("Unable to obtain isRegistered, status=" + result.toString());
                 }
             } finally {
-                releaseCorelationId(corelationId);
+                releaseCorrelationId(correlationId);
             }
         }
 
         public boolean isRegistered(ObjectName name) throws IOException {
             VersionedIoFuture<TypeExceptionHolder<Boolean>> future = new VersionedIoFuture<TypeExceptionHolder<Boolean>>();
-            int corelationId = reserveNextCorelationId(future);
+            int correlationId = reserveNextCorrelationId(future);
             try {
                 DataOutputStream output = new DataOutputStream(channel.writeMessage());
                 output.writeByte(IS_REGISTERED);
-                output.writeInt(corelationId);
+                output.writeInt(correlationId);
                 output.writeByte(OBJECT_NAME);
 
                 Marshaller marshaller = prepareForMarshalling(output);
@@ -681,17 +681,17 @@ class ClientConnection extends Common implements VersionedConnection {
                         throw new IOException("Unable to obtain isRegistered, status=" + result.toString());
                 }
             } finally {
-                releaseCorelationId(corelationId);
+                releaseCorrelationId(correlationId);
             }
         }
 
         public Integer getMBeanCount() throws IOException {
             VersionedIoFuture<TypeExceptionHolder<Integer>> future = new VersionedIoFuture<TypeExceptionHolder<Integer>>();
-            int corelationId = reserveNextCorelationId(future);
+            int correlationId = reserveNextCorrelationId(future);
             try {
                 DataOutputStream output = new DataOutputStream(channel.writeMessage());
                 output.writeByte(GET_MBEAN_COUNT);
-                output.writeInt(corelationId);
+                output.writeInt(correlationId);
 
                 output.close();
 
@@ -709,18 +709,18 @@ class ClientConnection extends Common implements VersionedConnection {
                         throw new IOException("Unable to obtain MBeanCount, status=" + result.toString());
                 }
             } finally {
-                releaseCorelationId(corelationId);
+                releaseCorrelationId(correlationId);
             }
         }
 
         public Object getAttribute(ObjectName name, String attribute) throws MBeanException, AttributeNotFoundException,
                 InstanceNotFoundException, ReflectionException, IOException {
             VersionedIoFuture<TypeExceptionHolder<Object>> future = new VersionedIoFuture<TypeExceptionHolder<Object>>();
-            int corelationId = reserveNextCorelationId(future);
+            int correlationId = reserveNextCorrelationId(future);
             try {
                 DataOutputStream output = new DataOutputStream(channel.writeMessage());
                 output.writeByte(GET_ATTRIBUTE);
-                output.writeInt(corelationId);
+                output.writeInt(correlationId);
 
                 output.writeByte(OBJECT_NAME);
                 Marshaller marshaller = prepareForMarshalling(output);
@@ -750,18 +750,18 @@ class ClientConnection extends Common implements VersionedConnection {
                         throw new IOException("Unable to obtain isRegistered, status=" + result.toString());
                 }
             } finally {
-                releaseCorelationId(corelationId);
+                releaseCorrelationId(correlationId);
             }
         }
 
         public AttributeList getAttributes(ObjectName name, String[] attributes) throws InstanceNotFoundException,
                 ReflectionException, IOException {
             VersionedIoFuture<TypeExceptionHolder<AttributeList>> future = new VersionedIoFuture<TypeExceptionHolder<AttributeList>>();
-            int corelationId = reserveNextCorelationId(future);
+            int correlationId = reserveNextCorrelationId(future);
             try {
                 DataOutputStream output = new DataOutputStream(channel.writeMessage());
                 output.writeByte(GET_ATTRIBUTES);
-                output.writeInt(corelationId);
+                output.writeInt(correlationId);
 
                 output.writeByte(OBJECT_NAME);
                 Marshaller marshaller = prepareForMarshalling(output);
@@ -792,18 +792,18 @@ class ClientConnection extends Common implements VersionedConnection {
                         throw new IOException("Unable to invoke getAttributes, status=" + result.toString());
                 }
             } finally {
-                releaseCorelationId(corelationId);
+                releaseCorrelationId(correlationId);
             }
         }
 
         public void setAttribute(ObjectName name, Attribute attribute) throws InstanceNotFoundException,
                 AttributeNotFoundException, InvalidAttributeValueException, MBeanException, ReflectionException, IOException {
             VersionedIoFuture<TypeExceptionHolder<Void>> future = new VersionedIoFuture<TypeExceptionHolder<Void>>();
-            int corelationId = reserveNextCorelationId(future);
+            int correlationId = reserveNextCorrelationId(future);
             try {
                 DataOutputStream output = new DataOutputStream(channel.writeMessage());
                 output.writeByte(SET_ATTRIBUTE);
-                output.writeInt(corelationId);
+                output.writeInt(correlationId);
 
                 output.writeByte(OBJECT_NAME);
                 Marshaller marshaller = prepareForMarshalling(output);
@@ -836,18 +836,18 @@ class ClientConnection extends Common implements VersionedConnection {
                         throw new IOException("Unable to invoke setAttribute, status=" + result.toString());
                 }
             } finally {
-                releaseCorelationId(corelationId);
+                releaseCorrelationId(correlationId);
             }
         }
 
         public AttributeList setAttributes(ObjectName name, AttributeList attributes) throws InstanceNotFoundException,
                 ReflectionException, IOException {
             VersionedIoFuture<TypeExceptionHolder<AttributeList>> future = new VersionedIoFuture<TypeExceptionHolder<AttributeList>>();
-            int corelationId = reserveNextCorelationId(future);
+            int correlationId = reserveNextCorrelationId(future);
             try {
                 DataOutputStream output = new DataOutputStream(channel.writeMessage());
                 output.writeByte(SET_ATTRIBUTES);
-                output.writeInt(corelationId);
+                output.writeInt(correlationId);
 
                 output.writeByte(OBJECT_NAME);
                 Marshaller marshaller = prepareForMarshalling(output);
@@ -875,18 +875,18 @@ class ClientConnection extends Common implements VersionedConnection {
                         throw new IOException("Unable to invoke setAttributes, status=" + result.toString());
                 }
             } finally {
-                releaseCorelationId(corelationId);
+                releaseCorrelationId(correlationId);
             }
         }
 
         public Object invoke(ObjectName name, String operationName, Object[] params, String[] signature)
                 throws InstanceNotFoundException, MBeanException, ReflectionException, IOException {
             VersionedIoFuture<TypeExceptionHolder<Object>> future = new VersionedIoFuture<TypeExceptionHolder<Object>>();
-            int corelationId = reserveNextCorelationId(future);
+            int correlationId = reserveNextCorrelationId(future);
             try {
                 DataOutputStream output = new DataOutputStream(channel.writeMessage());
                 output.writeByte(INVOKE);
-                output.writeInt(corelationId);
+                output.writeInt(correlationId);
 
                 output.writeByte(OBJECT_NAME);
                 Marshaller marshaller = prepareForMarshalling(output);
@@ -935,17 +935,17 @@ class ClientConnection extends Common implements VersionedConnection {
                         throw new IOException("Unable to invoke invoke(), status=" + result.toString());
                 }
             } finally {
-                releaseCorelationId(corelationId);
+                releaseCorrelationId(correlationId);
             }
         }
 
         public String getDefaultDomain() throws IOException {
             VersionedIoFuture<TypeExceptionHolder<String>> future = new VersionedIoFuture<TypeExceptionHolder<String>>();
-            int corelationId = reserveNextCorelationId(future);
+            int correlationId = reserveNextCorrelationId(future);
             try {
                 DataOutputStream output = new DataOutputStream(channel.writeMessage());
                 output.writeByte(GET_DEFAULT_DOMAIN);
-                output.writeInt(corelationId);
+                output.writeInt(correlationId);
 
                 output.close();
 
@@ -963,17 +963,17 @@ class ClientConnection extends Common implements VersionedConnection {
                         throw new IOException("Unable to obtain DefaultDomain, status=" + result.toString());
                 }
             } finally {
-                releaseCorelationId(corelationId);
+                releaseCorrelationId(correlationId);
             }
         }
 
         public String[] getDomains() throws IOException {
             VersionedIoFuture<TypeExceptionHolder<String[]>> future = new VersionedIoFuture<TypeExceptionHolder<String[]>>();
-            int corelationId = reserveNextCorelationId(future);
+            int correlationId = reserveNextCorrelationId(future);
             try {
                 DataOutputStream output = new DataOutputStream(channel.writeMessage());
                 output.writeByte(GET_DOMAINS);
-                output.writeInt(corelationId);
+                output.writeInt(correlationId);
 
                 output.close();
 
@@ -991,7 +991,7 @@ class ClientConnection extends Common implements VersionedConnection {
                         throw new IOException("Unable to obtain Domains, status=" + result.toString());
                 }
             } finally {
-                releaseCorelationId(corelationId);
+                releaseCorrelationId(correlationId);
             }
         }
 
@@ -1034,11 +1034,11 @@ class ClientConnection extends Common implements VersionedConnection {
         public MBeanInfo getMBeanInfo(ObjectName name) throws InstanceNotFoundException, IntrospectionException,
                 ReflectionException, IOException {
             VersionedIoFuture<TypeExceptionHolder<MBeanInfo>> future = new VersionedIoFuture<TypeExceptionHolder<MBeanInfo>>();
-            int corelationId = reserveNextCorelationId(future);
+            int correlationId = reserveNextCorrelationId(future);
             try {
                 DataOutputStream output = new DataOutputStream(channel.writeMessage());
                 output.writeByte(GET_MBEAN_INFO);
-                output.writeInt(corelationId);
+                output.writeInt(correlationId);
 
                 output.writeByte(OBJECT_NAME);
                 Marshaller marshaller = prepareForMarshalling(output);
@@ -1064,17 +1064,17 @@ class ClientConnection extends Common implements VersionedConnection {
                         throw new IOException("Unable to obtain isRegistered, status=" + result.toString());
                 }
             } finally {
-                releaseCorelationId(corelationId);
+                releaseCorrelationId(correlationId);
             }
         }
 
         public boolean isInstanceOf(ObjectName name, String className) throws InstanceNotFoundException, IOException {
             VersionedIoFuture<TypeExceptionHolder<Boolean>> future = new VersionedIoFuture<TypeExceptionHolder<Boolean>>();
-            int corelationId = reserveNextCorelationId(future);
+            int correlationId = reserveNextCorrelationId(future);
             try {
                 DataOutputStream output = new DataOutputStream(channel.writeMessage());
                 output.writeByte(INSTANCE_OF);
-                output.writeInt(corelationId);
+                output.writeInt(correlationId);
 
                 output.writeByte(OBJECT_NAME);
                 Marshaller marshaller = prepareForMarshalling(output);
@@ -1100,7 +1100,7 @@ class ClientConnection extends Common implements VersionedConnection {
                         throw new IOException("Unable to obtain isRegistered, status=" + result.toString());
                 }
             } finally {
-                releaseCorelationId(corelationId);
+                releaseCorrelationId(correlationId);
             }
         }
 
@@ -1179,8 +1179,8 @@ class ClientConnection extends Common implements VersionedConnection {
 
     private abstract class BaseResponseHandler<T> implements Common.MessageHandler {
 
-        public void handle(DataInput input, int corelationId) {
-            VersionedIoFuture<TypeExceptionHolder<T>> future = getFuture(corelationId);
+        public void handle(DataInput input, int correlationId) {
+            VersionedIoFuture<TypeExceptionHolder<T>> future = getFuture(correlationId);
 
             try {
 
