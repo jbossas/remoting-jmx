@@ -106,29 +106,31 @@ class VersionedConectionFactory {
         public void handleMessage(org.jboss.remoting3.Channel channel, MessageInputStream messageInputStream) {
             DataInputStream dis = new DataInputStream(messageInputStream);
             try {
-                log.infof("Bytes Available %d", dis.available());
+                log.tracef("Bytes Available %d", dis.available());
                 byte[] firstThree = new byte[3];
                 dis.read(firstThree);
-                log.infof("First Three %s", new String(firstThree));
+                log.tracef("First Three %s", new String(firstThree));
                 if (Arrays.equals(firstThree, JMX) == false) {
                     throw new IOException("Invalid leading bytes in header.");
                 }
-                log.infof("Bytes Available %d", dis.available());
+                log.tracef("Bytes Available %d", dis.available());
                 int versionCount = dis.read();
-                log.infof("Expecting %d versions", versionCount);
+                log.tracef("Expecting %d versions", versionCount);
                 byte[] versions = new byte[versionCount];
                 dis.read(versions);
 
-                StringBuffer sbVersions = new StringBuffer("Versions ");
-                for (byte current : versions) {
-                    sbVersions.append(" 0x0").append(current);
+                if (log.isDebugEnabled()) {
+                    StringBuffer sbVersions = new StringBuffer("Versions ");
+                    for (byte current : versions) {
+                        sbVersions.append(" 0x0").append(current);
+                    }
+                    log.debugf("Available version (%s)", sbVersions);
                 }
-                log.info(sbVersions);
 
                 byte stability = dis.readByte();
                 switch (stability) {
                     case STABLE:
-                        log.info("Calling a stable server");
+                        log.debug("Calling a stable server");
                         break;
                     case SNAPSHOT:
                         log.warn("Calling a snapshot server");

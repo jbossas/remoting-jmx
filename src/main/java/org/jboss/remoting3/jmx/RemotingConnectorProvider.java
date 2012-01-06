@@ -21,12 +21,16 @@
  */
 package org.jboss.remoting3.jmx;
 
+import static org.jboss.remoting3.jmx.Constants.PROTOCOL;
+
 import java.io.IOException;
 import java.util.Map;
 
 import javax.management.remote.JMXConnector;
 import javax.management.remote.JMXConnectorProvider;
 import javax.management.remote.JMXServiceURL;
+
+import org.jboss.logging.Logger;
 
 /**
  * The JMXConnectorProvider implementation for use with Remoting.
@@ -35,10 +39,16 @@ import javax.management.remote.JMXServiceURL;
  */
 public class RemotingConnectorProvider implements JMXConnectorProvider {
 
+    private static final Logger log = Logger.getLogger(RemotingConnectorProvider.class);
+
     public JMXConnector newJMXConnector(JMXServiceURL serviceURL, Map<String, ?> environment) throws IOException {
-        if ("remote".equals(serviceURL.getProtocol())) {
+        String protocol = serviceURL.getProtocol();
+
+        if (PROTOCOL.equals(protocol)) {
             return new RemotingConnector(serviceURL, environment);
         }
+
+        log.tracef("Protocol (%s) not recognised by this provider.", protocol);
 
         return null;
     }

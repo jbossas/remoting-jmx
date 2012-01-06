@@ -88,6 +88,7 @@ import javax.management.QueryExp;
 import javax.management.ReflectionException;
 import javax.security.auth.Subject;
 
+import org.jboss.logging.Logger;
 import org.jboss.marshalling.Marshaller;
 import org.jboss.marshalling.Unmarshaller;
 import org.jboss.remoting3.Channel;
@@ -102,6 +103,8 @@ import org.xnio.IoUtils;
  * @author <a href="mailto:darran.lofthouse@jboss.com">Darran Lofthouse</a>
  */
 class ClientConnection extends Common implements VersionedConnection {
+
+    private static final Logger log = Logger.getLogger(ClientConnection.class);
 
     private final Channel channel;
     // Registry of handlers for the incoming messages.
@@ -181,7 +184,6 @@ class ClientConnection extends Common implements VersionedConnection {
     }
 
     public MBeanServerConnection getMBeanServerConnection(Subject subject) {
-        // TODO - Correct behaviour if called and no connection.
         if (subject != null) {
             throw new UnsupportedOperationException("Subject delegation not supported for getMBeanServerConnection");
         }
@@ -247,6 +249,8 @@ class ClientConnection extends Common implements VersionedConnection {
             try {
                 byte messageId = dis.readByte();
                 final int correlationId = dis.readInt();
+                log.tracef("Message Received id(%h), correlationId(%d)", messageId, correlationId);
+
                 final Common.MessageHandler mh = handlerRegistry.get(messageId);
                 if (mh != null) {
                     executor.execute(new Runnable() {
@@ -256,7 +260,7 @@ class ClientConnection extends Common implements VersionedConnection {
                             try {
                                 mh.handle(dis, correlationId);
                             } catch (IOException e) {
-                                e.printStackTrace();
+                                log.error(e);
                             } finally {
                                 IoUtils.safeClose(dis);
                             }
@@ -268,10 +272,10 @@ class ClientConnection extends Common implements VersionedConnection {
                     throw new IOException("Unrecognised Message ID");
                 }
             } catch (IOException e) {
-                e.printStackTrace();
+                log.error(e);
                 IoUtils.safeClose(dis);
             } finally {
-                // TODO - Propper shut down logic.
+                // TODO - Proper shut down logic.
                 channel.receiveMessage(this);
             }
         }
@@ -305,7 +309,7 @@ class ClientConnection extends Common implements VersionedConnection {
                 output.writeInt(correlationId);
 
                 output.writeByte(INTEGER);
-                output.writeInt(2); // Sening 2 parameters.
+                output.writeInt(2); // Sending 2 parameters.
 
                 Marshaller marshaller = prepareForMarshalling(output);
                 marshaller.writeByte(STRING);
@@ -317,6 +321,8 @@ class ClientConnection extends Common implements VersionedConnection {
 
                 marshaller.close();
                 output.close();
+
+                log.tracef("[%d] createMBean - Request Sent", correlationId);
 
                 IoFuture.Status result = future.await(5, TimeUnit.SECONDS);
                 switch (result) {
@@ -366,6 +372,8 @@ class ClientConnection extends Common implements VersionedConnection {
 
                 marshaller.close();
                 output.close();
+
+                log.tracef("[%d] createMBean - Request Sent", correlationId);
 
                 IoFuture.Status result = future.await(5, TimeUnit.SECONDS);
                 switch (result) {
@@ -426,6 +434,8 @@ class ClientConnection extends Common implements VersionedConnection {
 
                 marshaller.close();
                 output.close();
+
+                log.tracef("[%d] createMBean - Request Sent", correlationId);
 
                 IoFuture.Status result = future.await(5, TimeUnit.SECONDS);
                 switch (result) {
@@ -488,6 +498,8 @@ class ClientConnection extends Common implements VersionedConnection {
                 marshaller.close();
                 output.close();
 
+                log.tracef("[%d] createMBean - Request Sent", correlationId);
+
                 IoFuture.Status result = future.await(5, TimeUnit.SECONDS);
                 switch (result) {
                     case FAILED:
@@ -526,6 +538,8 @@ class ClientConnection extends Common implements VersionedConnection {
                 marshaller.close();
                 output.close();
 
+                log.tracef("[%d] unregisterMBean - Request Sent", correlationId);
+
                 IoFuture.Status result = future.await(5, TimeUnit.SECONDS);
                 switch (result) {
                     case FAILED:
@@ -561,6 +575,8 @@ class ClientConnection extends Common implements VersionedConnection {
 
                 marshaller.close();
                 output.close();
+
+                log.tracef("[%d] getObjectInstance - Request Sent", correlationId);
 
                 IoFuture.Status result = future.await(5, TimeUnit.SECONDS);
                 switch (result) {
@@ -599,6 +615,8 @@ class ClientConnection extends Common implements VersionedConnection {
                 marshaller.close();
                 output.close();
 
+                log.tracef("[%d] queryMBeans - Request Sent", correlationId);
+
                 IoFuture.Status result = future.await(5, TimeUnit.SECONDS);
                 switch (result) {
                     case FAILED:
@@ -635,6 +653,8 @@ class ClientConnection extends Common implements VersionedConnection {
                 marshaller.close();
                 output.close();
 
+                log.tracef("[%d] queryNames - Request Sent", correlationId);
+
                 IoFuture.Status result = future.await(5, TimeUnit.SECONDS);
                 switch (result) {
                     case FAILED:
@@ -665,7 +685,10 @@ class ClientConnection extends Common implements VersionedConnection {
                 Marshaller marshaller = prepareForMarshalling(output);
                 marshaller.writeObject(name);
 
+                marshaller.close();
                 output.close();
+
+                log.tracef("[%d] isRegistered - Request Sent", correlationId);
 
                 IoFuture.Status result = future.await(5, TimeUnit.SECONDS);
                 switch (result) {
@@ -694,6 +717,8 @@ class ClientConnection extends Common implements VersionedConnection {
                 output.writeInt(correlationId);
 
                 output.close();
+
+                log.tracef("[%d] getMBeanCount - Request Sent", correlationId);
 
                 IoFuture.Status result = future.await(5, TimeUnit.SECONDS);
                 switch (result) {
@@ -731,6 +756,8 @@ class ClientConnection extends Common implements VersionedConnection {
 
                 marshaller.close();
                 output.close();
+
+                log.tracef("[%d] getAttribute - Request Sent", correlationId);
 
                 IoFuture.Status result = future.await(5, TimeUnit.SECONDS);
                 switch (result) {
@@ -776,6 +803,8 @@ class ClientConnection extends Common implements VersionedConnection {
                 marshaller.close();
                 output.close();
 
+                log.tracef("[%d] getAttributes - Request Sent", correlationId);
+
                 IoFuture.Status result = future.await(5, TimeUnit.SECONDS);
                 switch (result) {
                     case FAILED:
@@ -814,6 +843,8 @@ class ClientConnection extends Common implements VersionedConnection {
 
                 marshaller.close();
                 output.close();
+
+                log.tracef("[%d] setAttribute - Request Sent", correlationId);
 
                 IoFuture.Status result = future.await(5, TimeUnit.SECONDS);
                 switch (result) {
@@ -858,6 +889,8 @@ class ClientConnection extends Common implements VersionedConnection {
 
                 marshaller.close();
                 output.close();
+
+                log.tracef("[%d] setAttributes - Request Sent", correlationId);
 
                 IoFuture.Status result = future.await(5, TimeUnit.SECONDS);
                 switch (result) {
@@ -918,6 +951,8 @@ class ClientConnection extends Common implements VersionedConnection {
                 marshaller.close();
                 output.close();
 
+                log.tracef("[%d] invoke - Request Sent", correlationId);
+
                 IoFuture.Status result = future.await(5, TimeUnit.SECONDS);
                 switch (result) {
                     case FAILED:
@@ -949,6 +984,8 @@ class ClientConnection extends Common implements VersionedConnection {
 
                 output.close();
 
+                log.tracef("[%d] getDefaultDomain - Request Sent", correlationId);
+
                 IoFuture.Status result = future.await(5, TimeUnit.SECONDS);
                 switch (result) {
                     case DONE:
@@ -976,6 +1013,8 @@ class ClientConnection extends Common implements VersionedConnection {
                 output.writeInt(correlationId);
 
                 output.close();
+
+                log.tracef("[%d] getDomains - Request Sent", correlationId);
 
                 IoFuture.Status result = future.await(5, TimeUnit.SECONDS);
                 switch (result) {
@@ -1047,6 +1086,8 @@ class ClientConnection extends Common implements VersionedConnection {
                 marshaller.close();
                 output.close();
 
+                log.tracef("[%d] getMBeanInfo - Request Sent", correlationId);
+
                 IoFuture.Status result = future.await(5, TimeUnit.SECONDS);
                 switch (result) {
                     case FAILED:
@@ -1084,6 +1125,8 @@ class ClientConnection extends Common implements VersionedConnection {
                 marshaller.writeUTF(className);
 
                 output.close();
+
+                log.tracef("[%d] isInstanceOf - Request Sent", correlationId);
 
                 IoFuture.Status result = future.await(5, TimeUnit.SECONDS);
                 switch (result) {

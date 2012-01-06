@@ -129,7 +129,7 @@ class ServerProxy extends Common implements VersionedProxy {
     void start() throws IOException {
         // Create a connection ID
         connectionId = UUID.randomUUID();
-        log.infof("Created connectionID %s", connectionId.toString());
+        log.debugf("Created connectionID %s", connectionId.toString());
         // Send ID to client
         sendConnectionId();
         // Inform server the connection is now open
@@ -144,7 +144,7 @@ class ServerProxy extends Common implements VersionedProxy {
             dos.writeUTF(connectionId.toString());
         } finally {
             dos.close();
-            log.infof("Written connectionId %s", connectionId.toString());
+            log.tracef("Written connectionId %s", connectionId.toString());
         }
     }
 
@@ -160,6 +160,8 @@ class ServerProxy extends Common implements VersionedProxy {
             try {
                 final byte messageId = dis.readByte();
                 final int correlationId = dis.readInt();
+                log.tracef("Message Received id(%h), correlationId(%d)", messageId, correlationId);
+
                 final Common.MessageHandler mh = handlerRegistry.get(messageId);
                 if (mh != null) {
                     executor.execute(new Runnable() {
@@ -172,7 +174,7 @@ class ServerProxy extends Common implements VersionedProxy {
                                 if (correlationId != 0x00) {
                                     sendIOException(e);
                                 } else {
-                                    e.printStackTrace();
+                                    log.error("null correlationId so error not sent to client", e);
                                 }
                             } finally {
                                 IoUtils.safeClose(dis);
@@ -192,9 +194,11 @@ class ServerProxy extends Common implements VersionedProxy {
                                 Marshaller marshaller = prepareForMarshalling(dos);
                                 marshaller.writeObject(e);
                                 marshaller.finish();
+
+                                log.tracef("[%d] %h - Success Response Sent", correlationId, messageId);
                             } catch (IOException ioe) {
                                 // Here there is nothing left we can do, we know we can not sent to the client though.
-                                ioe.printStackTrace();
+                                log.error(ioe);
                             } finally {
                                 IoUtils.safeClose(dos);
                             }
@@ -206,7 +210,7 @@ class ServerProxy extends Common implements VersionedProxy {
                     throw new IOException("Unrecognised Message ID");
                 }
             } catch (IOException e) {
-                e.printStackTrace();
+                log.error(e);
                 IoUtils.safeClose(dis);
             } finally {
                 // TODO - Propper shut down logic.
@@ -232,7 +236,7 @@ class ServerProxy extends Common implements VersionedProxy {
 
         @Override
         public void handle(DataInput input, int correlationId) throws IOException {
-            System.out.println("** CreateMBean");
+            log.trace("CreateMBean");
             byte paramType = input.readByte();
             if (paramType != INTEGER) {
                 throw new IOException("Unexpected paramType");
@@ -331,6 +335,8 @@ class ServerProxy extends Common implements VersionedProxy {
                 Marshaller marshaller = prepareForMarshalling(dos);
                 marshaller.writeObject(instance);
                 marshaller.finish();
+
+                log.tracef("[%d] CreateMBean - Success Response Sent", correlationId);
             } catch (Exception e) {
                 dos = new DataOutputStream(channel.writeMessage());
                 dos.writeByte(UNREGISTER_MBEAN ^ RESPONSE_MASK);
@@ -340,13 +346,15 @@ class ServerProxy extends Common implements VersionedProxy {
 
                 if (e instanceof RuntimeException) {
                     // We only want to send back the known checked exceptions.
-                    e.printStackTrace();
+                    log.error(e);
                     e = new IOException("Unexpected internal failure.");
                 }
 
                 Marshaller marshaller = prepareForMarshalling(dos);
                 marshaller.writeObject(e);
                 marshaller.finish();
+
+                log.tracef("[%d] CreateMBean - Failure Response Sent", correlationId);
             } finally {
                 IoUtils.safeClose(dos);
             }
@@ -357,7 +365,7 @@ class ServerProxy extends Common implements VersionedProxy {
 
         @Override
         public void handle(DataInput input, int correlationId) throws IOException {
-            System.out.println("** GetDefaultDomain");
+            log.trace("GetDefaultDomain");
 
             String defaultDomain = server.getMBeanServer().getDefaultDomain();
 
@@ -368,6 +376,8 @@ class ServerProxy extends Common implements VersionedProxy {
                 dos.writeByte(SUCCESS);
                 dos.writeByte(STRING);
                 dos.writeUTF(defaultDomain);
+
+                log.tracef("[%d] CreateMBean - Success Response Sent", correlationId);
             } finally {
                 IoUtils.safeClose(dos);
             }
@@ -380,7 +390,7 @@ class ServerProxy extends Common implements VersionedProxy {
 
         @Override
         public void handle(DataInput input, int correlationId) throws IOException {
-            System.out.println("** GetDomains");
+            log.trace("GetDomains");
 
             String[] domains = server.getMBeanServer().getDomains();
 
@@ -394,6 +404,8 @@ class ServerProxy extends Common implements VersionedProxy {
                 for (String currentDomain : domains) {
                     dos.writeUTF(currentDomain);
                 }
+
+                log.tracef("[%d] GetDomains - Success Response Sent", correlationId);
             } finally {
                 IoUtils.safeClose(dos);
             }
@@ -406,7 +418,7 @@ class ServerProxy extends Common implements VersionedProxy {
 
         @Override
         public void handle(DataInput input, int correlationId) throws IOException {
-            System.out.println("** GetMBeanCount");
+            log.trace("GetMBeanCount");
 
             Integer count = server.getMBeanServer().getMBeanCount();
 
@@ -417,6 +429,8 @@ class ServerProxy extends Common implements VersionedProxy {
                 dos.writeByte(SUCCESS);
                 dos.writeByte(INTEGER);
                 dos.writeInt(count);
+
+                log.tracef("[%d] GetMBeanCount - Success Response Sent", correlationId);
             } finally {
                 IoUtils.safeClose(dos);
             }
@@ -429,7 +443,7 @@ class ServerProxy extends Common implements VersionedProxy {
 
         @Override
         public void handle(DataInput input, int correlationId) throws IOException {
-            System.out.println("** GetAttribute");
+            log.trace("GetAttribute");
 
             byte paramType = input.readByte();
             if (paramType != OBJECT_NAME) {
@@ -463,6 +477,8 @@ class ServerProxy extends Common implements VersionedProxy {
                 Marshaller marshaller = prepareForMarshalling(dos);
                 marshaller.writeObject(attributeValue);
                 marshaller.finish();
+
+                log.tracef("[%d] GetAttribute - Success Response Sent", correlationId);
             } catch (Exception e) {
                 dos = new DataOutputStream(channel.writeMessage());
                 dos.writeByte(GET_ATTRIBUTE ^ RESPONSE_MASK);
@@ -472,13 +488,15 @@ class ServerProxy extends Common implements VersionedProxy {
 
                 if (e instanceof RuntimeException) {
                     // We only want to send back the known checked exceptions.
-                    e.printStackTrace();
+                    log.error(e);
                     e = new IOException("Unexpected internal failure.");
                 }
 
                 Marshaller marshaller = prepareForMarshalling(dos);
                 marshaller.writeObject(e);
                 marshaller.finish();
+
+                log.tracef("[%d] GetAttribute - Failure Response Sent", correlationId);
             } finally {
                 IoUtils.safeClose(dos);
             }
@@ -489,7 +507,7 @@ class ServerProxy extends Common implements VersionedProxy {
 
         @Override
         public void handle(DataInput input, int correlationId) throws IOException {
-            System.out.println("** GetAttributes");
+            log.trace("GetAttributes");
 
             byte paramType = input.readByte();
             if (paramType != OBJECT_NAME) {
@@ -527,6 +545,8 @@ class ServerProxy extends Common implements VersionedProxy {
                 Marshaller marshaller = prepareForMarshalling(dos);
                 marshaller.writeObject(attributeValues);
                 marshaller.finish();
+
+                log.tracef("[%d] GetAttributes - Success Response Sent", correlationId);
             } catch (Exception e) {
                 dos = new DataOutputStream(channel.writeMessage());
                 dos.writeByte(GET_ATTRIBUTES ^ RESPONSE_MASK);
@@ -536,13 +556,15 @@ class ServerProxy extends Common implements VersionedProxy {
 
                 if (e instanceof RuntimeException) {
                     // We only want to send back the known checked exceptions.
-                    e.printStackTrace();
+                    log.error(e);
                     e = new IOException("Unexpected internal failure.");
                 }
 
                 Marshaller marshaller = prepareForMarshalling(dos);
                 marshaller.writeObject(e);
                 marshaller.finish();
+
+                log.tracef("[%d] GetAttributes - Failure Response Sent", correlationId);
             } finally {
                 IoUtils.safeClose(dos);
             }
@@ -553,7 +575,7 @@ class ServerProxy extends Common implements VersionedProxy {
 
         @Override
         public void handle(DataInput input, int correlationId) throws IOException {
-            System.out.println("** GetMBeanInfo");
+            log.trace("GetMBeanInfo");
 
             byte paramType = input.readByte();
             if (paramType != OBJECT_NAME) {
@@ -581,6 +603,8 @@ class ServerProxy extends Common implements VersionedProxy {
                 Marshaller marshaller = prepareForMarshalling(dos);
                 marshaller.writeObject(info);
                 marshaller.finish();
+
+                log.tracef("[%d] GetMBeanInfo - Success Response Sent", correlationId);
             } catch (Exception e) {
                 dos = new DataOutputStream(channel.writeMessage());
                 dos.writeByte(GET_MBEAN_INFO ^ RESPONSE_MASK);
@@ -590,13 +614,15 @@ class ServerProxy extends Common implements VersionedProxy {
 
                 if (e instanceof RuntimeException) {
                     // We only want to send back the known checked exceptions.
-                    e.printStackTrace();
+                    log.error(e);
                     e = new IOException("Unexpected internal failure.");
                 }
 
                 Marshaller marshaller = prepareForMarshalling(dos);
                 marshaller.writeObject(e);
                 marshaller.finish();
+
+                log.tracef("[%d] GetMBeanInfo - Failure Response Sent", correlationId);
             } finally {
                 IoUtils.safeClose(dos);
             }
@@ -608,7 +634,7 @@ class ServerProxy extends Common implements VersionedProxy {
 
         @Override
         public void handle(DataInput input, int correlationId) throws IOException {
-            System.out.println("** GetObjectInstance");
+            log.trace("GetObjectInstance");
 
             byte paramType = input.readByte();
             if (paramType != OBJECT_NAME) {
@@ -635,6 +661,8 @@ class ServerProxy extends Common implements VersionedProxy {
                 Marshaller marshaller = prepareForMarshalling(dos);
                 marshaller.writeObject(objectInstance);
                 marshaller.finish();
+
+                log.tracef("[%d] GetObjectInstance - Success Response Sent", correlationId);
             } catch (InstanceNotFoundException e) {
                 dos = new DataOutputStream(channel.writeMessage());
                 dos.writeByte(INSTANCE_OF ^ RESPONSE_MASK);
@@ -645,6 +673,8 @@ class ServerProxy extends Common implements VersionedProxy {
                 Marshaller marshaller = prepareForMarshalling(dos);
                 marshaller.writeObject(e);
                 marshaller.finish();
+
+                log.tracef("[%d] GetObjectInstance - Failure Response Sent", correlationId);
             } finally {
                 IoUtils.safeClose(dos);
             }
@@ -656,7 +686,7 @@ class ServerProxy extends Common implements VersionedProxy {
 
         @Override
         public void handle(DataInput input, int correlationId) throws IOException {
-            System.out.println("** IsInstanceOf");
+            log.trace("IsInstanceOf");
 
             byte paramType = input.readByte();
             if (paramType != OBJECT_NAME) {
@@ -687,6 +717,8 @@ class ServerProxy extends Common implements VersionedProxy {
                 dos.writeByte(SUCCESS);
                 dos.writeByte(BOOLEAN);
                 dos.writeBoolean(instanceOf);
+
+                log.tracef("[%d] IsInstanceOf - Success Response Sent", correlationId);
             } catch (InstanceNotFoundException e) {
                 dos = new DataOutputStream(channel.writeMessage());
                 dos.writeByte(INSTANCE_OF ^ RESPONSE_MASK);
@@ -697,6 +729,8 @@ class ServerProxy extends Common implements VersionedProxy {
                 Marshaller marshaller = prepareForMarshalling(dos);
                 marshaller.writeObject(e);
                 marshaller.finish();
+
+                log.tracef("[%d] IsInstanceOf - Failure Response Sent", correlationId);
             } finally {
                 IoUtils.safeClose(dos);
             }
@@ -708,7 +742,7 @@ class ServerProxy extends Common implements VersionedProxy {
 
         @Override
         public void handle(DataInput input, int correlationId) throws IOException {
-            System.out.println("** IsRegistered");
+            log.trace("IsRegistered");
 
             byte paramType = input.readByte();
             if (paramType != OBJECT_NAME) {
@@ -733,6 +767,8 @@ class ServerProxy extends Common implements VersionedProxy {
                 dos.writeByte(SUCCESS);
                 dos.writeByte(BOOLEAN);
                 dos.writeBoolean(registered);
+
+                log.tracef("[%d] IsRegistered - Success Response Sent", correlationId);
             } finally {
                 IoUtils.safeClose(dos);
             }
@@ -744,7 +780,7 @@ class ServerProxy extends Common implements VersionedProxy {
 
         @Override
         public void handle(DataInput input, int correlationId) throws IOException {
-            System.out.println("** Invoke");
+            log.trace("Invoke");
 
             byte paramType = input.readByte();
             if (paramType != OBJECT_NAME) {
@@ -801,6 +837,8 @@ class ServerProxy extends Common implements VersionedProxy {
                 Marshaller marshaller = prepareForMarshalling(dos);
                 marshaller.writeObject(result);
                 marshaller.finish();
+
+                log.tracef("[%d] Invoke - Success Response Sent", correlationId);
             } catch (Exception e) {
                 dos = new DataOutputStream(channel.writeMessage());
                 dos.writeByte(INVOKE ^ RESPONSE_MASK);
@@ -810,13 +848,15 @@ class ServerProxy extends Common implements VersionedProxy {
 
                 if (e instanceof RuntimeException) {
                     // We only want to send back the known checked exceptions.
-                    e.printStackTrace();
+                    log.error(e);
                     e = new IOException("Unexpected internal failure.");
                 }
 
                 Marshaller marshaller = prepareForMarshalling(dos);
                 marshaller.writeObject(e);
                 marshaller.finish();
+
+                log.tracef("[%d] Invoke - Failure Response Sent", correlationId);
             } finally {
                 IoUtils.safeClose(dos);
             }
@@ -827,7 +867,7 @@ class ServerProxy extends Common implements VersionedProxy {
 
         @Override
         public void handle(DataInput input, int correlationId) throws IOException {
-            System.out.println("** QueryMBeans");
+            log.trace("QueryMBeans");
 
             byte paramType = input.readByte();
             if (paramType != OBJECT_NAME) {
@@ -861,6 +901,8 @@ class ServerProxy extends Common implements VersionedProxy {
                 Marshaller marshaller = prepareForMarshalling(dos);
                 marshaller.writeObject(instances);
                 marshaller.finish();
+
+                log.tracef("[%d] QueryMBeans - Success Response Sent", correlationId);
             } finally {
                 IoUtils.safeClose(dos);
             }
@@ -872,7 +914,7 @@ class ServerProxy extends Common implements VersionedProxy {
 
         @Override
         public void handle(DataInput input, int correlationId) throws IOException {
-            System.out.println("** QueryNames");
+            log.trace("QueryNames");
 
             byte paramType = input.readByte();
             if (paramType != OBJECT_NAME) {
@@ -906,6 +948,8 @@ class ServerProxy extends Common implements VersionedProxy {
                 Marshaller marshaller = prepareForMarshalling(dos);
                 marshaller.writeObject(instances);
                 marshaller.finish();
+
+                log.tracef("[%d] QueryNames - Success Response Sent", correlationId);
             } finally {
                 IoUtils.safeClose(dos);
             }
@@ -917,7 +961,7 @@ class ServerProxy extends Common implements VersionedProxy {
 
         @Override
         public void handle(DataInput input, int correlationId) throws IOException {
-            System.out.println("** SetAttribute");
+            log.trace("SetAttribute");
 
             byte paramType = input.readByte();
             if (paramType != OBJECT_NAME) {
@@ -947,6 +991,8 @@ class ServerProxy extends Common implements VersionedProxy {
                 dos.writeByte(SET_ATTRIBUTE ^ RESPONSE_MASK);
                 dos.writeInt(correlationId);
                 dos.writeByte(SUCCESS);
+
+                log.tracef("[%d] SetAttribute - Success Response Sent", correlationId);
             } catch (Exception e) {
                 dos = new DataOutputStream(channel.writeMessage());
                 dos.writeByte(SET_ATTRIBUTE ^ RESPONSE_MASK);
@@ -956,13 +1002,15 @@ class ServerProxy extends Common implements VersionedProxy {
 
                 if (e instanceof RuntimeException) {
                     // We only want to send back the known checked exceptions.
-                    e.printStackTrace();
+                    log.error(e);
                     e = new IOException("Unexpected internal failure.");
                 }
 
                 Marshaller marshaller = prepareForMarshalling(dos);
                 marshaller.writeObject(e);
                 marshaller.finish();
+
+                log.tracef("[%d] SetAttribute - Failure Response Sent", correlationId);
             } finally {
                 IoUtils.safeClose(dos);
             }
@@ -973,7 +1021,7 @@ class ServerProxy extends Common implements VersionedProxy {
 
         @Override
         public void handle(DataInput input, int correlationId) throws IOException {
-            System.out.println("** SetAttributes");
+            log.trace("SetAttributes");
 
             byte paramType = input.readByte();
             if (paramType != OBJECT_NAME) {
@@ -1008,6 +1056,8 @@ class ServerProxy extends Common implements VersionedProxy {
                 Marshaller marshaller = prepareForMarshalling(dos);
                 marshaller.writeObject(attributeValues);
                 marshaller.finish();
+
+                log.tracef("[%d] SetAttributes - Success Response Sent", correlationId);
             } catch (Exception e) {
                 dos = new DataOutputStream(channel.writeMessage());
                 dos.writeByte(SET_ATTRIBUTES ^ RESPONSE_MASK);
@@ -1017,13 +1067,15 @@ class ServerProxy extends Common implements VersionedProxy {
 
                 if (e instanceof RuntimeException) {
                     // We only want to send back the known checked exceptions.
-                    e.printStackTrace();
+                    log.error(e);
                     e = new IOException("Unexpected internal failure.");
                 }
 
                 Marshaller marshaller = prepareForMarshalling(dos);
                 marshaller.writeObject(e);
                 marshaller.finish();
+
+                log.tracef("[%d] SetAttributes - Failure Response Sent", correlationId);
             } finally {
                 IoUtils.safeClose(dos);
             }
@@ -1034,7 +1086,7 @@ class ServerProxy extends Common implements VersionedProxy {
 
         @Override
         public void handle(DataInput input, int correlationId) throws IOException {
-            System.out.println("** UnregisterMBean");
+            log.trace("UnregisterMBean");
 
             byte paramType = input.readByte();
             if (paramType != OBJECT_NAME) {
@@ -1057,6 +1109,8 @@ class ServerProxy extends Common implements VersionedProxy {
                 dos.writeByte(UNREGISTER_MBEAN ^ RESPONSE_MASK);
                 dos.writeInt(correlationId);
                 dos.writeByte(SUCCESS);
+
+                log.tracef("[%d] UnregisterMBean - Success Response Sent", correlationId);
             } catch (Exception e) {
                 dos = new DataOutputStream(channel.writeMessage());
                 dos.writeByte(UNREGISTER_MBEAN ^ RESPONSE_MASK);
@@ -1066,13 +1120,15 @@ class ServerProxy extends Common implements VersionedProxy {
 
                 if (e instanceof RuntimeException) {
                     // We only want to send back the known checked exceptions.
-                    e.printStackTrace();
+                    log.error(e);
                     e = new IOException("Unexpected internal failure.");
                 }
 
                 Marshaller marshaller = prepareForMarshalling(dos);
                 marshaller.writeObject(e);
                 marshaller.finish();
+
+                log.tracef("[%d] UnregisterMBean - Failure Response Sent", correlationId);
             } finally {
                 IoUtils.safeClose(dos);
             }

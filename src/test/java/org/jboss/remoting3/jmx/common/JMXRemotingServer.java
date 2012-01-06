@@ -110,7 +110,9 @@ public class JMXRemotingServer {
 
         // Services using an existing Remoting installation only need to stop the JMXConnectorServer
         // to disassociate it from Remoting.
-        connectorServer.stop();
+        if (connectorServer != null) {
+            connectorServer.stop();
+        }
 
         // TODO - Also tear down the remoting portion as that was specific to the test case.
     }

@@ -26,6 +26,10 @@ package org.jboss.remoting3.jmx;
  */
 class Constants {
 
+    // Note: These two do not need to be the same.
+    static final String PROTOCOL = "remote";
+    static final String CONNECTION_PROVIDER_URI = "remote";
+
     static final String CHANNEL_NAME = "jmx";
 
     static final byte STABLE = 0x00;

@@ -87,7 +87,7 @@ public class RemotingConnectorServer extends JMXConnectorServer {
      */
 
     public void start() throws IOException {
-        log.info("start()");
+        log.trace("start()");
         if (stopped) {
             throw new IOException("Unable to start connector as already stopped.");
         }
@@ -97,7 +97,7 @@ public class RemotingConnectorServer extends JMXConnectorServer {
             return;
         }
 
-        log.info("Registering service");
+        log.trace("Registering service");
         registration = endpoint.registerService(CHANNEL_NAME, new ChannelOpenListener(), OptionMap.EMPTY);
         started = true;
     }
@@ -145,7 +145,7 @@ public class RemotingConnectorServer extends JMXConnectorServer {
 
     public void connectionOpened(final VersionedProxy proxy) {
         String connectionId = proxy.getConnectionId();
-        log.infof("Connection '%s' now opened.", connectionId);
+        log.debugf("Connection '%s' now opened.", connectionId);
         registeredConnections.put(connectionId, proxy);
         connectionOpened(connectionId, "", null);
     }
@@ -191,7 +191,7 @@ public class RemotingConnectorServer extends JMXConnectorServer {
     private class ChannelOpenListener implements OpenListener {
 
         public void channelOpened(Channel channel) {
-            log.info("Channel Opened");
+            log.trace("Channel Opened");
 
             // Add a close handler so we can ensure we clean up when clients disconnect.
             channel.addCloseHandler(new ChannelCloseHandler());
@@ -221,22 +221,21 @@ public class RemotingConnectorServer extends JMXConnectorServer {
             // the correct versioned proxy should be created and left to continue the communication.
             DataInputStream dis = new DataInputStream(messageInputStream);
             try {
-                log.infof("Bytes Available %d", dis.available());
+                log.tracef("Bytes Available %d", dis.available());
                 byte[] firstThree = new byte[3];
                 dis.read(firstThree);
-                log.infof("First Three %s", new String(firstThree));
+                log.tracef("First Three %s", new String(firstThree));
                 if (Arrays.equals(firstThree, JMX) == false) {
                     throw new IOException("Invalid leading bytes in header.");
                 }
-                log.infof("Bytes Available %d", dis.available());
+                log.tracef("Bytes Available %d", dis.available());
                 byte version = dis.readByte();
-                log.infof("Chosen version 0x0%d", version);
+                log.debugf("Chosen version 0x0%d", version);
 
                 // The VersionedProxy is responsible for registering with the RemotingConnectorServer which
                 // could vary depending on the version of the protocol.
                 Versions.getVersionedProxy(version, channel, RemotingConnectorServer.this);
             } catch (IOException e) {
-                // TODO - What should happen now?
                 log.error("Error determining version selected by client.");
             } finally {
                 IoUtils.safeClose(dis);
@@ -259,7 +258,7 @@ public class RemotingConnectorServer extends JMXConnectorServer {
     private class ChannelCloseHandler implements CloseHandler<Channel> {
 
         public void handleClose(Channel channel, IOException e) {
-            log.info("Server handleClose");
+            log.debug("Server handleClose");
             // TODO - Perform Clean Up - possibly notification registrations and even connection registrations.
         }
 

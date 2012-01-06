@@ -21,6 +21,8 @@
  */
 package org.jboss.remoting3.jmx;
 
+import static org.jboss.remoting3.jmx.Constants.CONNECTION_PROVIDER_URI;
+
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -78,7 +80,7 @@ class RemotingConnector implements JMXConnector {
 
         final Xnio xnio = Xnio.getInstance();
         endpoint = Remoting.createEndpoint("endpoint", xnio, OptionMap.EMPTY);
-        registration = endpoint.addConnectionProvider("remote", new RemoteConnectionProviderFactory(),
+        registration = endpoint.addConnectionProvider(CONNECTION_PROVIDER_URI, new RemoteConnectionProviderFactory(),
                 OptionMap.create(Options.SSL_ENABLED, false));
     }
 
@@ -94,24 +96,26 @@ class RemotingConnector implements JMXConnector {
             throw new IOException("Connector already closed.");
         }
 
-        StringBuffer sb = new StringBuffer("connect(");
-        if (env != null) {
-            for (String key : env.keySet()) {
-                Object current = env.get(key);
-                if (current instanceof String[]) {
-                    String[] temp = (String[]) current;
-                    StringBuffer sb2 = new StringBuffer();
-                    sb2.append("[username=").append(temp[0]).append(",password=").append(temp[1]).append("]");
-                    current = sb2;
-                }
+        if (log.isTraceEnabled()) {
+            StringBuffer sb = new StringBuffer("connect(");
+            if (env != null) {
+                for (String key : env.keySet()) {
+                    Object current = env.get(key);
+                    if (current instanceof String[]) {
+                        String[] temp = (String[]) current;
+                        StringBuffer sb2 = new StringBuffer();
+                        sb2.append("[username=").append(temp[0]).append(",password=").append(temp[1]).append("]");
+                        current = sb2;
+                    }
 
-                sb.append("{").append(key).append(",").append(String.valueOf(current)).append("}");
+                    sb.append("{").append(key).append(",").append(String.valueOf(current)).append("}");
+                }
+            } else {
+                sb.append("null");
             }
-        } else {
-            sb.append("null");
+            sb.append(")");
+            log.trace(sb.toString());
         }
-        sb.append(")");
-        log.info(sb.toString());
 
         Map<String, Object> combinedEnvironment = new HashMap(environment);
         if (env != null) {
@@ -145,7 +149,6 @@ class RemotingConnector implements JMXConnector {
         }
 
         // Now open the channel
-        // TODO - Do we use the URI to specify the channel name?
         final IoFuture<Channel> futureChannel = connection.openChannel("jmx", OptionMap.EMPTY);
         result = futureChannel.await(5, TimeUnit.SECONDS);
         if (result == IoFuture.Status.DONE) {
@@ -164,7 +167,7 @@ class RemotingConnector implements JMXConnector {
         int port = serviceUrl.getPort();
 
         try {
-            return new URI("remote://" + host + ":" + port);
+            return new URI(CONNECTION_PROVIDER_URI + "://" + host + ":" + port);
         } catch (URISyntaxException e) {
             throw new IOException("Unable to create connection URI", e);
         }
@@ -179,42 +182,42 @@ class RemotingConnector implements JMXConnector {
     }
 
     public MBeanServerConnection getMBeanServerConnection() throws IOException {
-        log.info("getMBeanServerConnection()");
+        log.trace("getMBeanServerConnection()");
 
         return getMBeanServerConnection(null);
     }
 
     public MBeanServerConnection getMBeanServerConnection(Subject delegationSubject) throws IOException {
-        log.info("getMBeanServerConnection(Subject)");
+        log.trace("getMBeanServerConnection(Subject)");
         verifyConnected();
 
         return versionedConnection.getMBeanServerConnection(delegationSubject);
     }
 
     public void close() throws IOException {
-        System.out.println("close()");
+        log.trace("close()");
     }
 
     public void addConnectionNotificationListener(NotificationListener listener, NotificationFilter filter, Object handback) {
-        System.out.println("addConnectionNotificationListener()");
+        log.trace("addConnectionNotificationListener()");
     }
 
     public void removeConnectionNotificationListener(NotificationListener listener) throws ListenerNotFoundException {
-        System.out.println("removeConnectionNotificationListener()");
+        log.trace("removeConnectionNotificationListener()");
     }
 
     public void removeConnectionNotificationListener(NotificationListener l, NotificationFilter f, Object handback)
             throws ListenerNotFoundException {
-        System.out.println("removeConnectionNotificationListener()");
+        log.trace("removeConnectionNotificationListener()");
     }
 
     public String getConnectionId() throws IOException {
-        log.info("getConnectionId()");
+        log.trace("getConnectionId()");
         verifyConnected();
 
         String connectionId = versionedConnection.getConnectionId();
 
-        log.infof("Our connection id is '%s'", connectionId);
+        log.debugf("Our connection id is '%s'", connectionId);
         return connectionId;
     }
 
@@ -244,7 +247,6 @@ class RemotingConnector implements JMXConnector {
 
         public void handleClose(Channel channel, IOException e) {
             log.info("Client handleClose", e);
-            // TODO - any clean up client side to inform that the channel is closed - notifications may need to be considered.
         }
 
     }
