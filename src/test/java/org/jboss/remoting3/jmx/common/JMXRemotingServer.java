@@ -123,7 +123,7 @@ public class JMXRemotingServer {
         JMXRemotingServer server = new JMXRemotingServer(port);
         server.start();
 
-        System.out.println("Connect Using URL service:jmx:remoting://localhost:12345");
+        System.out.println("Connect Using URL service:jmx:remote://localhost:12345");
     }
 
 }
