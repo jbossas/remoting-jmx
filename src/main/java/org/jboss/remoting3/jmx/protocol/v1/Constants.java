@@ -66,6 +66,7 @@ class Constants {
      * Parameter Types
      */
 
+    static final byte VOID = 0x00; // Not actually passed as a parameter but used internally to indicate no parameter expected.
     static final byte ATTRIBUTE = 0x01;
     static final byte ATTRIBUTE_LIST = 0x02;
     static final byte EXCEPTION = 0x03;

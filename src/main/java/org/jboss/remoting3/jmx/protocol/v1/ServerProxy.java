@@ -155,10 +155,11 @@ class ServerProxy extends Common implements VersionedProxy {
     private class MessageReciever implements Channel.Receiver {
 
         @Override
-        public void handleMessage(Channel channel, MessageInputStream message) {
+        public void handleMessage(final Channel channel, MessageInputStream message) {
             final DataInputStream dis = new DataInputStream(message);
             try {
-                byte messageId = dis.readByte();
+                final byte messageId = dis.readByte();
+                final int corelationId = dis.readInt();
                 final Common.MessageHandler mh = handlerRegistry.get(messageId);
                 if (mh != null) {
                     executor.execute(new Runnable() {
@@ -166,11 +167,36 @@ class ServerProxy extends Common implements VersionedProxy {
                         @Override
                         public void run() {
                             try {
-                                mh.handle(dis);
+                                mh.handle(dis, corelationId);
                             } catch (IOException e) {
-                                e.printStackTrace();
+                                if (corelationId != 0x00) {
+                                    sendIOException(e);
+                                } else {
+                                    e.printStackTrace();
+                                }
                             } finally {
                                 IoUtils.safeClose(dis);
+                            }
+                        }
+
+                        private void sendIOException(IOException e) {
+                            DataOutputStream dos = null;
+
+                            try {
+                                dos = new DataOutputStream(channel.writeMessage());
+                                dos.writeByte(messageId ^ RESPONSE_MASK);
+                                dos.writeInt(corelationId);
+                                dos.writeByte(FAILURE);
+                                dos.writeByte(EXCEPTION);
+
+                                Marshaller marshaller = prepareForMarshalling(dos);
+                                marshaller.writeObject(e);
+                                marshaller.finish();
+                            } catch (IOException ioe) {
+                                // Here there is nothing left we can do, we know we can not sent to the client though.
+                                ioe.printStackTrace();
+                            } finally {
+                                IoUtils.safeClose(dos);
                             }
                         }
 
@@ -205,9 +231,8 @@ class ServerProxy extends Common implements VersionedProxy {
     private class CreateMBeanHandler implements Common.MessageHandler {
 
         @Override
-        public void handle(DataInput input) throws IOException {
+        public void handle(DataInput input, int corelationId) throws IOException {
             System.out.println("** CreateMBean");
-            int corelationId = input.readInt();
             byte paramType = input.readByte();
             if (paramType != INTEGER) {
                 throw new IOException("Unexpected paramType");
@@ -331,9 +356,8 @@ class ServerProxy extends Common implements VersionedProxy {
     private class GetDefaultDomainHandler implements Common.MessageHandler {
 
         @Override
-        public void handle(DataInput input) throws IOException {
+        public void handle(DataInput input, int corelationId) throws IOException {
             System.out.println("** GetDefaultDomain");
-            int corelationId = input.readInt();
 
             String defaultDomain = server.getMBeanServer().getDefaultDomain();
 
@@ -355,9 +379,8 @@ class ServerProxy extends Common implements VersionedProxy {
     private class GetDomainsHandler implements Common.MessageHandler {
 
         @Override
-        public void handle(DataInput input) throws IOException {
+        public void handle(DataInput input, int corelationId) throws IOException {
             System.out.println("** GetDomains");
-            int corelationId = input.readInt();
 
             String[] domains = server.getMBeanServer().getDomains();
 
@@ -382,9 +405,8 @@ class ServerProxy extends Common implements VersionedProxy {
     private class GetMBeanCountHandler implements Common.MessageHandler {
 
         @Override
-        public void handle(DataInput input) throws IOException {
+        public void handle(DataInput input, int corelationId) throws IOException {
             System.out.println("** GetMBeanCount");
-            int corelationId = input.readInt();
 
             Integer count = server.getMBeanServer().getMBeanCount();
 
@@ -406,9 +428,9 @@ class ServerProxy extends Common implements VersionedProxy {
     private class GetAttributeHandler implements Common.MessageHandler {
 
         @Override
-        public void handle(DataInput input) throws IOException {
+        public void handle(DataInput input, int corelationId) throws IOException {
             System.out.println("** GetAttribute");
-            int corelationId = input.readInt();
+
             byte paramType = input.readByte();
             if (paramType != OBJECT_NAME) {
                 throw new IOException("Unexpected paramType");
@@ -466,9 +488,9 @@ class ServerProxy extends Common implements VersionedProxy {
     private class GetAttributesHandler implements Common.MessageHandler {
 
         @Override
-        public void handle(DataInput input) throws IOException {
+        public void handle(DataInput input, int corelationId) throws IOException {
             System.out.println("** GetAttributes");
-            int corelationId = input.readInt();
+
             byte paramType = input.readByte();
             if (paramType != OBJECT_NAME) {
                 throw new IOException("Unexpected paramType");
@@ -530,9 +552,9 @@ class ServerProxy extends Common implements VersionedProxy {
     private class GetMBeanInfoHandler implements Common.MessageHandler {
 
         @Override
-        public void handle(DataInput input) throws IOException {
+        public void handle(DataInput input, int corelationId) throws IOException {
             System.out.println("** GetMBeanInfo");
-            int corelationId = input.readInt();
+
             byte paramType = input.readByte();
             if (paramType != OBJECT_NAME) {
                 throw new IOException("Unexpected paramType");
@@ -585,9 +607,9 @@ class ServerProxy extends Common implements VersionedProxy {
     private class GetObjectInstanceHandler implements Common.MessageHandler {
 
         @Override
-        public void handle(DataInput input) throws IOException {
+        public void handle(DataInput input, int corelationId) throws IOException {
             System.out.println("** GetObjectInstance");
-            int corelationId = input.readInt();
+
             byte paramType = input.readByte();
             if (paramType != OBJECT_NAME) {
                 throw new IOException("Unexpected paramType");
@@ -633,9 +655,9 @@ class ServerProxy extends Common implements VersionedProxy {
     private class InstanceofHandler implements Common.MessageHandler {
 
         @Override
-        public void handle(DataInput input) throws IOException {
+        public void handle(DataInput input, int corelationId) throws IOException {
             System.out.println("** IsInstanceOf");
-            int corelationId = input.readInt();
+
             byte paramType = input.readByte();
             if (paramType != OBJECT_NAME) {
                 throw new IOException("Unexpected paramType");
@@ -685,9 +707,9 @@ class ServerProxy extends Common implements VersionedProxy {
     private class IsRegisteredHandler implements Common.MessageHandler {
 
         @Override
-        public void handle(DataInput input) throws IOException {
+        public void handle(DataInput input, int corelationId) throws IOException {
             System.out.println("** IsRegistered");
-            int corelationId = input.readInt();
+
             byte paramType = input.readByte();
             if (paramType != OBJECT_NAME) {
                 throw new IOException("Unexpected paramType");
@@ -721,9 +743,9 @@ class ServerProxy extends Common implements VersionedProxy {
     private class InvokeHandler implements Common.MessageHandler {
 
         @Override
-        public void handle(DataInput input) throws IOException {
+        public void handle(DataInput input, int corelationId) throws IOException {
             System.out.println("** Invoke");
-            int corelationId = input.readInt();
+
             byte paramType = input.readByte();
             if (paramType != OBJECT_NAME) {
                 throw new IOException("Unexpected paramType");
@@ -804,9 +826,9 @@ class ServerProxy extends Common implements VersionedProxy {
     private class QueryMBeansHandler implements Common.MessageHandler {
 
         @Override
-        public void handle(DataInput input) throws IOException {
+        public void handle(DataInput input, int corelationId) throws IOException {
             System.out.println("** QueryMBeans");
-            int corelationId = input.readInt();
+
             byte paramType = input.readByte();
             if (paramType != OBJECT_NAME) {
                 throw new IOException("Unexpected paramType");
@@ -849,9 +871,9 @@ class ServerProxy extends Common implements VersionedProxy {
     private class QueryNamesHandler implements Common.MessageHandler {
 
         @Override
-        public void handle(DataInput input) throws IOException {
+        public void handle(DataInput input, int corelationId) throws IOException {
             System.out.println("** QueryNames");
-            int corelationId = input.readInt();
+
             byte paramType = input.readByte();
             if (paramType != OBJECT_NAME) {
                 throw new IOException("Unexpected paramType");
@@ -894,9 +916,9 @@ class ServerProxy extends Common implements VersionedProxy {
     private class SetAttributeHandler implements Common.MessageHandler {
 
         @Override
-        public void handle(DataInput input) throws IOException {
+        public void handle(DataInput input, int corelationId) throws IOException {
             System.out.println("** SetAttribute");
-            int corelationId = input.readInt();
+
             byte paramType = input.readByte();
             if (paramType != OBJECT_NAME) {
                 throw new IOException("Unexpected paramType");
@@ -950,9 +972,9 @@ class ServerProxy extends Common implements VersionedProxy {
     private class SetAttributesHandler implements Common.MessageHandler {
 
         @Override
-        public void handle(DataInput input) throws IOException {
+        public void handle(DataInput input, int corelationId) throws IOException {
             System.out.println("** SetAttributes");
-            int corelationId = input.readInt();
+
             byte paramType = input.readByte();
             if (paramType != OBJECT_NAME) {
                 throw new IOException("Unexpected paramType");
@@ -1011,9 +1033,9 @@ class ServerProxy extends Common implements VersionedProxy {
     private class UnregisterMBeanHandler implements Common.MessageHandler {
 
         @Override
-        public void handle(DataInput input) throws IOException {
+        public void handle(DataInput input, int corelationId) throws IOException {
             System.out.println("** UnregisterMBean");
-            int corelationId = input.readInt();
+
             byte paramType = input.readByte();
             if (paramType != OBJECT_NAME) {
                 throw new IOException("Unexpected paramType");

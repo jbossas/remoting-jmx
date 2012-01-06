@@ -152,7 +152,7 @@ abstract class Common {
     }
 
     interface MessageHandler {
-        void handle(DataInput input) throws IOException;
+        void handle(DataInput input, int corelationId) throws IOException;
     }
 
 }
