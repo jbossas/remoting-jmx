@@ -36,8 +36,7 @@ import javax.management.remote.JMXServiceURL;
 public class RemotingConnectorProvider implements JMXConnectorProvider {
 
     public JMXConnector newJMXConnector(JMXServiceURL serviceURL, Map<String, ?> environment) throws IOException {
-        System.out.println("I was called!");
-        if ("remoting".equals(serviceURL.getProtocol())) {
+        if ("remote".equals(serviceURL.getProtocol())) {
             return new RemotingConnector(serviceURL, environment);
         }
 

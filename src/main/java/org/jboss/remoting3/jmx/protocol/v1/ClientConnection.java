@@ -193,7 +193,7 @@ class ClientConnection extends Common implements VersionedConnection {
 
     /**
      * Get the next correlation ID, returning to the beginning once all integers have been used.
-     *
+     * <p/>
      * THIS METHOD IS NOT TO BE USED DIRECTLY WHERE A CORRELATION ID NEEDS TO BE RESERVED.
      *
      * @return The next correlationId.
@@ -320,7 +320,7 @@ class ClientConnection extends Common implements VersionedConnection {
                         throw future.getException();
                     case DONE:
                         TypeExceptionHolder<ObjectInstance> response = future.get();
-                        if (response.value != null) {
+                        if (response.e == null) {
                             return response.value;
                         }
                         reflectionException(response.e);
@@ -329,9 +329,9 @@ class ClientConnection extends Common implements VersionedConnection {
                         mbeanException(response.e);
                         notCompliantMBeanException(response.e);
                         ioException(response.e);
-                        // Allow fall through to default if no response and exception not thrown by this point.
+                        throw new RuntimeException(response.e);
                     default:
-                        throw new IOException("Unable to obtain isRegistered, status=" + result.toString());
+                        throw new IOException("Unable to obtain createMBean, status=" + result.toString());
                 }
             } finally {
                 releaseCorrelationId(correlationId);
@@ -370,7 +370,7 @@ class ClientConnection extends Common implements VersionedConnection {
                         throw future.getException();
                     case DONE:
                         TypeExceptionHolder<ObjectInstance> response = future.get();
-                        if (response.value != null) {
+                        if (response.e == null) {
                             return response.value;
                         }
                         reflectionException(response.e);
@@ -431,7 +431,7 @@ class ClientConnection extends Common implements VersionedConnection {
                         throw future.getException();
                     case DONE:
                         TypeExceptionHolder<ObjectInstance> response = future.get();
-                        if (response.value != null) {
+                        if (response.e == null) {
                             return response.value;
                         }
                         reflectionException(response.e);
@@ -440,9 +440,9 @@ class ClientConnection extends Common implements VersionedConnection {
                         mbeanException(response.e);
                         notCompliantMBeanException(response.e);
                         ioException(response.e);
-                        // Allow fall through to default if no response and exception not thrown by this point.
+                        throw new RuntimeException(response.e);
                     default:
-                        throw new IOException("Unable to obtain isRegistered, status=" + result.toString());
+                        throw new IOException("Unable to invoke createMBean, status=" + result.toString());
                 }
             } finally {
                 releaseCorrelationId(correlationId);
@@ -493,7 +493,7 @@ class ClientConnection extends Common implements VersionedConnection {
                         throw future.getException();
                     case DONE:
                         TypeExceptionHolder<ObjectInstance> response = future.get();
-                        if (response.value != null) {
+                        if (response.e == null) {
                             return response.value;
                         }
                         reflectionException(response.e);
@@ -502,9 +502,9 @@ class ClientConnection extends Common implements VersionedConnection {
                         mbeanException(response.e);
                         notCompliantMBeanException(response.e);
                         ioException(response.e);
-                        // Allow fall through to default if no response and exception not thrown by this point.
+                        throw new RuntimeException(response.e);
                     default:
-                        throw new IOException("Unable to obtain isRegistered, status=" + result.toString());
+                        throw new IOException("Unable to invoke createMBean, status=" + result.toString());
                 }
             } finally {
                 releaseCorrelationId(correlationId);
@@ -567,14 +567,14 @@ class ClientConnection extends Common implements VersionedConnection {
                         throw future.getException();
                     case DONE:
                         TypeExceptionHolder<ObjectInstance> response = future.get();
-                        if (response.value != null) {
+                        if (response.e == null) {
                             return response.value;
                         }
                         instanceNotFoundException(response.e);
                         ioException(response.e);
-                        // Allow fall through to default if no response and exception not thrown by this point.
+                        throw new RuntimeException(response.e);
                     default:
-                        throw new IOException("Unable to obtain isRegistered, status=" + result.toString());
+                        throw new IOException("Unable to invoke getObjectInstance, status=" + result.toString());
                 }
             } finally {
                 releaseCorrelationId(correlationId);
@@ -606,7 +606,7 @@ class ClientConnection extends Common implements VersionedConnection {
                     case DONE:
                         return future.get();
                     default:
-                        throw new IOException("Unable to obtain isRegistered, status=" + result.toString());
+                        throw new IOException("Unable to invoke queryMBeans, status=" + result.toString());
                 }
             } finally {
                 releaseCorrelationId(correlationId);
@@ -722,7 +722,7 @@ class ClientConnection extends Common implements VersionedConnection {
                         throw future.getException();
                     case DONE:
                         TypeExceptionHolder<Object> response = future.get();
-                        if (response.value != null) {
+                        if (response.e == null) {
                             return response.value;
                         }
                         mbeanException(response.e);
@@ -730,7 +730,7 @@ class ClientConnection extends Common implements VersionedConnection {
                         instanceNotFoundException(response.e);
                         reflectionException(response.e);
                         ioException(response.e);
-                        // Allow fall through to default if no response and exception not thrown by this point.
+                        throw new RuntimeException(response.e);
                     default:
                         throw new IOException("Unable to obtain isRegistered, status=" + result.toString());
                 }
@@ -767,15 +767,15 @@ class ClientConnection extends Common implements VersionedConnection {
                         throw future.getException();
                     case DONE:
                         TypeExceptionHolder<AttributeList> response = future.get();
-                        if (response.value != null) {
+                        if (response.e == null) {
                             return response.value;
                         }
                         instanceNotFoundException(response.e);
                         reflectionException(response.e);
                         ioException(response.e);
-                        // Allow fall through to default if no response and exception not thrown by this point.
+                        throw new RuntimeException(response.e);
                     default:
-                        throw new IOException("Unable to obtain isRegistered, status=" + result.toString());
+                        throw new IOException("Unable to invoke getAttributes, status=" + result.toString());
                 }
             } finally {
                 releaseCorrelationId(correlationId);
@@ -849,15 +849,15 @@ class ClientConnection extends Common implements VersionedConnection {
                         throw future.getException();
                     case DONE:
                         TypeExceptionHolder<AttributeList> response = future.get();
-                        if (response.value != null) {
+                        if (response.e == null) {
                             return response.value;
                         }
                         instanceNotFoundException(response.e);
                         reflectionException(response.e);
                         ioException(response.e);
-                        // Allow fall through to default if no response and exception not thrown by this point.
+                        throw new RuntimeException(response.e);
                     default:
-                        throw new IOException("Unable to obtain isRegistered, status=" + result.toString());
+                        throw new IOException("Unable to invoke setAttributes, status=" + result.toString());
                 }
             } finally {
                 releaseCorrelationId(correlationId);
@@ -881,15 +881,23 @@ class ClientConnection extends Common implements VersionedConnection {
                 marshaller.writeUTF(operationName);
 
                 marshaller.writeByte(OBJECT_ARRAY);
-                marshaller.writeInt(params.length);
-                for (Object current : params) {
-                    marshaller.writeObject(current);
+                if (params != null) {
+                    marshaller.writeInt(params.length);
+                    for (Object current : params) {
+                        marshaller.writeObject(current);
+                    }
+                } else {
+                    marshaller.writeInt(0);
                 }
 
                 marshaller.writeByte(STRING_ARRAY);
-                marshaller.writeInt(signature.length);
-                for (String current : signature) {
-                    marshaller.writeUTF(current);
+                if (signature != null) {
+                    marshaller.writeInt(signature.length);
+                    for (String current : signature) {
+                        marshaller.writeUTF(current);
+                    }
+                } else {
+                    marshaller.writeInt(0);
                 }
 
                 marshaller.close();
@@ -901,16 +909,16 @@ class ClientConnection extends Common implements VersionedConnection {
                         throw future.getException();
                     case DONE:
                         TypeExceptionHolder<Object> response = future.get();
-                        if (response.value != null) {
+                        if (response.e == null) {
                             return response.value;
                         }
                         instanceNotFoundException(response.e);
                         mbeanException(response.e);
                         reflectionException(response.e);
                         ioException(response.e);
-                        // Allow fall through to default if no response and exception not thrown by this point.
+                        throw new RuntimeException(response.e);
                     default:
-                        throw new IOException("Unable to obtain isRegistered, status=" + result.toString());
+                        throw new IOException("Unable to invoke invoke(), status=" + result.toString());
                 }
             } finally {
                 releaseCorrelationId(correlationId);
@@ -1023,14 +1031,14 @@ class ClientConnection extends Common implements VersionedConnection {
                         throw future.getException();
                     case DONE:
                         TypeExceptionHolder<MBeanInfo> response = future.get();
-                        if (response.value != null) {
+                        if (response.e == null) {
                             return response.value;
                         }
                         instanceNotFoundException(response.e);
                         introspectionException(response.e);
                         reflectionException(response.e);
                         ioException(response.e);
-                        // Allow fall through to default if no response and exception not thrown by this point.
+                        throw new RuntimeException(response.e);
                     default:
                         throw new IOException("Unable to obtain isRegistered, status=" + result.toString());
                 }
@@ -1062,12 +1070,12 @@ class ClientConnection extends Common implements VersionedConnection {
                         throw future.getException();
                     case DONE:
                         TypeExceptionHolder<Boolean> response = future.get();
-                        if (response.value != null) {
+                        if (response.e == null) {
                             return response.value;
                         }
                         instanceNotFoundException(response.e);
                         ioException(response.e);
-                        // Allow fall through to default if no response and exception not thrown by this point.
+                        throw new RuntimeException(response.e);
                     default:
                         throw new IOException("Unable to obtain isRegistered, status=" + result.toString());
                 }

@@ -49,7 +49,7 @@ import org.xnio.channels.ConnectedStreamChannel;
 
 /**
  * A test server to test exposing the local MBeanServer using Remoting.
- * 
+ *
  * @author <a href="mailto:darran.lofthouse@jboss.com">Darran Lofthouse</a>
  */
 public class JMXRemotingServer {
@@ -70,7 +70,7 @@ public class JMXRemotingServer {
 
     /**
      * Constructor to instantiate a JMXRemotingServer with a specified listener port.
-     * 
+     *
      * @param port
      */
     public JMXRemotingServer(final int port) {
@@ -122,7 +122,7 @@ public class JMXRemotingServer {
         }
         JMXRemotingServer server = new JMXRemotingServer(port);
         server.start();
-        
+
         System.out.println("Connect Using URL service:jmx:remoting://localhost:12345");
     }
 

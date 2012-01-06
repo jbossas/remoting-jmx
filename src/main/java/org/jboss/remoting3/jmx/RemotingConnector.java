@@ -40,6 +40,7 @@ import javax.security.auth.callback.Callback;
 import javax.security.auth.callback.CallbackHandler;
 import javax.security.auth.callback.NameCallback;
 import javax.security.auth.callback.UnsupportedCallbackException;
+import javax.security.sasl.RealmCallback;
 
 import org.jboss.logging.Logger;
 import org.jboss.remoting3.Channel;
@@ -122,10 +123,17 @@ class RemotingConnector implements JMXConnector {
         // TODO - Supported environment properties.
         // The credentials.
         // Connection timeout - maybe a total timeout? Reducing on each await.
+        CallbackHandler handler = null;
+        if (env != null) {
+            handler = (CallbackHandler) env.get(CallbackHandler.class.getName());
+        }
+        if (handler == null) {
+            handler = new AnonymousCallbackHandler();
+        }
 
         // open a connection
-        final IoFuture<Connection> futureConnection = endpoint.connect(convert(serviceUrl),
-                OptionMap.create(Options.SASL_POLICY_NOANONYMOUS, Boolean.FALSE), new AnonymousCallbackHandler());
+        final IoFuture<Connection> futureConnection = endpoint.connect(convert(serviceUrl), OptionMap.create(
+                Options.SASL_POLICY_NOANONYMOUS, Boolean.FALSE, Options.SASL_POLICY_NOPLAINTEXT, Boolean.FALSE), handler);
         IoFuture.Status result = futureConnection.await(5, TimeUnit.SECONDS);
 
         if (result == IoFuture.Status.DONE) {
@@ -220,7 +228,10 @@ class RemotingConnector implements JMXConnector {
             for (Callback current : callbacks) {
                 if (current instanceof NameCallback) {
                     NameCallback ncb = (NameCallback) current;
-                    ncb.setName("anonymous");
+                    ncb.setName("$local");
+                } else if (current instanceof RealmCallback) {
+                    RealmCallback realmCallback = (RealmCallback) current;
+                    realmCallback.setText(realmCallback.getDefaultText());
                 } else {
                     throw new UnsupportedCallbackException(current);
                 }
