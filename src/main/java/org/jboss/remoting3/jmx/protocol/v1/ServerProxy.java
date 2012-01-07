@@ -58,7 +58,7 @@ import static org.jboss.remoting3.jmx.protocol.v1.Constants.UNREGISTER_MBEAN;
 
 import java.io.DataInput;
 import java.io.DataInputStream;
-import java.io.DataOutputStream;
+import java.io.DataOutput;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
@@ -68,11 +68,19 @@ import java.util.UUID;
 
 import javax.management.Attribute;
 import javax.management.AttributeList;
+import javax.management.AttributeNotFoundException;
+import javax.management.InstanceAlreadyExistsException;
 import javax.management.InstanceNotFoundException;
+import javax.management.IntrospectionException;
+import javax.management.InvalidAttributeValueException;
+import javax.management.MBeanException;
 import javax.management.MBeanInfo;
+import javax.management.MBeanRegistrationException;
+import javax.management.NotCompliantMBeanException;
 import javax.management.ObjectInstance;
 import javax.management.ObjectName;
 import javax.management.QueryExp;
+import javax.management.ReflectionException;
 
 import org.jboss.logging.Logger;
 import org.jboss.marshalling.Marshaller;
@@ -99,6 +107,7 @@ class ServerProxy extends Common implements VersionedProxy {
     private final Map<Byte, Common.MessageHandler> handlerRegistry;
 
     ServerProxy(final Channel channel, final RemotingConnectorServer server) {
+        super(channel);
         this.channel = channel;
         this.server = server;
         this.handlerRegistry = createHandlerRegistry();
@@ -138,14 +147,15 @@ class ServerProxy extends Common implements VersionedProxy {
     }
 
     private void sendConnectionId() throws IOException {
-        DataOutputStream dos = new DataOutputStream(channel.writeMessage());
-        try {
-            dos.writeBytes("JMX");
-            dos.writeUTF(connectionId.toString());
-        } finally {
-            dos.close();
-            log.tracef("Written connectionId %s", connectionId.toString());
-        }
+        write(new MessageWriter() {
+
+            @Override
+            public void write(DataOutput output) throws IOException {
+                output.writeBytes("JMX");
+                output.writeUTF(connectionId.toString());
+            }
+        });
+        log.tracef("Written connectionId %s", connectionId.toString());
     }
 
     public String getConnectionId() {
@@ -181,26 +191,14 @@ class ServerProxy extends Common implements VersionedProxy {
                             }
                         }
 
-                        private void sendIOException(IOException e) {
-                            DataOutputStream dos = null;
-
+                        private void sendIOException(final IOException e) {
                             try {
-                                dos = new DataOutputStream(channel.writeMessage());
-                                dos.writeByte(messageId ^ RESPONSE_MASK);
-                                dos.writeInt(correlationId);
-                                dos.writeByte(FAILURE);
-                                dos.writeByte(EXCEPTION);
-
-                                Marshaller marshaller = prepareForMarshalling(dos);
-                                marshaller.writeObject(e);
-                                marshaller.finish();
+                                writeResponse(e, messageId, correlationId);
 
                                 log.tracef("[%d] %h - Success Response Sent", correlationId, messageId);
                             } catch (IOException ioe) {
                                 // Here there is nothing left we can do, we know we can not sent to the client though.
                                 log.error(ioe);
-                            } finally {
-                                IoUtils.safeClose(dos);
                             }
                         }
 
@@ -232,10 +230,123 @@ class ServerProxy extends Common implements VersionedProxy {
 
     }
 
+    private void writeResponse(final byte inResponseTo, final int correlationId) throws IOException {
+        write(new MessageWriter() {
+
+            @Override
+            public void write(DataOutput output) throws IOException {
+                output.writeByte(inResponseTo ^ RESPONSE_MASK);
+                output.writeInt(correlationId);
+                output.writeByte(SUCCESS);
+            }
+        });
+
+    }
+
+    private void writeResponse(final Exception e, final byte inResponseTo, final int correlationId) throws IOException {
+        write(new MessageWriter() {
+
+            @Override
+            public void write(DataOutput output) throws IOException {
+                output.writeByte(inResponseTo ^ RESPONSE_MASK);
+                output.writeInt(correlationId);
+                output.writeByte(FAILURE);
+                output.writeByte(EXCEPTION);
+
+                Marshaller marshaller = prepareForMarshalling(output);
+                marshaller.writeObject(e);
+                marshaller.finish();
+            }
+        });
+
+    }
+
+    private void writeResponse(final boolean response, final byte inResponseTo, final int correlationId) throws IOException {
+        write(new MessageWriter() {
+
+            @Override
+            public void write(DataOutput output) throws IOException {
+                output.writeByte(inResponseTo ^ RESPONSE_MASK);
+                output.writeInt(correlationId);
+                output.writeByte(SUCCESS);
+                output.writeByte(BOOLEAN);
+                output.writeBoolean(response);
+            }
+        });
+
+    }
+
+    private void writeResponse(final Integer response, final byte inResponseTo, final int correlationId) throws IOException {
+        write(new MessageWriter() {
+
+            @Override
+            public void write(DataOutput output) throws IOException {
+                output.writeByte(inResponseTo ^ RESPONSE_MASK);
+                output.writeInt(correlationId);
+                output.writeByte(SUCCESS);
+                output.writeByte(INTEGER);
+                output.writeInt(response);
+            }
+        });
+
+    }
+
+    private void writeResponse(final Object response, final byte type, final byte inResponseTo, final int correlationId)
+            throws IOException {
+        write(new MessageWriter() {
+
+            @Override
+            public void write(DataOutput output) throws IOException {
+                output.writeByte(inResponseTo ^ RESPONSE_MASK);
+                output.writeInt(correlationId);
+                output.writeByte(SUCCESS);
+                output.writeByte(type);
+
+                Marshaller marshaller = prepareForMarshalling(output);
+                marshaller.writeObject(response);
+                marshaller.finish();
+            }
+        });
+
+    }
+
+    private void writeResponse(final String response, final byte inResponseTo, final int correlationId) throws IOException {
+        write(new MessageWriter() {
+
+            @Override
+            public void write(DataOutput output) throws IOException {
+                output.writeByte(inResponseTo ^ RESPONSE_MASK);
+                output.writeInt(correlationId);
+                output.writeByte(SUCCESS);
+                output.writeByte(STRING);
+                output.writeUTF(response);
+            }
+        });
+
+    }
+
+    private void writeResponse(final String[] response, final byte inResponseTo, final int correlationId) throws IOException {
+        write(new MessageWriter() {
+
+            @Override
+            public void write(DataOutput output) throws IOException {
+                output.writeByte(inResponseTo ^ RESPONSE_MASK);
+                output.writeInt(correlationId);
+                output.writeByte(SUCCESS);
+                output.writeByte(STRING_ARRAY);
+                output.writeInt(response.length);
+                for (String currentDomain : response) {
+                    output.writeUTF(currentDomain);
+                }
+            }
+        });
+
+    }
+
     private class CreateMBeanHandler implements Common.MessageHandler {
 
         @Override
-        public void handle(DataInput input, int correlationId) throws IOException {
+        public void handle(DataInput input, final int correlationId) throws IOException {
             log.trace("CreateMBean");
             byte paramType = input.readByte();
             if (paramType != INTEGER) {
@@ -306,9 +417,8 @@ class ServerProxy extends Common implements VersionedProxy {
                 }
             }
 
-            DataOutputStream dos = null;
             try {
-                ObjectInstance instance;
+                final ObjectInstance instance;
                 switch (paramCount) {
                     case 2:
                         instance = server.getMBeanServer().createMBean(className, name);
@@ -326,90 +436,55 @@ class ServerProxy extends Common implements VersionedProxy {
                         throw new IOException("Unable to identify correct create method to call.");
                 }
 
-                dos = new DataOutputStream(channel.writeMessage());
-                dos.writeByte(CREATE_MBEAN ^ RESPONSE_MASK);
-                dos.writeInt(correlationId);
-                dos.writeByte(SUCCESS);
-                dos.writeByte(OBJECT_INSTANCE);
-
-                Marshaller marshaller = prepareForMarshalling(dos);
-                marshaller.writeObject(instance);
-                marshaller.finish();
+                writeResponse(instance, OBJECT_INSTANCE, CREATE_MBEAN, correlationId);
 
                 log.tracef("[%d] CreateMBean - Success Response Sent", correlationId);
-            } catch (Exception e) {
-                dos = new DataOutputStream(channel.writeMessage());
-                dos.writeByte(UNREGISTER_MBEAN ^ RESPONSE_MASK);
-                dos.writeInt(correlationId);
-                dos.writeByte(FAILURE);
-                dos.writeByte(EXCEPTION);
-
-                if (e instanceof RuntimeException) {
-                    // We only want to send back the known checked exceptions.
-                    log.error(e);
-                    e = new IOException("Unexpected internal failure.");
-                }
-
-                Marshaller marshaller = prepareForMarshalling(dos);
-                marshaller.writeObject(e);
-                marshaller.finish();
-
+            } catch (InstanceAlreadyExistsException e) {
+                writeResponse(e, CREATE_MBEAN, correlationId);
                 log.tracef("[%d] CreateMBean - Failure Response Sent", correlationId);
-            } finally {
-                IoUtils.safeClose(dos);
+            } catch (NotCompliantMBeanException e) {
+                writeResponse(e, CREATE_MBEAN, correlationId);
+                log.tracef("[%d] CreateMBean - Failure Response Sent", correlationId);
+            } catch (MBeanException e) {
+                writeResponse(e, CREATE_MBEAN, correlationId);
+                log.tracef("[%d] CreateMBean - Failure Response Sent", correlationId);
+            } catch (ReflectionException e) {
+                writeResponse(e, CREATE_MBEAN, correlationId);
+                log.tracef("[%d] CreateMBean - Failure Response Sent", correlationId);
+            } catch (InstanceNotFoundException e) {
+                writeResponse(e, CREATE_MBEAN, correlationId);
+                log.tracef("[%d] CreateMBean - Failure Response Sent", correlationId);
             }
+
+            log.tracef("[%d] CreateMBean - Failure Response Sent", correlationId);
         }
     }
 
     private class GetDefaultDomainHandler implements Common.MessageHandler {
 
         @Override
-        public void handle(DataInput input, int correlationId) throws IOException {
+        public void handle(DataInput input, final int correlationId) throws IOException {
             log.trace("GetDefaultDomain");
 
-            String defaultDomain = server.getMBeanServer().getDefaultDomain();
+            final String defaultDomain = server.getMBeanServer().getDefaultDomain();
 
-            DataOutputStream dos = new DataOutputStream(channel.writeMessage());
-            try {
-                dos.writeByte(GET_DEFAULT_DOMAIN ^ RESPONSE_MASK);
-                dos.writeInt(correlationId);
-                dos.writeByte(SUCCESS);
-                dos.writeByte(STRING);
-                dos.writeUTF(defaultDomain);
+            writeResponse(defaultDomain, GET_DEFAULT_DOMAIN, correlationId);
 
-                log.tracef("[%d] CreateMBean - Success Response Sent", correlationId);
-            } finally {
-                IoUtils.safeClose(dos);
-            }
-
+            log.tracef("[%d] CreateMBean - Success Response Sent", correlationId);
         }
-
     }
 
     private class GetDomainsHandler implements Common.MessageHandler {
 
         @Override
-        public void handle(DataInput input, int correlationId) throws IOException {
+        public void handle(DataInput input, final int correlationId) throws IOException {
             log.trace("GetDomains");
 
-            String[] domains = server.getMBeanServer().getDomains();
+            final String[] domains = server.getMBeanServer().getDomains();
 
-            DataOutputStream dos = new DataOutputStream(channel.writeMessage());
-            try {
-                dos.writeByte(GET_DOMAINS ^ RESPONSE_MASK);
-                dos.writeInt(correlationId);
-                dos.writeByte(SUCCESS);
-                dos.writeByte(STRING_ARRAY);
-                dos.writeInt(domains.length);
-                for (String currentDomain : domains) {
-                    dos.writeUTF(currentDomain);
-                }
+            writeResponse(domains, GET_DOMAINS, correlationId);
 
-                log.tracef("[%d] GetDomains - Success Response Sent", correlationId);
-            } finally {
-                IoUtils.safeClose(dos);
-            }
-
+            log.tracef("[%d] GetDomains - Success Response Sent", correlationId);
         }
 
     }
@@ -417,24 +492,14 @@ class ServerProxy extends Common implements VersionedProxy {
     private class GetMBeanCountHandler implements Common.MessageHandler {
 
         @Override
-        public void handle(DataInput input, int correlationId) throws IOException {
+        public void handle(DataInput input, final int correlationId) throws IOException {
             log.trace("GetMBeanCount");
 
-            Integer count = server.getMBeanServer().getMBeanCount();
+            final Integer count = server.getMBeanServer().getMBeanCount();
 
-            DataOutputStream dos = new DataOutputStream(channel.writeMessage());
-            try {
-                dos.writeByte(GET_MBEAN_COUNT ^ RESPONSE_MASK);
-                dos.writeInt(correlationId);
-                dos.writeByte(SUCCESS);
-                dos.writeByte(INTEGER);
-                dos.writeInt(count);
+            writeResponse(count, GET_MBEAN_COUNT, correlationId);
 
-                log.tracef("[%d] GetMBeanCount - Success Response Sent", correlationId);
-            } finally {
-                IoUtils.safeClose(dos);
-            }
-
+            log.tracef("[%d] GetMBeanCount - Success Response Sent", correlationId);
         }
 
     }
@@ -442,7 +507,7 @@ class ServerProxy extends Common implements VersionedProxy {
     private class GetAttributeHandler implements Common.MessageHandler {
 
         @Override
-        public void handle(DataInput input, int correlationId) throws IOException {
+        public void handle(DataInput input, final int correlationId) throws IOException {
             log.trace("GetAttribute");
 
             byte paramType = input.readByte();
@@ -465,40 +530,24 @@ class ServerProxy extends Common implements VersionedProxy {
             }
             String attribute = unmarshaller.readUTF();
 
-            DataOutputStream dos = null;
             try {
-                Object attributeValue = server.getMBeanServer().getAttribute(objectName, attribute);
-                dos = new DataOutputStream(channel.writeMessage());
-                dos.writeByte(GET_ATTRIBUTE ^ RESPONSE_MASK);
-                dos.writeInt(correlationId);
-                dos.writeByte(SUCCESS);
+                final Object attributeValue = server.getMBeanServer().getAttribute(objectName, attribute);
 
-                dos.writeByte(OBJECT);
-                Marshaller marshaller = prepareForMarshalling(dos);
-                marshaller.writeObject(attributeValue);
-                marshaller.finish();
+                writeResponse(attributeValue, OBJECT, GET_ATTRIBUTE, correlationId);
 
                 log.tracef("[%d] GetAttribute - Success Response Sent", correlationId);
-            } catch (Exception e) {
-                dos = new DataOutputStream(channel.writeMessage());
-                dos.writeByte(GET_ATTRIBUTE ^ RESPONSE_MASK);
-                dos.writeInt(correlationId);
-                dos.writeByte(FAILURE);
-                dos.writeByte(EXCEPTION);
-
-                if (e instanceof RuntimeException) {
-                    // We only want to send back the known checked exceptions.
-                    log.error(e);
-                    e = new IOException("Unexpected internal failure.");
-                }
-
-                Marshaller marshaller = prepareForMarshalling(dos);
-                marshaller.writeObject(e);
-                marshaller.finish();
-
+            } catch (AttributeNotFoundException e) {
+                writeResponse(e, GET_ATTRIBUTE, correlationId);
                 log.tracef("[%d] GetAttribute - Failure Response Sent", correlationId);
-            } finally {
-                IoUtils.safeClose(dos);
+            } catch (InstanceNotFoundException e) {
+                writeResponse(e, GET_ATTRIBUTE, correlationId);
+                log.tracef("[%d] GetAttribute - Failure Response Sent", correlationId);
+            } catch (MBeanException e) {
+                writeResponse(e, GET_ATTRIBUTE, correlationId);
+                log.tracef("[%d] GetAttribute - Failure Response Sent", correlationId);
+            } catch (ReflectionException e) {
+                writeResponse(e, GET_ATTRIBUTE, correlationId);
+                log.tracef("[%d] GetAttribute - Failure Response Sent", correlationId);
             }
         }
     }
@@ -533,40 +582,19 @@ class ServerProxy extends Common implements VersionedProxy {
                 attributes[i] = unmarshaller.readUTF();
             }
 
-            DataOutputStream dos = null;
             try {
                 AttributeList attributeValues = server.getMBeanServer().getAttributes(objectName, attributes);
-                dos = new DataOutputStream(channel.writeMessage());
-                dos.writeByte(GET_ATTRIBUTES ^ RESPONSE_MASK);
-                dos.writeInt(correlationId);
-                dos.writeByte(SUCCESS);
 
-                dos.writeByte(ATTRIBUTE_LIST);
-                Marshaller marshaller = prepareForMarshalling(dos);
-                marshaller.writeObject(attributeValues);
-                marshaller.finish();
+                writeResponse(attributeValues, ATTRIBUTE_LIST, GET_ATTRIBUTES, correlationId);
 
                 log.tracef("[%d] GetAttributes - Success Response Sent", correlationId);
-            } catch (Exception e) {
-                dos = new DataOutputStream(channel.writeMessage());
-                dos.writeByte(GET_ATTRIBUTES ^ RESPONSE_MASK);
-                dos.writeInt(correlationId);
-                dos.writeByte(FAILURE);
-                dos.writeByte(EXCEPTION);
 
-                if (e instanceof RuntimeException) {
-                    // We only want to send back the known checked exceptions.
-                    log.error(e);
-                    e = new IOException("Unexpected internal failure.");
-                }
-
-                Marshaller marshaller = prepareForMarshalling(dos);
-                marshaller.writeObject(e);
-                marshaller.finish();
-
+            } catch (InstanceNotFoundException e) {
+                writeResponse(e, GET_ATTRIBUTES, correlationId);
                 log.tracef("[%d] GetAttributes - Failure Response Sent", correlationId);
-            } finally {
-                IoUtils.safeClose(dos);
+            } catch (ReflectionException e) {
+                writeResponse(e, GET_ATTRIBUTES, correlationId);
+                log.tracef("[%d] GetAttributes - Failure Response Sent", correlationId);
             }
         }
     }
@@ -591,40 +619,21 @@ class ServerProxy extends Common implements VersionedProxy {
                 throw new IOException(cnfe);
             }
 
-            DataOutputStream dos = null;
             try {
                 MBeanInfo info = server.getMBeanServer().getMBeanInfo(objectName);
-                dos = new DataOutputStream(channel.writeMessage());
-                dos.writeByte(GET_MBEAN_INFO ^ RESPONSE_MASK);
-                dos.writeInt(correlationId);
-                dos.writeByte(SUCCESS);
 
-                dos.writeByte(MBEAN_INFO);
-                Marshaller marshaller = prepareForMarshalling(dos);
-                marshaller.writeObject(info);
-                marshaller.finish();
+                writeResponse(info, MBEAN_INFO, GET_MBEAN_INFO, correlationId);
 
                 log.tracef("[%d] GetMBeanInfo - Success Response Sent", correlationId);
-            } catch (Exception e) {
-                dos = new DataOutputStream(channel.writeMessage());
-                dos.writeByte(GET_MBEAN_INFO ^ RESPONSE_MASK);
-                dos.writeInt(correlationId);
-                dos.writeByte(FAILURE);
-                dos.writeByte(EXCEPTION);
-
-                if (e instanceof RuntimeException) {
-                    // We only want to send back the known checked exceptions.
-                    log.error(e);
-                    e = new IOException("Unexpected internal failure.");
-                }
-
-                Marshaller marshaller = prepareForMarshalling(dos);
-                marshaller.writeObject(e);
-                marshaller.finish();
-
+            } catch (IntrospectionException e) {
+                writeResponse(e, MBEAN_INFO, correlationId);
                 log.tracef("[%d] GetMBeanInfo - Failure Response Sent", correlationId);
-            } finally {
-                IoUtils.safeClose(dos);
+            } catch (InstanceNotFoundException e) {
+                writeResponse(e, MBEAN_INFO, correlationId);
+                log.tracef("[%d] GetMBeanInfo - Failure Response Sent", correlationId);
+            } catch (ReflectionException e) {
+                writeResponse(e, MBEAN_INFO, correlationId);
+                log.tracef("[%d] GetMBeanInfo - Failure Response Sent", correlationId);
             }
         }
 
@@ -650,33 +659,15 @@ class ServerProxy extends Common implements VersionedProxy {
                 throw new IOException(cnfe);
             }
 
-            DataOutputStream dos = null;
             try {
                 ObjectInstance objectInstance = server.getMBeanServer().getObjectInstance(objectName);
-                dos = new DataOutputStream(channel.writeMessage());
-                dos.writeByte(GET_OBJECT_INSTANCE ^ RESPONSE_MASK);
-                dos.writeInt(correlationId);
-                dos.writeByte(SUCCESS);
-                dos.writeByte(OBJECT_INSTANCE);
-                Marshaller marshaller = prepareForMarshalling(dos);
-                marshaller.writeObject(objectInstance);
-                marshaller.finish();
+
+                writeResponse(objectInstance, OBJECT_INSTANCE, GET_OBJECT_INSTANCE, correlationId);
 
                 log.tracef("[%d] GetObjectInstance - Success Response Sent", correlationId);
             } catch (InstanceNotFoundException e) {
-                dos = new DataOutputStream(channel.writeMessage());
-                dos.writeByte(INSTANCE_OF ^ RESPONSE_MASK);
-                dos.writeInt(correlationId);
-                dos.writeByte(FAILURE);
-                dos.writeByte(EXCEPTION);
-
-                Marshaller marshaller = prepareForMarshalling(dos);
-                marshaller.writeObject(e);
-                marshaller.finish();
-
+                writeResponse(e, GET_OBJECT_INSTANCE, correlationId);
                 log.tracef("[%d] GetObjectInstance - Failure Response Sent", correlationId);
-            } finally {
-                IoUtils.safeClose(dos);
             }
         }
 
@@ -708,31 +699,15 @@ class ServerProxy extends Common implements VersionedProxy {
             }
             String className = unmarshaller.readUTF();
 
-            DataOutputStream dos = null;
             try {
                 boolean instanceOf = server.getMBeanServer().isInstanceOf(objectName, className);
-                dos = new DataOutputStream(channel.writeMessage());
-                dos.writeByte(INSTANCE_OF ^ RESPONSE_MASK);
-                dos.writeInt(correlationId);
-                dos.writeByte(SUCCESS);
-                dos.writeByte(BOOLEAN);
-                dos.writeBoolean(instanceOf);
+
+                writeResponse(instanceOf, INSTANCE_OF, correlationId);
 
                 log.tracef("[%d] IsInstanceOf - Success Response Sent", correlationId);
             } catch (InstanceNotFoundException e) {
-                dos = new DataOutputStream(channel.writeMessage());
-                dos.writeByte(INSTANCE_OF ^ RESPONSE_MASK);
-                dos.writeInt(correlationId);
-                dos.writeByte(FAILURE);
-                dos.writeByte(EXCEPTION);
-
-                Marshaller marshaller = prepareForMarshalling(dos);
-                marshaller.writeObject(e);
-                marshaller.finish();
-
+                writeResponse(e, INSTANCE_OF, correlationId);
                 log.tracef("[%d] IsInstanceOf - Failure Response Sent", correlationId);
-            } finally {
-                IoUtils.safeClose(dos);
             }
         }
 
@@ -760,19 +735,8 @@ class ServerProxy extends Common implements VersionedProxy {
 
             boolean registered = server.getMBeanServer().isRegistered(objectName);
 
-            DataOutputStream dos = new DataOutputStream(channel.writeMessage());
-            try {
-                dos.writeByte(IS_REGISTERED ^ RESPONSE_MASK);
-                dos.writeInt(correlationId);
-                dos.writeByte(SUCCESS);
-                dos.writeByte(BOOLEAN);
-                dos.writeBoolean(registered);
-
-                log.tracef("[%d] IsRegistered - Success Response Sent", correlationId);
-            } finally {
-                IoUtils.safeClose(dos);
-            }
-
+            writeResponse(registered, IS_REGISTERED, correlationId);
+            log.tracef("[%d] IsRegistered - Success Response Sent", correlationId);
         }
     }
 
@@ -825,40 +789,21 @@ class ServerProxy extends Common implements VersionedProxy {
                 throw new IOException(cnfe);
             }
 
-            DataOutputStream dos = null;
             try {
                 Object result = server.getMBeanServer().invoke(objectName, operationName, params, signature);
-                dos = new DataOutputStream(channel.writeMessage());
-                dos.writeByte(INVOKE ^ RESPONSE_MASK);
-                dos.writeInt(correlationId);
-                dos.writeByte(SUCCESS);
 
-                dos.writeByte(OBJECT);
-                Marshaller marshaller = prepareForMarshalling(dos);
-                marshaller.writeObject(result);
-                marshaller.finish();
+                writeResponse(result, OBJECT, INVOKE, correlationId);
 
                 log.tracef("[%d] Invoke - Success Response Sent", correlationId);
-            } catch (Exception e) {
-                dos = new DataOutputStream(channel.writeMessage());
-                dos.writeByte(INVOKE ^ RESPONSE_MASK);
-                dos.writeInt(correlationId);
-                dos.writeByte(FAILURE);
-                dos.writeByte(EXCEPTION);
-
-                if (e instanceof RuntimeException) {
-                    // We only want to send back the known checked exceptions.
-                    log.error(e);
-                    e = new IOException("Unexpected internal failure.");
-                }
-
-                Marshaller marshaller = prepareForMarshalling(dos);
-                marshaller.writeObject(e);
-                marshaller.finish();
-
+            } catch (InstanceNotFoundException e) {
+                writeResponse(e, INVOKE, correlationId);
                 log.tracef("[%d] Invoke - Failure Response Sent", correlationId);
-            } finally {
-                IoUtils.safeClose(dos);
+            } catch (ReflectionException e) {
+                writeResponse(e, INVOKE, correlationId);
+                log.tracef("[%d] Invoke - Failure Response Sent", correlationId);
+            } catch (MBeanException e) {
+                writeResponse(e, INVOKE, correlationId);
+                log.tracef("[%d] Invoke - Failure Response Sent", correlationId);
             }
         }
     }
@@ -891,23 +836,8 @@ class ServerProxy extends Common implements VersionedProxy {
 
             Set<ObjectInstance> instances = server.getMBeanServer().queryMBeans(objectName, query);
 
-            DataOutputStream dos = new DataOutputStream(channel.writeMessage());
-
-            try {
-                dos.writeByte(QUERY_MBEANS ^ RESPONSE_MASK);
-                dos.writeInt(correlationId);
-                dos.writeByte(SUCCESS);
-                dos.writeByte(SET_OBJECT_INSTANCE);
-
-                Marshaller marshaller = prepareForMarshalling(dos);
-                marshaller.writeObject(instances);
-                marshaller.finish();
-
-                log.tracef("[%d] QueryMBeans - Success Response Sent", correlationId);
-            } finally {
-                IoUtils.safeClose(dos);
-            }
-
+            writeResponse(instances, SET_OBJECT_INSTANCE, QUERY_MBEANS, correlationId);
+            log.tracef("[%d] QueryMBeans - Success Response Sent", correlationId);
         }
     }
 
@@ -939,22 +869,9 @@ class ServerProxy extends Common implements VersionedProxy {
 
             Set<ObjectName> instances = server.getMBeanServer().queryNames(objectName, query);
 
-            DataOutputStream dos = new DataOutputStream(channel.writeMessage());
-            try {
-                dos.writeByte(QUERY_NAMES ^ RESPONSE_MASK);
-                dos.writeInt(correlationId);
-                dos.writeByte(SUCCESS);
-                dos.writeByte(SET_OBJECT_NAME);
+            writeResponse(instances, SET_OBJECT_NAME, QUERY_NAMES, correlationId);
 
-                Marshaller marshaller = prepareForMarshalling(dos);
-                marshaller.writeObject(instances);
-                marshaller.finish();
-
-                log.tracef("[%d] QueryNames - Success Response Sent", correlationId);
-            } finally {
-                IoUtils.safeClose(dos);
-            }
-
+            log.tracef("[%d] QueryNames - Success Response Sent", correlationId);
         }
     }
 
@@ -985,35 +902,27 @@ class ServerProxy extends Common implements VersionedProxy {
                 throw new IOException(cnfe);
             }
 
-            DataOutputStream dos = null;
             try {
                 server.getMBeanServer().setAttribute(objectName, attr);
-                dos = new DataOutputStream(channel.writeMessage());
-                dos.writeByte(SET_ATTRIBUTE ^ RESPONSE_MASK);
-                dos.writeInt(correlationId);
-                dos.writeByte(SUCCESS);
+
+                writeResponse(SET_ATTRIBUTE, correlationId);
 
                 log.tracef("[%d] SetAttribute - Success Response Sent", correlationId);
-            } catch (Exception e) {
-                dos = new DataOutputStream(channel.writeMessage());
-                dos.writeByte(SET_ATTRIBUTE ^ RESPONSE_MASK);
-                dos.writeInt(correlationId);
-                dos.writeByte(FAILURE);
-                dos.writeByte(EXCEPTION);
-
-                if (e instanceof RuntimeException) {
-                    // We only want to send back the known checked exceptions.
-                    log.error(e);
-                    e = new IOException("Unexpected internal failure.");
-                }
-
-                Marshaller marshaller = prepareForMarshalling(dos);
-                marshaller.writeObject(e);
-                marshaller.finish();
-
+            } catch (InstanceNotFoundException e) {
+                writeResponse(e, SET_ATTRIBUTE, correlationId);
                 log.tracef("[%d] SetAttribute - Failure Response Sent", correlationId);
-            } finally {
-                IoUtils.safeClose(dos);
+            } catch (InvalidAttributeValueException e) {
+                writeResponse(e, SET_ATTRIBUTE, correlationId);
+                log.tracef("[%d] SetAttribute - Failure Response Sent", correlationId);
+            } catch (AttributeNotFoundException e) {
+                writeResponse(e, SET_ATTRIBUTE, correlationId);
+                log.tracef("[%d] SetAttribute - Failure Response Sent", correlationId);
+            } catch (ReflectionException e) {
+                writeResponse(e, SET_ATTRIBUTE, correlationId);
+                log.tracef("[%d] SetAttribute - Failure Response Sent", correlationId);
+            } catch (MBeanException e) {
+                writeResponse(e, SET_ATTRIBUTE, correlationId);
+                log.tracef("[%d] SetAttribute - Failure Response Sent", correlationId);
             }
         }
     }
@@ -1045,40 +954,18 @@ class ServerProxy extends Common implements VersionedProxy {
                 throw new IOException(cnfe);
             }
 
-            DataOutputStream dos = null;
             try {
                 AttributeList attributeValues = server.getMBeanServer().setAttributes(objectName, attributes);
-                dos = new DataOutputStream(channel.writeMessage());
-                dos.writeByte(SET_ATTRIBUTES ^ RESPONSE_MASK);
-                dos.writeInt(correlationId);
-                dos.writeByte(SUCCESS);
 
-                dos.writeByte(ATTRIBUTE_LIST);
-                Marshaller marshaller = prepareForMarshalling(dos);
-                marshaller.writeObject(attributeValues);
-                marshaller.finish();
+                writeResponse(attributeValues, ATTRIBUTE_LIST, SET_ATTRIBUTES, correlationId);
 
                 log.tracef("[%d] SetAttributes - Success Response Sent", correlationId);
-            } catch (Exception e) {
-                dos = new DataOutputStream(channel.writeMessage());
-                dos.writeByte(SET_ATTRIBUTES ^ RESPONSE_MASK);
-                dos.writeInt(correlationId);
-                dos.writeByte(FAILURE);
-                dos.writeByte(EXCEPTION);
-
-                if (e instanceof RuntimeException) {
-                    // We only want to send back the known checked exceptions.
-                    log.error(e);
-                    e = new IOException("Unexpected internal failure.");
-                }
-
-                Marshaller marshaller = prepareForMarshalling(dos);
-                marshaller.writeObject(e);
-                marshaller.finish();
-
+            } catch (InstanceNotFoundException e) {
+                writeResponse(e, SET_ATTRIBUTES, correlationId);
                 log.tracef("[%d] SetAttributes - Failure Response Sent", correlationId);
-            } finally {
-                IoUtils.safeClose(dos);
+            } catch (ReflectionException e) {
+                writeResponse(e, SET_ATTRIBUTES, correlationId);
+                log.tracef("[%d] SetAttributes - Failure Response Sent", correlationId);
             }
         }
     }
@@ -1103,35 +990,18 @@ class ServerProxy extends Common implements VersionedProxy {
                 throw new IOException(cnfe);
             }
 
-            DataOutputStream dos = null;
             try {
                 server.getMBeanServer().unregisterMBean(objectName);
-                dos = new DataOutputStream(channel.writeMessage());
-                dos.writeByte(UNREGISTER_MBEAN ^ RESPONSE_MASK);
-                dos.writeInt(correlationId);
-                dos.writeByte(SUCCESS);
+
+                writeResponse(UNREGISTER_MBEAN, correlationId);
 
                 log.tracef("[%d] UnregisterMBean - Success Response Sent", correlationId);
-            } catch (Exception e) {
-                dos = new DataOutputStream(channel.writeMessage());
-                dos.writeByte(UNREGISTER_MBEAN ^ RESPONSE_MASK);
-                dos.writeInt(correlationId);
-                dos.writeByte(FAILURE);
-                dos.writeByte(EXCEPTION);
-
-                if (e instanceof RuntimeException) {
-                    // We only want to send back the known checked exceptions.
-                    log.error(e);
-                    e = new IOException("Unexpected internal failure.");
-                }
-
-                Marshaller marshaller = prepareForMarshalling(dos);
-                marshaller.writeObject(e);
-                marshaller.finish();
-
+            } catch (MBeanRegistrationException e) {
+                writeResponse(e, UNREGISTER_MBEAN, correlationId);
                 log.tracef("[%d] UnregisterMBean - Failure Response Sent", correlationId);
-            } finally {
-                IoUtils.safeClose(dos);
+            } catch (InstanceNotFoundException e) {
+                writeResponse(e, UNREGISTER_MBEAN, correlationId);
+                log.tracef("[%d] UnregisterMBean - Failure Response Sent", correlationId);
             }
         }
 

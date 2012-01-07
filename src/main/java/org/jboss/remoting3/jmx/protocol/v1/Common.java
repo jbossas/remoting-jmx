@@ -39,6 +39,9 @@ import org.jboss.marshalling.MarshallerFactory;
 import org.jboss.marshalling.Marshalling;
 import org.jboss.marshalling.MarshallingConfiguration;
 import org.jboss.marshalling.Unmarshaller;
+import org.jboss.remoting3.Channel;
+import org.jboss.remoting3.jmx.protocol.CancellableDataOutputStream;
+import org.xnio.IoUtils;
 
 /**
  * The common base class for both sides of the connection.
@@ -49,18 +52,19 @@ import org.jboss.marshalling.Unmarshaller;
  */
 abstract class Common {
 
+    private final Channel channel;
     // TODO - Optionally use a provided executor or at least allow config of number of threads.
     protected final Executor executor = Executors.newFixedThreadPool(10);
 
     private final MarshallerFactory marshallerFactory;
 
-    Common() {
+    Common(Channel channel) {
         marshallerFactory = Marshalling.getProvidedMarshallerFactory(MARSHALLING_STRATEGY);
         if (marshallerFactory == null) {
             throw new RuntimeException("Could not find a marshaller factory for " + MARSHALLING_STRATEGY
                     + " marshalling strategy");
         }
-
+        this.channel = channel;
     }
 
     /**
@@ -149,6 +153,22 @@ abstract class Common {
         // marshallingConfiguration.setClassResolver(classResolver); -- TODO Add back later.
 
         return marshallerFactory.createUnmarshaller(marshallingConfiguration);
+    }
+
+    protected void write(MessageWriter writer) throws IOException {
+        CancellableDataOutputStream output = new CancellableDataOutputStream(channel.writeMessage());
+        try {
+            writer.write(output);
+        } catch (IOException e) {
+            output.cancel();
+            throw e;
+        } finally {
+            IoUtils.safeClose(output);
+        }
+    }
+
+    interface MessageWriter {
+        void write(DataOutput output) throws IOException;
     }
 
     interface MessageHandler {

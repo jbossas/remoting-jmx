@@ -59,7 +59,7 @@ import static org.jboss.remoting3.jmx.protocol.v1.Constants.VOID;
 
 import java.io.DataInput;
 import java.io.DataInputStream;
-import java.io.DataOutputStream;
+import java.io.DataOutput;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
@@ -120,6 +120,7 @@ class ClientConnection extends Common implements VersionedConnection {
     private final Map<Integer, VersionedIoFuture> requests = new HashMap<Integer, VersionedIoFuture>();
 
     ClientConnection(final Channel channel) {
+        super(channel);
         this.channel = channel;
         handlerRegistry = createHandlerRegistry();
     }
@@ -166,13 +167,13 @@ class ClientConnection extends Common implements VersionedConnection {
     }
 
     private void sendVersionHeader() throws IOException {
-        DataOutputStream dos = new DataOutputStream(channel.writeMessage());
-        try {
-            dos.writeBytes("JMX");
-            dos.writeByte(VersionOne.getVersionIdentifier());
-        } finally {
-            dos.close();
-        }
+        write(new MessageWriter() {
+            @Override
+            public void write(DataOutput output) throws IOException {
+                output.writeBytes("JMX");
+                output.writeByte(VersionOne.getVersionIdentifier());
+            }
+        });
     }
 
     public String getConnectionId() {
@@ -298,29 +299,32 @@ class ClientConnection extends Common implements VersionedConnection {
         // TODO - Consider a proxy so the specific methods only need to marshall their specific
         // portion of the protocol.
 
-        public ObjectInstance createMBean(String className, ObjectName name) throws ReflectionException,
+        public ObjectInstance createMBean(final String className, final ObjectName name) throws ReflectionException,
                 InstanceAlreadyExistsException, MBeanRegistrationException, MBeanException, NotCompliantMBeanException,
                 IOException {
             VersionedIoFuture<TypeExceptionHolder<ObjectInstance>> future = new VersionedIoFuture<TypeExceptionHolder<ObjectInstance>>();
-            int correlationId = reserveNextCorrelationId(future);
+            final int correlationId = reserveNextCorrelationId(future);
             try {
-                DataOutputStream output = new DataOutputStream(channel.writeMessage());
-                output.writeByte(CREATE_MBEAN);
-                output.writeInt(correlationId);
+                write(new MessageWriter() {
+                    @Override
+                    public void write(DataOutput output) throws IOException {
+                        output.writeByte(CREATE_MBEAN);
+                        output.writeInt(correlationId);
 
-                output.writeByte(INTEGER);
-                output.writeInt(2); // Sending 2 parameters.
+                        output.writeByte(INTEGER);
+                        output.writeInt(2); // Sending 2 parameters.
 
-                Marshaller marshaller = prepareForMarshalling(output);
-                marshaller.writeByte(STRING);
-                marshaller.writeUTF(className);
+                        Marshaller marshaller = prepareForMarshalling(output);
+                        marshaller.writeByte(STRING);
+                        marshaller.writeUTF(className);
 
-                marshaller.writeByte(OBJECT_NAME);
+                        marshaller.writeByte(OBJECT_NAME);
 
-                marshaller.writeObject(name);
+                        marshaller.writeObject(name);
 
-                marshaller.close();
-                output.close();
+                        marshaller.close();
+                    }
+                });
 
                 log.tracef("[%d] createMBean - Request Sent", correlationId);
 
@@ -347,31 +351,36 @@ class ClientConnection extends Common implements VersionedConnection {
             }
         }
 
-        public ObjectInstance createMBean(String className, ObjectName name, ObjectName loaderName) throws ReflectionException,
-                InstanceAlreadyExistsException, MBeanRegistrationException, MBeanException, NotCompliantMBeanException,
-                InstanceNotFoundException, IOException {
+        public ObjectInstance createMBean(final String className, final ObjectName name, final ObjectName loaderName)
+                throws ReflectionException, InstanceAlreadyExistsException, MBeanRegistrationException, MBeanException,
+                NotCompliantMBeanException, InstanceNotFoundException, IOException {
             VersionedIoFuture<TypeExceptionHolder<ObjectInstance>> future = new VersionedIoFuture<TypeExceptionHolder<ObjectInstance>>();
-            int correlationId = reserveNextCorrelationId(future);
+            final int correlationId = reserveNextCorrelationId(future);
             try {
-                DataOutputStream output = new DataOutputStream(channel.writeMessage());
-                output.writeByte(CREATE_MBEAN);
-                output.writeInt(correlationId);
+                write(new MessageWriter() {
 
-                output.writeByte(INTEGER);
-                output.writeInt(3); // Sending 3 parameters.
+                    @Override
+                    public void write(DataOutput output) throws IOException {
+                        output.writeByte(CREATE_MBEAN);
+                        output.writeInt(correlationId);
 
-                Marshaller marshaller = prepareForMarshalling(output);
-                marshaller.writeByte(STRING);
-                marshaller.writeUTF(className);
+                        output.writeByte(INTEGER);
+                        output.writeInt(3); // Sending 3 parameters.
 
-                marshaller.writeByte(OBJECT_NAME);
-                marshaller.writeObject(name);
+                        Marshaller marshaller = prepareForMarshalling(output);
+                        marshaller.writeByte(STRING);
+                        marshaller.writeUTF(className);
 
-                marshaller.writeByte(OBJECT_NAME);
-                marshaller.writeObject(loaderName);
+                        marshaller.writeByte(OBJECT_NAME);
+                        marshaller.writeObject(name);
 
-                marshaller.close();
-                output.close();
+                        marshaller.writeByte(OBJECT_NAME);
+                        marshaller.writeObject(loaderName);
+
+                        marshaller.close();
+
+                    }
+                });
 
                 log.tracef("[%d] createMBean - Request Sent", correlationId);
 
@@ -399,41 +408,112 @@ class ClientConnection extends Common implements VersionedConnection {
             }
         }
 
-        public ObjectInstance createMBean(String className, ObjectName name, Object[] params, String[] signature)
-                throws ReflectionException, InstanceAlreadyExistsException, MBeanRegistrationException, MBeanException,
-                NotCompliantMBeanException, IOException {
+        public ObjectInstance createMBean(final String className, final ObjectName name, final Object[] params,
+                final String[] signature) throws ReflectionException, InstanceAlreadyExistsException,
+                MBeanRegistrationException, MBeanException, NotCompliantMBeanException, IOException {
             VersionedIoFuture<TypeExceptionHolder<ObjectInstance>> future = new VersionedIoFuture<TypeExceptionHolder<ObjectInstance>>();
-            int correlationId = reserveNextCorrelationId(future);
+            final int correlationId = reserveNextCorrelationId(future);
             try {
-                DataOutputStream output = new DataOutputStream(channel.writeMessage());
-                output.writeByte(CREATE_MBEAN);
-                output.writeInt(correlationId);
+                write(new MessageWriter() {
 
-                output.writeByte(INTEGER);
-                output.writeInt(4); // Sending 4 parameters.
+                    @Override
+                    public void write(DataOutput output) throws IOException {
+                        output.writeByte(CREATE_MBEAN);
+                        output.writeInt(correlationId);
 
-                Marshaller marshaller = prepareForMarshalling(output);
-                marshaller.writeByte(STRING);
-                marshaller.writeUTF(className);
+                        output.writeByte(INTEGER);
+                        output.writeInt(4); // Sending 4 parameters.
 
-                marshaller.writeByte(OBJECT_NAME);
+                        Marshaller marshaller = prepareForMarshalling(output);
+                        marshaller.writeByte(STRING);
+                        marshaller.writeUTF(className);
 
-                marshaller.writeObject(name);
+                        marshaller.writeByte(OBJECT_NAME);
 
-                marshaller.writeByte(OBJECT_ARRAY);
-                marshaller.writeInt(params.length);
-                for (Object current : params) {
-                    marshaller.writeObject(current);
+                        marshaller.writeObject(name);
+
+                        marshaller.writeByte(OBJECT_ARRAY);
+                        marshaller.writeInt(params.length);
+                        for (Object current : params) {
+                            marshaller.writeObject(current);
+                        }
+
+                        marshaller.writeByte(STRING_ARRAY);
+                        marshaller.writeInt(signature.length);
+                        for (String current : signature) {
+                            marshaller.writeUTF(current);
+                        }
+
+                        marshaller.close();
+                    }
+                });
+                log.tracef("[%d] createMBean - Request Sent", correlationId);
+
+                IoFuture.Status result = future.await(5, TimeUnit.SECONDS);
+                switch (result) {
+                    case FAILED:
+                        throw future.getException();
+                    case DONE:
+                        TypeExceptionHolder<ObjectInstance> response = future.get();
+                        if (response.e == null) {
+                            return response.value;
+                        }
+                        reflectionException(response.e);
+                        instanceAlreadyExistsException(response.e);
+                        mbeanRegistrationException(response.e);
+                        mbeanException(response.e);
+                        notCompliantMBeanException(response.e);
+                        throw toIoException(response.e);
+                    default:
+                        throw new IOException("Unable to invoke createMBean, status=" + result.toString());
                 }
+            } finally {
+                releaseCorrelationId(correlationId);
+            }
+        }
 
-                marshaller.writeByte(STRING_ARRAY);
-                marshaller.writeInt(signature.length);
-                for (String current : signature) {
-                    marshaller.writeUTF(current);
-                }
+        public ObjectInstance createMBean(final String className, final ObjectName name, final ObjectName loaderName,
+                final Object[] params, final String[] signature) throws ReflectionException, InstanceAlreadyExistsException,
+                MBeanRegistrationException, MBeanException, NotCompliantMBeanException, InstanceNotFoundException, IOException {
+            VersionedIoFuture<TypeExceptionHolder<ObjectInstance>> future = new VersionedIoFuture<TypeExceptionHolder<ObjectInstance>>();
+            final int correlationId = reserveNextCorrelationId(future);
+            try {
+                write(new MessageWriter() {
 
-                marshaller.close();
-                output.close();
+                    @Override
+                    public void write(DataOutput output) throws IOException {
+                        output.writeByte(CREATE_MBEAN);
+                        output.writeInt(correlationId);
+
+                        output.writeByte(INTEGER);
+                        output.writeInt(5); // Sending 5 parameters.
+
+                        Marshaller marshaller = prepareForMarshalling(output);
+                        marshaller.writeByte(STRING);
+                        marshaller.writeUTF(className);
+
+                        marshaller.writeByte(OBJECT_NAME);
+                        marshaller.writeObject(name);
+
+                        marshaller.writeByte(OBJECT_NAME);
+                        marshaller.writeObject(loaderName);
+
+                        marshaller.writeByte(OBJECT_ARRAY);
+                        marshaller.writeInt(params.length);
+                        for (Object current : params) {
+                            marshaller.writeObject(current);
+                        }
+
+                        marshaller.writeByte(STRING_ARRAY);
+                        marshaller.writeInt(signature.length);
+                        for (String current : signature) {
+                            marshaller.writeUTF(current);
+                        }
+
+                        marshaller.close();
+
+                    }
+                });
 
                 log.tracef("[%d] createMBean - Request Sent", correlationId);
 
@@ -460,83 +540,25 @@ class ClientConnection extends Common implements VersionedConnection {
             }
         }
 
-        public ObjectInstance createMBean(String className, ObjectName name, ObjectName loaderName, Object[] params,
-                String[] signature) throws ReflectionException, InstanceAlreadyExistsException, MBeanRegistrationException,
-                MBeanException, NotCompliantMBeanException, InstanceNotFoundException, IOException {
-            VersionedIoFuture<TypeExceptionHolder<ObjectInstance>> future = new VersionedIoFuture<TypeExceptionHolder<ObjectInstance>>();
-            int correlationId = reserveNextCorrelationId(future);
-            try {
-                DataOutputStream output = new DataOutputStream(channel.writeMessage());
-                output.writeByte(CREATE_MBEAN);
-                output.writeInt(correlationId);
-
-                output.writeByte(INTEGER);
-                output.writeInt(5); // Sending 5 parameters.
-
-                Marshaller marshaller = prepareForMarshalling(output);
-                marshaller.writeByte(STRING);
-                marshaller.writeUTF(className);
-
-                marshaller.writeByte(OBJECT_NAME);
-                marshaller.writeObject(name);
-
-                marshaller.writeByte(OBJECT_NAME);
-                marshaller.writeObject(loaderName);
-
-                marshaller.writeByte(OBJECT_ARRAY);
-                marshaller.writeInt(params.length);
-                for (Object current : params) {
-                    marshaller.writeObject(current);
-                }
-
-                marshaller.writeByte(STRING_ARRAY);
-                marshaller.writeInt(signature.length);
-                for (String current : signature) {
-                    marshaller.writeUTF(current);
-                }
-
-                marshaller.close();
-                output.close();
-
-                log.tracef("[%d] createMBean - Request Sent", correlationId);
-
-                IoFuture.Status result = future.await(5, TimeUnit.SECONDS);
-                switch (result) {
-                    case FAILED:
-                        throw future.getException();
-                    case DONE:
-                        TypeExceptionHolder<ObjectInstance> response = future.get();
-                        if (response.e == null) {
-                            return response.value;
-                        }
-                        reflectionException(response.e);
-                        instanceAlreadyExistsException(response.e);
-                        mbeanRegistrationException(response.e);
-                        mbeanException(response.e);
-                        notCompliantMBeanException(response.e);
-                        throw toIoException(response.e);
-                    default:
-                        throw new IOException("Unable to invoke createMBean, status=" + result.toString());
-                }
-            } finally {
-                releaseCorrelationId(correlationId);
-            }
-        }
-
-        public void unregisterMBean(ObjectName name) throws InstanceNotFoundException, MBeanRegistrationException, IOException {
+        public void unregisterMBean(final ObjectName name) throws InstanceNotFoundException, MBeanRegistrationException,
+                IOException {
             VersionedIoFuture<TypeExceptionHolder<Void>> future = new VersionedIoFuture<TypeExceptionHolder<Void>>();
-            int correlationId = reserveNextCorrelationId(future);
+            final int correlationId = reserveNextCorrelationId(future);
             try {
-                DataOutputStream output = new DataOutputStream(channel.writeMessage());
-                output.writeByte(UNREGISTER_MBEAN);
-                output.writeInt(correlationId);
+                write(new MessageWriter() {
 
-                output.writeByte(OBJECT_NAME);
-                Marshaller marshaller = prepareForMarshalling(output);
-                marshaller.writeObject(name);
+                    @Override
+                    public void write(DataOutput output) throws IOException {
+                        output.writeByte(UNREGISTER_MBEAN);
+                        output.writeInt(correlationId);
 
-                marshaller.close();
-                output.close();
+                        output.writeByte(OBJECT_NAME);
+                        Marshaller marshaller = prepareForMarshalling(output);
+                        marshaller.writeObject(name);
+
+                        marshaller.close();
+                    }
+                });
 
                 log.tracef("[%d] unregisterMBean - Request Sent", correlationId);
 
@@ -561,20 +583,24 @@ class ClientConnection extends Common implements VersionedConnection {
             }
         }
 
-        public ObjectInstance getObjectInstance(ObjectName name) throws InstanceNotFoundException, IOException {
+        public ObjectInstance getObjectInstance(final ObjectName name) throws InstanceNotFoundException, IOException {
             VersionedIoFuture<TypeExceptionHolder<ObjectInstance>> future = new VersionedIoFuture<TypeExceptionHolder<ObjectInstance>>();
-            int correlationId = reserveNextCorrelationId(future);
+            final int correlationId = reserveNextCorrelationId(future);
             try {
-                DataOutputStream output = new DataOutputStream(channel.writeMessage());
-                output.writeByte(GET_OBJECT_INSTANCE);
-                output.writeInt(correlationId);
+                write(new MessageWriter() {
 
-                output.writeByte(OBJECT_NAME);
-                Marshaller marshaller = prepareForMarshalling(output);
-                marshaller.writeObject(name);
+                    @Override
+                    public void write(DataOutput output) throws IOException {
+                        output.writeByte(GET_OBJECT_INSTANCE);
+                        output.writeInt(correlationId);
 
-                marshaller.close();
-                output.close();
+                        output.writeByte(OBJECT_NAME);
+                        Marshaller marshaller = prepareForMarshalling(output);
+                        marshaller.writeObject(name);
+
+                        marshaller.close();
+                    }
+                });
 
                 log.tracef("[%d] getObjectInstance - Request Sent", correlationId);
 
@@ -597,23 +623,27 @@ class ClientConnection extends Common implements VersionedConnection {
             }
         }
 
-        public Set<ObjectInstance> queryMBeans(ObjectName name, QueryExp query) throws IOException {
+        public Set<ObjectInstance> queryMBeans(final ObjectName name, final QueryExp query) throws IOException {
             VersionedIoFuture<TypeExceptionHolder<Set<ObjectInstance>>> future = new VersionedIoFuture<TypeExceptionHolder<Set<ObjectInstance>>>();
-            int correlationId = reserveNextCorrelationId(future);
+            final int correlationId = reserveNextCorrelationId(future);
             try {
-                DataOutputStream output = new DataOutputStream(channel.writeMessage());
-                output.writeByte(QUERY_MBEANS);
-                output.writeInt(correlationId);
+                write(new MessageWriter() {
 
-                output.writeByte(OBJECT_NAME);
-                Marshaller marshaller = prepareForMarshalling(output);
-                marshaller.writeObject(name);
+                    @Override
+                    public void write(DataOutput output) throws IOException {
+                        output.writeByte(QUERY_MBEANS);
+                        output.writeInt(correlationId);
 
-                marshaller.writeByte(QUERY_EXP);
-                marshaller.writeObject(query);
+                        output.writeByte(OBJECT_NAME);
+                        Marshaller marshaller = prepareForMarshalling(output);
+                        marshaller.writeObject(name);
 
-                marshaller.close();
-                output.close();
+                        marshaller.writeByte(QUERY_EXP);
+                        marshaller.writeObject(query);
+
+                        marshaller.close();
+                    }
+                });
 
                 log.tracef("[%d] queryMBeans - Request Sent", correlationId);
 
@@ -635,23 +665,27 @@ class ClientConnection extends Common implements VersionedConnection {
             }
         }
 
-        public Set<ObjectName> queryNames(ObjectName name, QueryExp query) throws IOException {
+        public Set<ObjectName> queryNames(final ObjectName name, final QueryExp query) throws IOException {
             VersionedIoFuture<TypeExceptionHolder<Set<ObjectName>>> future = new VersionedIoFuture<TypeExceptionHolder<Set<ObjectName>>>();
-            int correlationId = reserveNextCorrelationId(future);
+            final int correlationId = reserveNextCorrelationId(future);
             try {
-                DataOutputStream output = new DataOutputStream(channel.writeMessage());
-                output.writeByte(QUERY_NAMES);
-                output.writeInt(correlationId);
+                write(new MessageWriter() {
 
-                output.writeByte(OBJECT_NAME);
-                Marshaller marshaller = prepareForMarshalling(output);
-                marshaller.writeObject(name);
+                    @Override
+                    public void write(DataOutput output) throws IOException {
+                        output.writeByte(QUERY_NAMES);
+                        output.writeInt(correlationId);
 
-                marshaller.writeByte(QUERY_EXP);
-                marshaller.writeObject(query);
+                        output.writeByte(OBJECT_NAME);
+                        Marshaller marshaller = prepareForMarshalling(output);
+                        marshaller.writeObject(name);
 
-                marshaller.close();
-                output.close();
+                        marshaller.writeByte(QUERY_EXP);
+                        marshaller.writeObject(query);
+
+                        marshaller.close();
+                    }
+                });
 
                 log.tracef("[%d] queryNames - Request Sent", correlationId);
 
@@ -673,20 +707,24 @@ class ClientConnection extends Common implements VersionedConnection {
             }
         }
 
-        public boolean isRegistered(ObjectName name) throws IOException {
+        public boolean isRegistered(final ObjectName name) throws IOException {
             VersionedIoFuture<TypeExceptionHolder<Boolean>> future = new VersionedIoFuture<TypeExceptionHolder<Boolean>>();
-            int correlationId = reserveNextCorrelationId(future);
+            final int correlationId = reserveNextCorrelationId(future);
             try {
-                DataOutputStream output = new DataOutputStream(channel.writeMessage());
-                output.writeByte(IS_REGISTERED);
-                output.writeInt(correlationId);
-                output.writeByte(OBJECT_NAME);
+                write(new MessageWriter() {
 
-                Marshaller marshaller = prepareForMarshalling(output);
-                marshaller.writeObject(name);
+                    @Override
+                    public void write(DataOutput output) throws IOException {
+                        output.writeByte(IS_REGISTERED);
+                        output.writeInt(correlationId);
+                        output.writeByte(OBJECT_NAME);
 
-                marshaller.close();
-                output.close();
+                        Marshaller marshaller = prepareForMarshalling(output);
+                        marshaller.writeObject(name);
+
+                        marshaller.close();
+                    }
+                });
 
                 log.tracef("[%d] isRegistered - Request Sent", correlationId);
 
@@ -710,13 +748,15 @@ class ClientConnection extends Common implements VersionedConnection {
 
         public Integer getMBeanCount() throws IOException {
             VersionedIoFuture<TypeExceptionHolder<Integer>> future = new VersionedIoFuture<TypeExceptionHolder<Integer>>();
-            int correlationId = reserveNextCorrelationId(future);
+            final int correlationId = reserveNextCorrelationId(future);
             try {
-                DataOutputStream output = new DataOutputStream(channel.writeMessage());
-                output.writeByte(GET_MBEAN_COUNT);
-                output.writeInt(correlationId);
-
-                output.close();
+                write(new MessageWriter() {
+                    @Override
+                    public void write(DataOutput output) throws IOException {
+                        output.writeByte(GET_MBEAN_COUNT);
+                        output.writeInt(correlationId);
+                    }
+                });
 
                 log.tracef("[%d] getMBeanCount - Request Sent", correlationId);
 
@@ -738,24 +778,28 @@ class ClientConnection extends Common implements VersionedConnection {
             }
         }
 
-        public Object getAttribute(ObjectName name, String attribute) throws MBeanException, AttributeNotFoundException,
-                InstanceNotFoundException, ReflectionException, IOException {
+        public Object getAttribute(final ObjectName name, final String attribute) throws MBeanException,
+                AttributeNotFoundException, InstanceNotFoundException, ReflectionException, IOException {
             VersionedIoFuture<TypeExceptionHolder<Object>> future = new VersionedIoFuture<TypeExceptionHolder<Object>>();
-            int correlationId = reserveNextCorrelationId(future);
+            final int correlationId = reserveNextCorrelationId(future);
             try {
-                DataOutputStream output = new DataOutputStream(channel.writeMessage());
-                output.writeByte(GET_ATTRIBUTE);
-                output.writeInt(correlationId);
+                write(new MessageWriter() {
 
-                output.writeByte(OBJECT_NAME);
-                Marshaller marshaller = prepareForMarshalling(output);
-                marshaller.writeObject(name);
+                    @Override
+                    public void write(DataOutput output) throws IOException {
+                        output.writeByte(GET_ATTRIBUTE);
+                        output.writeInt(correlationId);
 
-                marshaller.writeByte(STRING);
-                marshaller.writeUTF(attribute);
+                        output.writeByte(OBJECT_NAME);
+                        Marshaller marshaller = prepareForMarshalling(output);
+                        marshaller.writeObject(name);
 
-                marshaller.close();
-                output.close();
+                        marshaller.writeByte(STRING);
+                        marshaller.writeUTF(attribute);
+
+                        marshaller.close();
+                    }
+                });
 
                 log.tracef("[%d] getAttribute - Request Sent", correlationId);
 
@@ -781,27 +825,31 @@ class ClientConnection extends Common implements VersionedConnection {
             }
         }
 
-        public AttributeList getAttributes(ObjectName name, String[] attributes) throws InstanceNotFoundException,
+        public AttributeList getAttributes(final ObjectName name, final String[] attributes) throws InstanceNotFoundException,
                 ReflectionException, IOException {
             VersionedIoFuture<TypeExceptionHolder<AttributeList>> future = new VersionedIoFuture<TypeExceptionHolder<AttributeList>>();
-            int correlationId = reserveNextCorrelationId(future);
+            final int correlationId = reserveNextCorrelationId(future);
             try {
-                DataOutputStream output = new DataOutputStream(channel.writeMessage());
-                output.writeByte(GET_ATTRIBUTES);
-                output.writeInt(correlationId);
+                write(new MessageWriter() {
 
-                output.writeByte(OBJECT_NAME);
-                Marshaller marshaller = prepareForMarshalling(output);
-                marshaller.writeObject(name);
+                    @Override
+                    public void write(DataOutput output) throws IOException {
+                        output.writeByte(GET_ATTRIBUTES);
+                        output.writeInt(correlationId);
 
-                marshaller.writeByte(STRING_ARRAY);
-                marshaller.writeInt(attributes.length);
-                for (String current : attributes) {
-                    marshaller.writeUTF(current);
-                }
+                        output.writeByte(OBJECT_NAME);
+                        Marshaller marshaller = prepareForMarshalling(output);
+                        marshaller.writeObject(name);
 
-                marshaller.close();
-                output.close();
+                        marshaller.writeByte(STRING_ARRAY);
+                        marshaller.writeInt(attributes.length);
+                        for (String current : attributes) {
+                            marshaller.writeUTF(current);
+                        }
+
+                        marshaller.close();
+                    }
+                });
 
                 log.tracef("[%d] getAttributes - Request Sent", correlationId);
 
@@ -825,24 +873,28 @@ class ClientConnection extends Common implements VersionedConnection {
             }
         }
 
-        public void setAttribute(ObjectName name, Attribute attribute) throws InstanceNotFoundException,
+        public void setAttribute(final ObjectName name, final Attribute attribute) throws InstanceNotFoundException,
                 AttributeNotFoundException, InvalidAttributeValueException, MBeanException, ReflectionException, IOException {
             VersionedIoFuture<TypeExceptionHolder<Void>> future = new VersionedIoFuture<TypeExceptionHolder<Void>>();
-            int correlationId = reserveNextCorrelationId(future);
+            final int correlationId = reserveNextCorrelationId(future);
             try {
-                DataOutputStream output = new DataOutputStream(channel.writeMessage());
-                output.writeByte(SET_ATTRIBUTE);
-                output.writeInt(correlationId);
+                write(new MessageWriter() {
 
-                output.writeByte(OBJECT_NAME);
-                Marshaller marshaller = prepareForMarshalling(output);
-                marshaller.writeObject(name);
+                    @Override
+                    public void write(DataOutput output) throws IOException {
+                        output.writeByte(SET_ATTRIBUTE);
+                        output.writeInt(correlationId);
 
-                marshaller.writeByte(ATTRIBUTE);
-                marshaller.writeObject(attribute);
+                        output.writeByte(OBJECT_NAME);
+                        Marshaller marshaller = prepareForMarshalling(output);
+                        marshaller.writeObject(name);
 
-                marshaller.close();
-                output.close();
+                        marshaller.writeByte(ATTRIBUTE);
+                        marshaller.writeObject(attribute);
+
+                        marshaller.close();
+                    }
+                });
 
                 log.tracef("[%d] setAttribute - Request Sent", correlationId);
 
@@ -871,24 +923,28 @@ class ClientConnection extends Common implements VersionedConnection {
             }
         }
 
-        public AttributeList setAttributes(ObjectName name, AttributeList attributes) throws InstanceNotFoundException,
-                ReflectionException, IOException {
+        public AttributeList setAttributes(final ObjectName name, final AttributeList attributes)
+                throws InstanceNotFoundException, ReflectionException, IOException {
             VersionedIoFuture<TypeExceptionHolder<AttributeList>> future = new VersionedIoFuture<TypeExceptionHolder<AttributeList>>();
-            int correlationId = reserveNextCorrelationId(future);
+            final int correlationId = reserveNextCorrelationId(future);
             try {
-                DataOutputStream output = new DataOutputStream(channel.writeMessage());
-                output.writeByte(SET_ATTRIBUTES);
-                output.writeInt(correlationId);
+                write(new MessageWriter() {
 
-                output.writeByte(OBJECT_NAME);
-                Marshaller marshaller = prepareForMarshalling(output);
-                marshaller.writeObject(name);
+                    @Override
+                    public void write(DataOutput output) throws IOException {
+                        output.writeByte(SET_ATTRIBUTES);
+                        output.writeInt(correlationId);
 
-                marshaller.writeByte(ATTRIBUTE_LIST);
-                marshaller.writeObject(attributes);
+                        output.writeByte(OBJECT_NAME);
+                        Marshaller marshaller = prepareForMarshalling(output);
+                        marshaller.writeObject(name);
 
-                marshaller.close();
-                output.close();
+                        marshaller.writeByte(ATTRIBUTE_LIST);
+                        marshaller.writeObject(attributes);
+
+                        marshaller.close();
+                    }
+                });
 
                 log.tracef("[%d] setAttributes - Request Sent", correlationId);
 
@@ -912,44 +968,48 @@ class ClientConnection extends Common implements VersionedConnection {
             }
         }
 
-        public Object invoke(ObjectName name, String operationName, Object[] params, String[] signature)
+        public Object invoke(final ObjectName name, final String operationName, final Object[] params, final String[] signature)
                 throws InstanceNotFoundException, MBeanException, ReflectionException, IOException {
             VersionedIoFuture<TypeExceptionHolder<Object>> future = new VersionedIoFuture<TypeExceptionHolder<Object>>();
-            int correlationId = reserveNextCorrelationId(future);
+            final int correlationId = reserveNextCorrelationId(future);
             try {
-                DataOutputStream output = new DataOutputStream(channel.writeMessage());
-                output.writeByte(INVOKE);
-                output.writeInt(correlationId);
+                write(new MessageWriter() {
 
-                output.writeByte(OBJECT_NAME);
-                Marshaller marshaller = prepareForMarshalling(output);
-                marshaller.writeObject(name);
+                    @Override
+                    public void write(DataOutput output) throws IOException {
+                        output.writeByte(INVOKE);
+                        output.writeInt(correlationId);
 
-                marshaller.writeByte(STRING);
-                marshaller.writeUTF(operationName);
+                        output.writeByte(OBJECT_NAME);
+                        Marshaller marshaller = prepareForMarshalling(output);
+                        marshaller.writeObject(name);
 
-                marshaller.writeByte(OBJECT_ARRAY);
-                if (params != null) {
-                    marshaller.writeInt(params.length);
-                    for (Object current : params) {
-                        marshaller.writeObject(current);
+                        marshaller.writeByte(STRING);
+                        marshaller.writeUTF(operationName);
+
+                        marshaller.writeByte(OBJECT_ARRAY);
+                        if (params != null) {
+                            marshaller.writeInt(params.length);
+                            for (Object current : params) {
+                                marshaller.writeObject(current);
+                            }
+                        } else {
+                            marshaller.writeInt(0);
+                        }
+
+                        marshaller.writeByte(STRING_ARRAY);
+                        if (signature != null) {
+                            marshaller.writeInt(signature.length);
+                            for (String current : signature) {
+                                marshaller.writeUTF(current);
+                            }
+                        } else {
+                            marshaller.writeInt(0);
+                        }
+
+                        marshaller.close();
                     }
-                } else {
-                    marshaller.writeInt(0);
-                }
-
-                marshaller.writeByte(STRING_ARRAY);
-                if (signature != null) {
-                    marshaller.writeInt(signature.length);
-                    for (String current : signature) {
-                        marshaller.writeUTF(current);
-                    }
-                } else {
-                    marshaller.writeInt(0);
-                }
-
-                marshaller.close();
-                output.close();
+                });
 
                 log.tracef("[%d] invoke - Request Sent", correlationId);
 
@@ -976,13 +1036,16 @@ class ClientConnection extends Common implements VersionedConnection {
 
         public String getDefaultDomain() throws IOException {
             VersionedIoFuture<TypeExceptionHolder<String>> future = new VersionedIoFuture<TypeExceptionHolder<String>>();
-            int correlationId = reserveNextCorrelationId(future);
+            final int correlationId = reserveNextCorrelationId(future);
             try {
-                DataOutputStream output = new DataOutputStream(channel.writeMessage());
-                output.writeByte(GET_DEFAULT_DOMAIN);
-                output.writeInt(correlationId);
+                write(new MessageWriter() {
 
-                output.close();
+                    @Override
+                    public void write(DataOutput output) throws IOException {
+                        output.writeByte(GET_DEFAULT_DOMAIN);
+                        output.writeInt(correlationId);
+                    }
+                });
 
                 log.tracef("[%d] getDefaultDomain - Request Sent", correlationId);
 
@@ -1006,13 +1069,16 @@ class ClientConnection extends Common implements VersionedConnection {
 
         public String[] getDomains() throws IOException {
             VersionedIoFuture<TypeExceptionHolder<String[]>> future = new VersionedIoFuture<TypeExceptionHolder<String[]>>();
-            int correlationId = reserveNextCorrelationId(future);
+            final int correlationId = reserveNextCorrelationId(future);
             try {
-                DataOutputStream output = new DataOutputStream(channel.writeMessage());
-                output.writeByte(GET_DOMAINS);
-                output.writeInt(correlationId);
+                write(new MessageWriter() {
 
-                output.close();
+                    @Override
+                    public void write(DataOutput output) throws IOException {
+                        output.writeByte(GET_DOMAINS);
+                        output.writeInt(correlationId);
+                    }
+                });
 
                 log.tracef("[%d] getDomains - Request Sent", correlationId);
 
@@ -1070,21 +1136,25 @@ class ClientConnection extends Common implements VersionedConnection {
 
         }
 
-        public MBeanInfo getMBeanInfo(ObjectName name) throws InstanceNotFoundException, IntrospectionException,
+        public MBeanInfo getMBeanInfo(final ObjectName name) throws InstanceNotFoundException, IntrospectionException,
                 ReflectionException, IOException {
             VersionedIoFuture<TypeExceptionHolder<MBeanInfo>> future = new VersionedIoFuture<TypeExceptionHolder<MBeanInfo>>();
-            int correlationId = reserveNextCorrelationId(future);
+            final int correlationId = reserveNextCorrelationId(future);
             try {
-                DataOutputStream output = new DataOutputStream(channel.writeMessage());
-                output.writeByte(GET_MBEAN_INFO);
-                output.writeInt(correlationId);
+                write(new MessageWriter() {
 
-                output.writeByte(OBJECT_NAME);
-                Marshaller marshaller = prepareForMarshalling(output);
-                marshaller.writeObject(name);
+                    @Override
+                    public void write(DataOutput output) throws IOException {
+                        output.writeByte(GET_MBEAN_INFO);
+                        output.writeInt(correlationId);
 
-                marshaller.close();
-                output.close();
+                        output.writeByte(OBJECT_NAME);
+                        Marshaller marshaller = prepareForMarshalling(output);
+                        marshaller.writeObject(name);
+
+                        marshaller.close();
+                    }
+                });
 
                 log.tracef("[%d] getMBeanInfo - Request Sent", correlationId);
 
@@ -1109,22 +1179,26 @@ class ClientConnection extends Common implements VersionedConnection {
             }
         }
 
-        public boolean isInstanceOf(ObjectName name, String className) throws InstanceNotFoundException, IOException {
+        public boolean isInstanceOf(final ObjectName name, final String className) throws InstanceNotFoundException,
+                IOException {
             VersionedIoFuture<TypeExceptionHolder<Boolean>> future = new VersionedIoFuture<TypeExceptionHolder<Boolean>>();
-            int correlationId = reserveNextCorrelationId(future);
+            final int correlationId = reserveNextCorrelationId(future);
             try {
-                DataOutputStream output = new DataOutputStream(channel.writeMessage());
-                output.writeByte(INSTANCE_OF);
-                output.writeInt(correlationId);
+                write(new MessageWriter() {
 
-                output.writeByte(OBJECT_NAME);
-                Marshaller marshaller = prepareForMarshalling(output);
-                marshaller.writeObject(name);
+                    @Override
+                    public void write(DataOutput output) throws IOException {
+                        output.writeByte(INSTANCE_OF);
+                        output.writeInt(correlationId);
 
-                marshaller.writeByte(STRING);
-                marshaller.writeUTF(className);
+                        output.writeByte(OBJECT_NAME);
+                        Marshaller marshaller = prepareForMarshalling(output);
+                        marshaller.writeObject(name);
 
-                output.close();
+                        marshaller.writeByte(STRING);
+                        marshaller.writeUTF(className);
+                    }
+                });
 
                 log.tracef("[%d] isInstanceOf - Request Sent", correlationId);
 

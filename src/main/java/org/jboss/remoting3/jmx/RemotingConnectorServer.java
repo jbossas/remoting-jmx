@@ -27,7 +27,6 @@ import static org.jboss.remoting3.jmx.Constants.SNAPSHOT;
 import static org.jboss.remoting3.jmx.Constants.STABLE;
 
 import java.io.DataInputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
@@ -45,6 +44,7 @@ import org.jboss.remoting3.Endpoint;
 import org.jboss.remoting3.MessageInputStream;
 import org.jboss.remoting3.OpenListener;
 import org.jboss.remoting3.Registration;
+import org.jboss.remoting3.jmx.protocol.CancellableDataOutputStream;
 import org.jboss.remoting3.jmx.protocol.Versions;
 import org.xnio.IoUtils;
 import org.xnio.OptionMap;
@@ -164,7 +164,7 @@ public class RemotingConnectorServer extends JMXConnectorServer {
      * @throws IOException
      */
     private void writeHeader(final Channel channel) throws IOException {
-        DataOutputStream dos = new DataOutputStream(channel.writeMessage());
+        CancellableDataOutputStream dos = new CancellableDataOutputStream(channel.writeMessage());
         try {
             dos.writeBytes("JMX");
             byte[] versions = Versions.getSupportedVersions();
@@ -175,7 +175,9 @@ public class RemotingConnectorServer extends JMXConnectorServer {
             } else {
                 dos.write(STABLE);
             }
-
+        } catch (IOException e) {
+            dos.cancel();
+            throw e;
         } finally {
             dos.close();
         }

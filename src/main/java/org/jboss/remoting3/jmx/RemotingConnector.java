@@ -120,7 +120,7 @@ class RemotingConnector implements JMXConnector {
                 sb.append("null");
             }
             sb.append(")");
-            System.out.println(sb.toString());
+            log.trace(sb.toString());
         }
 
         Map<String, Object> combinedEnvironment = new HashMap(environment);
