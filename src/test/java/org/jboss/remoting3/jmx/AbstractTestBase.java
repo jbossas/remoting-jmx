@@ -22,6 +22,8 @@
 
 package org.jboss.remoting3.jmx;
 
+import static org.jboss.remoting3.jmx.common.JMXRemotingServer.DEFAULT_PORT;
+
 import java.io.IOException;
 
 import javax.management.MBeanServer;
@@ -31,6 +33,7 @@ import javax.management.remote.JMXConnectorFactory;
 import javax.management.remote.JMXServiceURL;
 
 import org.jboss.remoting3.jmx.common.JMXRemotingServer;
+import org.jboss.remoting3.jmx.common.JMXRemotingServer.JMXRemotingConfig;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -43,9 +46,7 @@ import org.junit.BeforeClass;
  */
 public abstract class AbstractTestBase {
 
-    private static final int PORT = 12345;
-
-    protected static final String URL = "service:jmx:remote://localhost:" + PORT;
+    protected static final String URL = "service:jmx:remote://localhost:" + DEFAULT_PORT;
     protected static final String DEFAULT_DOMAIN = "org.jboss.remoting3.jmx";
 
     private static JMXRemotingServer remotingServer;
@@ -58,7 +59,10 @@ public abstract class AbstractTestBase {
     public static void setupServer() throws IOException {
         mbeanServer = MBeanServerFactory.createMBeanServer(DEFAULT_DOMAIN);
 
-        remotingServer = new JMXRemotingServer(PORT, mbeanServer);
+        JMXRemotingConfig config = new JMXRemotingConfig();
+        config.mbeanServer = mbeanServer;
+
+        remotingServer = new JMXRemotingServer(config);
         remotingServer.start();
         serviceURL = new JMXServiceURL(URL);
     }

@@ -22,12 +22,16 @@
 package org.jboss.remoting3.jmx;
 
 import static org.jboss.remoting3.jmx.Constants.CONNECTION_PROVIDER_URI;
+import static org.xnio.Options.SASL_POLICY_NOANONYMOUS;
+import static org.xnio.Options.SASL_POLICY_NOPLAINTEXT;
 
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -41,6 +45,7 @@ import javax.security.auth.Subject;
 import javax.security.auth.callback.Callback;
 import javax.security.auth.callback.CallbackHandler;
 import javax.security.auth.callback.NameCallback;
+import javax.security.auth.callback.PasswordCallback;
 import javax.security.auth.callback.UnsupportedCallbackException;
 import javax.security.sasl.RealmCallback;
 
@@ -55,6 +60,8 @@ import org.jboss.remoting3.remote.RemoteConnectionProviderFactory;
 import org.xnio.IoFuture;
 import org.xnio.OptionMap;
 import org.xnio.Options;
+import org.xnio.Property;
+import org.xnio.Sequence;
 import org.xnio.Xnio;
 
 /**
@@ -88,7 +95,6 @@ class RemotingConnector implements JMXConnector {
         connect(null);
     }
 
-    // TODO - Do we embed the name of the channel in the URL?
     public void connect(Map<String, ?> env) throws IOException {
         // Once closed a connector is not allowed to connect again.
         // NB If a connect call fails clients are permitted to try the call again.
@@ -114,7 +120,7 @@ class RemotingConnector implements JMXConnector {
                 sb.append("null");
             }
             sb.append(")");
-            log.trace(sb.toString());
+            System.out.println(sb.toString());
         }
 
         Map<String, Object> combinedEnvironment = new HashMap(environment);
@@ -124,26 +130,26 @@ class RemotingConnector implements JMXConnector {
             }
         }
 
-        // TODO - Supported environment properties.
         // The credentials.
-        // Connection timeout - maybe a total timeout? Reducing on each await.
         CallbackHandler handler = null;
         if (env != null) {
             handler = (CallbackHandler) env.get(CallbackHandler.class.getName());
+            if (handler == null && env.containsKey(CREDENTIALS)) {
+                handler = new UsernamePasswordCallbackHandler((String[]) env.get(CREDENTIALS));
+            }
         }
         if (handler == null) {
             handler = new AnonymousCallbackHandler();
         }
 
         // open a connection
-        final IoFuture<Connection> futureConnection = endpoint.connect(convert(serviceUrl), OptionMap.create(
-                Options.SASL_POLICY_NOANONYMOUS, Boolean.FALSE, Options.SASL_POLICY_NOPLAINTEXT, Boolean.FALSE), handler);
+        final IoFuture<Connection> futureConnection = endpoint.connect(convert(serviceUrl), getOptionMap(), handler);
         IoFuture.Status result = futureConnection.await(5, TimeUnit.SECONDS);
 
         if (result == IoFuture.Status.DONE) {
             connection = futureConnection.get();
         } else if (result == IoFuture.Status.FAILED) {
-            throw new IOException(futureConnection.getException());
+            throw futureConnection.getException();
         } else {
             throw new RuntimeException("Operation failed with status " + result);
         }
@@ -160,6 +166,22 @@ class RemotingConnector implements JMXConnector {
         }
 
         versionedConnection = VersionedConectionFactory.createVersionedConnection(channel);
+    }
+
+    private OptionMap getOptionMap() {
+        // TODO - This could be further controlled through the environment.
+        OptionMap.Builder builder = OptionMap.builder();
+        builder.set(SASL_POLICY_NOANONYMOUS, Boolean.FALSE);
+        builder.set(SASL_POLICY_NOPLAINTEXT, Boolean.FALSE);
+
+        List<Property> tempProperties = new ArrayList<Property>(1);
+        tempProperties.add(Property.of("jboss.sasl.local-user.quiet-auth", "true"));
+        builder.set(Options.SASL_PROPERTIES, Sequence.of(tempProperties));
+
+        builder.set(Options.SSL_ENABLED, true);
+        builder.set(Options.SSL_STARTTLS, true);
+
+        return builder.getMap();
     }
 
     private URI convert(final JMXServiceURL serviceUrl) throws IOException {
@@ -231,7 +253,32 @@ class RemotingConnector implements JMXConnector {
             for (Callback current : callbacks) {
                 if (current instanceof NameCallback) {
                     NameCallback ncb = (NameCallback) current;
-                    ncb.setName("$local");
+                    ncb.setName("anonymous");
+                } else {
+                    throw new UnsupportedCallbackException(current);
+                }
+            }
+        }
+
+    }
+
+    private class UsernamePasswordCallbackHandler implements CallbackHandler {
+
+        private final String[] credentials;
+
+        private UsernamePasswordCallbackHandler(String[] credentials) {
+            this.credentials = credentials;
+        }
+
+        @Override
+        public void handle(Callback[] callbacks) throws IOException, UnsupportedCallbackException {
+            for (Callback current : callbacks) {
+                if (current instanceof NameCallback) {
+                    NameCallback ncb = (NameCallback) current;
+                    ncb.setName(credentials[0]);
+                } else if (current instanceof PasswordCallback) {
+                    PasswordCallback pcb = (PasswordCallback) current;
+                    pcb.setPassword(credentials[1].toCharArray());
                 } else if (current instanceof RealmCallback) {
                     RealmCallback realmCallback = (RealmCallback) current;
                     realmCallback.setText(realmCallback.getDefaultText());
@@ -239,6 +286,7 @@ class RemotingConnector implements JMXConnector {
                     throw new UnsupportedCallbackException(current);
                 }
             }
+
         }
 
     }

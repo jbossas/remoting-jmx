@@ -1,0 +1,153 @@
+/*
+ * JBoss, Home of Professional Open Source.
+ * Copyright 2012, Red Hat, Inc., and individual contributors
+ * as indicated by the @author tags. See the copyright.txt file in the
+ * distribution for a full listing of individual contributors.
+ *
+ * This is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Lesser General Public License as
+ * published by the Free Software Foundation; either version 2.1 of
+ * the License, or (at your option) any later version.
+ *
+ * This software is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this software; if not, write to the Free
+ * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+ * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ */
+
+package org.jboss.remoting3.jmx;
+
+import static org.jboss.remoting3.jmx.common.JMXRemotingServer.DEFAULT_PORT;
+import static org.jboss.remoting3.jmx.common.JMXRemotingServer.DIGEST_MD5;
+import static org.jboss.remoting3.jmx.common.JMXRemotingServer.JBOSS_LOCAL_USER;
+import static org.jboss.remoting3.jmx.common.JMXRemotingServer.PLAIN;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.fail;
+
+import java.io.IOException;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+
+import javax.management.remote.JMXConnector;
+import javax.management.remote.JMXConnectorFactory;
+import javax.management.remote.JMXServiceURL;
+
+import org.jboss.remoting3.jmx.common.JMXRemotingServer;
+import org.jboss.remoting3.jmx.common.JMXRemotingServer.JMXRemotingConfig;
+import org.junit.Test;
+
+/**
+ * Test case to test the various supported SASL mechanisms.
+ *
+ * @author <a href="mailto:darran.lofthouse@jboss.com">Darran Lofthouse</a>
+ */
+public class SecurityClientTest {
+
+    protected static final String URL = "service:jmx:remote://localhost:" + DEFAULT_PORT;
+
+    @Test
+    public void testAnonymousAuthentication() throws Exception {
+        JMXRemotingConfig config = new JMXRemotingConfig();
+
+        JMXRemotingServer remotingServer = new JMXRemotingServer(config);
+        remotingServer.start();
+        JMXServiceURL serviceURL = new JMXServiceURL(URL);
+
+        Map<String, Object> env = new HashMap<String, Object>(0);
+
+        JMXConnector connector = JMXConnectorFactory.connect(serviceURL, env);
+
+        assertNotNull(connector.getConnectionId());
+
+        connector.close();
+
+        remotingServer.stop();
+
+        System.out.println("STOPPED");
+    }
+
+    @Test
+    public void testDigestAuthentication() throws Exception {
+        JMXRemotingConfig config = new JMXRemotingConfig();
+        config.saslMechanisms = Collections.singleton(DIGEST_MD5);
+
+        JMXRemotingServer remotingServer = new JMXRemotingServer(config);
+        remotingServer.start();
+        JMXServiceURL serviceURL = new JMXServiceURL(URL);
+
+        Map<String, Object> env = new HashMap<String, Object>(1);
+        env.put(JMXConnector.CREDENTIALS, new String[] { "DigestUser", "DigestPassword" });
+
+        JMXConnector connector = JMXConnectorFactory.connect(serviceURL, env);
+
+        assertNotNull(connector.getConnectionId());
+
+        connector.close();
+
+        // Now Try A Bad Password
+        env.put(JMXConnector.CREDENTIALS, new String[] { "DigestUser", "BadPassword" });
+        try {
+            JMXConnectorFactory.connect(serviceURL, env);
+            fail("Expected exception not thrown.");
+        } catch (IOException expected) {
+        }
+
+        remotingServer.stop();
+    }
+
+    @Test
+    public void testLocalAuthentication() throws Exception {
+        JMXRemotingConfig config = new JMXRemotingConfig();
+        config.saslMechanisms = Collections.singleton(JBOSS_LOCAL_USER);
+
+        JMXRemotingServer remotingServer = new JMXRemotingServer(config);
+        remotingServer.start();
+        JMXServiceURL serviceURL = new JMXServiceURL(URL);
+
+        Map<String, Object> env = new HashMap<String, Object>(1);
+
+        JMXConnector connector = JMXConnectorFactory.connect(serviceURL, env);
+
+        assertNotNull(connector.getConnectionId());
+
+        connector.close();
+
+        remotingServer.stop();
+    }
+
+    @Test
+    public void testPlainAuthentication() throws Exception {
+        JMXRemotingConfig config = new JMXRemotingConfig();
+        config.saslMechanisms = Collections.singleton(PLAIN);
+
+        JMXRemotingServer remotingServer = new JMXRemotingServer(config);
+        remotingServer.start();
+        JMXServiceURL serviceURL = new JMXServiceURL(URL);
+
+        Map<String, Object> env = new HashMap<String, Object>(1);
+        env.put(JMXConnector.CREDENTIALS, new String[] { "DigestUser", "DigestPassword" });
+
+        JMXConnector connector = JMXConnectorFactory.connect(serviceURL, env);
+
+        assertNotNull(connector.getConnectionId());
+
+        connector.close();
+
+        // Now Try A Bad Password
+        env.put(JMXConnector.CREDENTIALS, new String[] { "DigestUser", "BadPassword" });
+        try {
+            JMXConnectorFactory.connect(serviceURL, env);
+            fail("Expected exception not thrown.");
+        } catch (IOException expected) {
+        }
+
+        remotingServer.stop();
+    }
+
+}

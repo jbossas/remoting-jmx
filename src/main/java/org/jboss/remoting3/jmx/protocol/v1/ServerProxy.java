@@ -892,6 +892,7 @@ class ServerProxy extends Common implements VersionedProxy {
             Set<ObjectInstance> instances = server.getMBeanServer().queryMBeans(objectName, query);
 
             DataOutputStream dos = new DataOutputStream(channel.writeMessage());
+
             try {
                 dos.writeByte(QUERY_MBEANS ^ RESPONSE_MASK);
                 dos.writeInt(correlationId);
