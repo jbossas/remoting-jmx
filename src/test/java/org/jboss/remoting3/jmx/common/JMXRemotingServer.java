@@ -29,7 +29,6 @@ import static org.xnio.Options.SSL_ENABLED;
 
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.Collections;
@@ -132,7 +131,7 @@ public class JMXRemotingServer {
         endpoint.addConnectionProvider("remote", new RemoteConnectionProviderFactory(), OptionMap.EMPTY);
 
         final NetworkServerProvider nsp = endpoint.getConnectionProviderInterface("remote", NetworkServerProvider.class);
-        final SocketAddress bindAddress = new InetSocketAddress(InetAddress.getLocalHost(), listenerPort);
+        final SocketAddress bindAddress = new InetSocketAddress("localhost", listenerPort);
         final OptionMap serverOptions = createOptionMap();
 
         server = nsp.createServer(bindAddress, serverOptions, authenticationProvider, null);
@@ -189,6 +188,10 @@ public class JMXRemotingServer {
         }
         if (server != null) {
             server.close();
+        }
+
+        if (endpoint != null) {
+            endpoint.close();
         }
 
     }
