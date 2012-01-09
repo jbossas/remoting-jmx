@@ -216,4 +216,28 @@ public class InvocationClientTest extends AbstractTestBase {
 
     }
 
+    @Test
+    public void testInvoke_NPE() throws Exception {
+        ObjectName beanName = new ObjectName(DEFAULT_DOMAIN, "test", "testInvoke_NPE");
+        assertFalse(mbeanServer.isRegistered(beanName));
+
+        MBeanServerConnection connection = connector.getMBeanServerConnection();
+
+        MyBean bean = new MyBean();
+
+        assertFalse(connection.isRegistered(beanName));
+        mbeanServer.registerMBean(bean, beanName);
+        try {
+            connection.invoke(beanName, "transpose", new Object[] { null }, new String[] { String.class.getName() });
+            fail("Expected exception not thrown.");
+        } catch (RuntimeException e) {
+            assertEquals(NullPointerException.class, e.getCause().getClass());
+        } finally {
+            if (mbeanServer.isRegistered(beanName)) {
+                mbeanServer.unregisterMBean(beanName);
+            }
+        }
+
+    }
+
 }

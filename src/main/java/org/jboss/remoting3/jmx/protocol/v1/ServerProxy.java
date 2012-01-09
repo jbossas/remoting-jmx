@@ -81,6 +81,7 @@ import javax.management.ObjectInstance;
 import javax.management.ObjectName;
 import javax.management.QueryExp;
 import javax.management.ReflectionException;
+import javax.management.RuntimeMBeanException;
 
 import org.jboss.logging.Logger;
 import org.jboss.marshalling.Marshaller;
@@ -180,18 +181,28 @@ class ServerProxy extends Common implements VersionedProxy {
                         public void run() {
                             try {
                                 mh.handle(dis, correlationId);
-                            } catch (IOException e) {
+                            } catch (Throwable t) {
                                 if (correlationId != 0x00) {
-                                    sendIOException(e);
+                                    Exception response;
+                                    if (t instanceof IOException) {
+                                        response = (Exception) t;
+                                    } else if (t instanceof RuntimeMBeanException) {
+                                        response = (Exception) t;
+                                    } else {
+                                        response = new IOException("Internal server error.");
+                                        log.warn("Unexpected internal error", t);
+                                    }
+
+                                    sendIOException(response);
                                 } else {
-                                    log.error("null correlationId so error not sent to client", e);
+                                    log.error("null correlationId so error not sent to client", t);
                                 }
                             } finally {
                                 IoUtils.safeClose(dis);
                             }
                         }
 
-                        private void sendIOException(final IOException e) {
+                        private void sendIOException(final Exception e) {
                             try {
                                 writeResponse(e, messageId, correlationId);
 

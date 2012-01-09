@@ -86,6 +86,7 @@ import javax.management.ObjectInstance;
 import javax.management.ObjectName;
 import javax.management.QueryExp;
 import javax.management.ReflectionException;
+import javax.management.RuntimeMBeanException;
 import javax.security.auth.Subject;
 
 import org.jboss.logging.Logger;
@@ -1025,6 +1026,7 @@ class ClientConnection extends Common implements VersionedConnection {
                         instanceNotFoundException(response.e);
                         mbeanException(response.e);
                         reflectionException(response.e);
+                        runtimeMBeanException(response.e);
                         throw toIoException(response.e);
                     default:
                         throw new IOException("Unable to invoke invoke(), status=" + result.toString());
@@ -1272,6 +1274,12 @@ class ClientConnection extends Common implements VersionedConnection {
         private void reflectionException(Exception e) throws ReflectionException {
             if (e != null && e instanceof ReflectionException) {
                 throw (ReflectionException) e;
+            }
+        }
+
+        private void runtimeMBeanException(Exception e) {
+            if (e instanceof RuntimeMBeanException) {
+                throw (RuntimeMBeanException) e;
             }
         }
 
