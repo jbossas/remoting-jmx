@@ -89,6 +89,7 @@ import javax.management.ReflectionException;
 import javax.management.RuntimeMBeanException;
 
 import org.jboss.logging.Logger;
+import org.jboss.marshalling.AbstractClassResolver;
 import org.jboss.marshalling.Marshaller;
 import org.jboss.marshalling.Unmarshaller;
 import org.jboss.remoting3.Channel;
@@ -430,8 +431,9 @@ class ServerProxy extends Common implements VersionedProxy {
             ObjectName loader = null;
             Object[] params = null;
             String[] signature = null;
-
-            Unmarshaller unmarshaller = prepareForUnMarshalling(input);
+            final ClassLoaderSwitchingClassResolver resolver = new ClassLoaderSwitchingClassResolver(
+                    ServerProxy.class.getClassLoader());
+            Unmarshaller unmarshaller = prepareForUnMarshalling(input, resolver);
             for (int i = 0; i < paramCount; i++) {
                 byte param = unmarshaller.readByte();
                 switch (param) {
@@ -446,8 +448,10 @@ class ServerProxy extends Common implements VersionedProxy {
                         try {
                             if (name == null) {
                                 name = unmarshaller.readObject(ObjectName.class);
+                                switchClassLoaderForMBean(name, resolver);
                             } else if (loader == null) {
                                 loader = unmarshaller.readObject(ObjectName.class);
+                                switchClassLoaderForLoader(loader, resolver);
                             } else {
                                 throw new IOException("Unexpected paramter");
                             }
@@ -529,6 +533,22 @@ class ServerProxy extends Common implements VersionedProxy {
             }
 
             log.tracef("[%d] CreateMBean - Failure Response Sent", correlationId);
+        }
+    }
+
+    private void switchClassLoaderForMBean(final ObjectName name, final ClassLoaderSwitchingClassResolver resolver) {
+        try {
+            resolver.switchClassLoader(server.getMBeanServer().getClassLoaderFor(name));
+        } catch (InstanceNotFoundException e) {
+            log.debugf(e, "Could not get class loader for %s", name);
+        }
+    }
+
+    private void switchClassLoaderForLoader(final ObjectName name, final ClassLoaderSwitchingClassResolver resolver) {
+        try {
+            resolver.switchClassLoader(server.getMBeanServer().getClassLoader(name));
+        } catch (InstanceNotFoundException e) {
+            log.debugf(e, "Could not get class loader for %s", name);
         }
     }
 
@@ -822,8 +842,9 @@ class ServerProxy extends Common implements VersionedProxy {
             if (paramType != OBJECT_NAME) {
                 throw new IOException("Unexpected paramType");
             }
-
-            Unmarshaller unmarshaller = prepareForUnMarshalling(input);
+            final ClassLoaderSwitchingClassResolver resolver = new ClassLoaderSwitchingClassResolver(
+                    ServerProxy.class.getClassLoader());
+            Unmarshaller unmarshaller = prepareForUnMarshalling(input, resolver);
             ObjectName objectName;
             String operationName;
             Object[] params;
@@ -831,6 +852,7 @@ class ServerProxy extends Common implements VersionedProxy {
 
             try {
                 objectName = unmarshaller.readObject(ObjectName.class);
+                switchClassLoaderForMBean(objectName, resolver);
 
                 paramType = unmarshaller.readByte();
                 if (paramType != STRING) {
@@ -1031,14 +1053,15 @@ class ServerProxy extends Common implements VersionedProxy {
             if (paramType != OBJECT_NAME) {
                 throw new IOException("Unexpected paramType");
             }
-
-            Unmarshaller unmarshaller = prepareForUnMarshalling(input);
+            final ClassLoaderSwitchingClassResolver resolver = new ClassLoaderSwitchingClassResolver(
+                    ServerProxy.class.getClassLoader());
+            Unmarshaller unmarshaller = prepareForUnMarshalling(input, resolver);
             ObjectName objectName;
             Attribute attr;
 
             try {
                 objectName = unmarshaller.readObject(ObjectName.class);
-
+                switchClassLoaderForMBean(objectName, resolver);
                 paramType = unmarshaller.readByte();
                 if (paramType != ATTRIBUTE) {
                     throw new IOException("Unexpected paramType");
@@ -1084,12 +1107,15 @@ class ServerProxy extends Common implements VersionedProxy {
                 throw new IOException("Unexpected paramType");
             }
 
-            Unmarshaller unmarshaller = prepareForUnMarshalling(input);
+            final ClassLoaderSwitchingClassResolver resolver = new ClassLoaderSwitchingClassResolver(
+                    ServerProxy.class.getClassLoader());
+            final Unmarshaller unmarshaller = prepareForUnMarshalling(input, resolver);
             ObjectName objectName;
             AttributeList attributes;
 
             try {
                 objectName = unmarshaller.readObject(ObjectName.class);
+                switchClassLoaderForMBean(objectName, resolver);
 
                 paramType = unmarshaller.readByte();
                 if (paramType != ATTRIBUTE_LIST) {
@@ -1151,6 +1177,33 @@ class ServerProxy extends Common implements VersionedProxy {
             }
         }
 
+    }
+
+    /**
+     * A mutable {@link org.jboss.marshalling.ClassResolver}
+     */
+    private class ClassLoaderSwitchingClassResolver extends AbstractClassResolver {
+
+        private ClassLoader currentClassLoader;
+
+        ClassLoaderSwitchingClassResolver(final ClassLoader classLoader) {
+            this.currentClassLoader = classLoader;
+        }
+
+        /**
+         * Sets the passed <code>newCL</code> as the classloader which will be returned on subsequent calls to
+         * {@link #getClassLoader()}
+         *
+         * @param newCL
+         */
+        void switchClassLoader(final ClassLoader newCL) {
+            this.currentClassLoader = newCL;
+        }
+
+        @Override
+        protected ClassLoader getClassLoader() {
+            return this.currentClassLoader;
+        }
     }
 
 }

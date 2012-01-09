@@ -30,11 +30,15 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
+import org.jboss.marshalling.AbstractClassResolver;
 import org.jboss.marshalling.ByteInput;
 import org.jboss.marshalling.ByteOutput;
+import org.jboss.marshalling.ClassResolver;
 import org.jboss.marshalling.MarshallerFactory;
 import org.jboss.marshalling.Marshalling;
 import org.jboss.marshalling.MarshallingConfiguration;
@@ -97,12 +101,29 @@ abstract class Common {
      * {@link org.jboss.marshalling.Unmarshaller#start(org.jboss.marshalling.ByteInput)} will be invoked by this method, to use
      * the passed {@link java.io.DataInput dataInput}, before returning the unmarshaller.
      *
+     * This unmarshaller will use the context class loader to resolve any classes.
+     *
      * @param dataInput The data input from which to unmarshall
      * @return
      * @throws IOException
      */
     protected Unmarshaller prepareForUnMarshalling(final DataInput dataInput) throws IOException {
-        final Unmarshaller unmarshaller = this.getUnMarshaller(marshallerFactory);
+        return prepareForUnMarshalling(dataInput, DefaultClassResolver.INSTANCE);
+    }
+
+    /**
+     * Creates and returns a {@link org.jboss.marshalling.Unmarshaller} which is ready to be used for unmarshalling. The
+     * {@link org.jboss.marshalling.Unmarshaller#start(org.jboss.marshalling.ByteInput)} will be invoked by this method, to use
+     * the passed {@link java.io.DataInput dataInput}, before returning the unmarshaller.
+     *
+     * @param dataInput The data input from which to unmarshall
+     * @param classResolver The class resolver to use for unmarshalling
+     * @return
+     * @throws IOException
+     */
+    protected Unmarshaller prepareForUnMarshalling(final DataInput dataInput, final ClassResolver classResolver)
+            throws IOException {
+        final Unmarshaller unmarshaller = this.getUnMarshaller(marshallerFactory, classResolver);
         final InputStream is = new InputStream() {
             @Override
             public int read() throws IOException {
@@ -143,15 +164,16 @@ abstract class Common {
     /**
      * Creates and returns a {@link Unmarshaller}
      *
+     *
      * @param marshallerFactory The marshaller factory
      * @return
      * @throws IOException
      */
-    private Unmarshaller getUnMarshaller(final MarshallerFactory marshallerFactory) throws IOException {
+    private Unmarshaller getUnMarshaller(final MarshallerFactory marshallerFactory, final ClassResolver classResolver)
+            throws IOException {
         final MarshallingConfiguration marshallingConfiguration = new MarshallingConfiguration();
         marshallingConfiguration.setVersion(2);
-        // marshallingConfiguration.setClassResolver(classResolver); -- TODO Add back later.
-
+        marshallingConfiguration.setClassResolver(classResolver);
         return marshallerFactory.createUnmarshaller(marshallingConfiguration);
     }
 
@@ -173,6 +195,37 @@ abstract class Common {
 
     interface MessageHandler {
         void handle(DataInput input, int correlationId) throws IOException;
+    }
+
+    /**
+     * Default class resolver, intended for use on the client side. It will use the context class loader if availble, otherwise
+     * it will fall back to the class loader use to load this class.
+     */
+    private static final class DefaultClassResolver extends AbstractClassResolver {
+
+        public static final DefaultClassResolver INSTANCE = new DefaultClassResolver();
+
+        private static final PrivilegedAction<ClassLoader> classLoaderAction = new PrivilegedAction<ClassLoader>() {
+            public ClassLoader run() {
+                return Thread.currentThread().getContextClassLoader();
+            }
+        };
+
+        /** {@inheritDoc} */
+        protected ClassLoader getClassLoader() {
+            final SecurityManager sm = System.getSecurityManager();
+            final ClassLoader classLoader;
+            if (sm != null) {
+                classLoader = AccessController.doPrivileged(classLoaderAction);
+            } else {
+                classLoader = Thread.currentThread().getContextClassLoader();
+            }
+            if (classLoader == null) {
+                return DefaultClassResolver.class.getClassLoader();
+            } else {
+                return classLoader;
+            }
+        }
     }
 
 }
