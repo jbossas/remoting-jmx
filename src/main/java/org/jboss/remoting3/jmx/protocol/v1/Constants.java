@@ -48,6 +48,8 @@ class Constants {
     static final byte GET_DOMAINS = 0x0E;
     static final byte GET_MBEAN_INFO = 0x0F;
     static final byte INSTANCE_OF = 0x10;
+    static final byte ADD_NOTIFICATION_LISTENER = 0x11;
+    static final byte REMOVE_NOTIFICATION_LISTENER = 0x12;
 
     /*
      * Response Mask
@@ -82,6 +84,7 @@ class Constants {
     static final byte SET_OBJECT_INSTANCE = 0x0D;
     static final byte MBEAN_INFO = 0x0E;
     static final byte SET_OBJECT_NAME = 0x0F;
+    static final byte NOTIFICATION_FILTER = 0x10;
 
     /*
      * General

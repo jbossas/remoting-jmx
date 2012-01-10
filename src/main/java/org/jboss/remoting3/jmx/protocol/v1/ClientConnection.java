@@ -21,6 +21,7 @@
  */
 package org.jboss.remoting3.jmx.protocol.v1;
 
+import static org.jboss.remoting3.jmx.protocol.v1.Constants.ADD_NOTIFICATION_LISTENER;
 import static org.jboss.remoting3.jmx.protocol.v1.Constants.ATTRIBUTE;
 import static org.jboss.remoting3.jmx.protocol.v1.Constants.ATTRIBUTE_LIST;
 import static org.jboss.remoting3.jmx.protocol.v1.Constants.BOOLEAN;
@@ -39,6 +40,7 @@ import static org.jboss.remoting3.jmx.protocol.v1.Constants.INTEGER;
 import static org.jboss.remoting3.jmx.protocol.v1.Constants.INVOKE;
 import static org.jboss.remoting3.jmx.protocol.v1.Constants.IS_REGISTERED;
 import static org.jboss.remoting3.jmx.protocol.v1.Constants.MBEAN_INFO;
+import static org.jboss.remoting3.jmx.protocol.v1.Constants.NOTIFICATION_FILTER;
 import static org.jboss.remoting3.jmx.protocol.v1.Constants.OBJECT;
 import static org.jboss.remoting3.jmx.protocol.v1.Constants.OBJECT_ARRAY;
 import static org.jboss.remoting3.jmx.protocol.v1.Constants.OBJECT_INSTANCE;
@@ -46,6 +48,7 @@ import static org.jboss.remoting3.jmx.protocol.v1.Constants.OBJECT_NAME;
 import static org.jboss.remoting3.jmx.protocol.v1.Constants.QUERY_EXP;
 import static org.jboss.remoting3.jmx.protocol.v1.Constants.QUERY_MBEANS;
 import static org.jboss.remoting3.jmx.protocol.v1.Constants.QUERY_NAMES;
+import static org.jboss.remoting3.jmx.protocol.v1.Constants.REMOVE_NOTIFICATION_LISTENER;
 import static org.jboss.remoting3.jmx.protocol.v1.Constants.RESPONSE_MASK;
 import static org.jboss.remoting3.jmx.protocol.v1.Constants.SET_ATTRIBUTE;
 import static org.jboss.remoting3.jmx.protocol.v1.Constants.SET_ATTRIBUTES;
@@ -156,6 +159,7 @@ class ClientConnection extends Common implements VersionedConnection {
 
     private Map<Byte, Common.MessageHandler> createHandlerRegistry() {
         Map<Byte, Common.MessageHandler> registry = new HashMap<Byte, Common.MessageHandler>();
+        registry.put((byte) (ADD_NOTIFICATION_LISTENER ^ RESPONSE_MASK), new MarshalledResponseHandler<Void>(VOID));
         registry.put((byte) (CREATE_MBEAN ^ RESPONSE_MASK), new MarshalledResponseHandler<ObjectInstance>(OBJECT_INSTANCE));
         registry.put((byte) (GET_ATTRIBUTE ^ RESPONSE_MASK), new MarshalledResponseHandler<Object>(OBJECT));
         registry.put((byte) (GET_ATTRIBUTES ^ RESPONSE_MASK), new MarshalledResponseHandler<AttributeList>(ATTRIBUTE_LIST));
@@ -171,6 +175,7 @@ class ClientConnection extends Common implements VersionedConnection {
         registry.put((byte) (QUERY_MBEANS ^ RESPONSE_MASK), new MarshalledResponseHandler<Set<ObjectInstance>>(
                 SET_OBJECT_INSTANCE));
         registry.put((byte) (QUERY_NAMES ^ RESPONSE_MASK), new MarshalledResponseHandler<Set<ObjectName>>(SET_OBJECT_NAME));
+        registry.put((byte) (REMOVE_NOTIFICATION_LISTENER ^ RESPONSE_MASK), new MarshalledResponseHandler<Void>(VOID));
         registry.put((byte) (SET_ATTRIBUTE ^ RESPONSE_MASK), new MarshalledResponseHandler<Void>(VOID));
         registry.put((byte) (SET_ATTRIBUTES ^ RESPONSE_MASK), new MarshalledResponseHandler<AttributeList>(ATTRIBUTE_LIST));
         registry.put((byte) (UNREGISTER_MBEAN ^ RESPONSE_MASK), new MarshalledResponseHandler<Void>(VOID));
@@ -1136,22 +1141,161 @@ class ClientConnection extends Common implements VersionedConnection {
 
         }
 
-        public void addNotificationListener(ObjectName name, ObjectName listener, NotificationFilter filter, Object handback)
-                throws InstanceNotFoundException, IOException {
-            // TODO Auto-generated method stub
+        public void addNotificationListener(final ObjectName name, final ObjectName listener, final NotificationFilter filter,
+                final Object handback) throws InstanceNotFoundException, IOException {
+            VersionedIoFuture<TypeExceptionHolder<Void>> future = new VersionedIoFuture<TypeExceptionHolder<Void>>();
+            final int correlationId = reserveNextCorrelationId(future);
+            try {
+                write(new MessageWriter() {
 
+                    @Override
+                    public void write(DataOutput output) throws IOException {
+                        output.writeByte(ADD_NOTIFICATION_LISTENER);
+                        output.writeInt(correlationId);
+
+                        output.writeByte(OBJECT_NAME);
+                        Marshaller marshaller = prepareForMarshalling(output);
+                        marshaller.writeObject(name);
+
+                        marshaller.writeByte(OBJECT_NAME);
+                        marshaller.writeObject(listener);
+
+                        marshaller.writeByte(NOTIFICATION_FILTER);
+                        marshaller.writeObject(filter);
+
+                        marshaller.writeByte(OBJECT);
+                        marshaller.writeObject(handback);
+
+                        marshaller.close();
+                    }
+                });
+
+                log.tracef("[%d] addNotificationListener - Request Sent", correlationId);
+
+                IoFuture.Status result = future.await(timeoutSeconds, TimeUnit.SECONDS);
+                switch (result) {
+                    case FAILED:
+                        throw future.getException();
+                    case DONE:
+                        TypeExceptionHolder<Void> response = future.get();
+
+                        if (response.e == null) {
+                            return;
+                        }
+
+                        instanceNotFoundException(response.e);
+                        throw toIoException(response.e);
+                    default:
+                        throw new IOException("Unable to invoke addNotificationListener, status=" + result.toString());
+                }
+            } finally {
+                releaseCorrelationId(correlationId);
+            }
         }
 
-        public void removeNotificationListener(ObjectName name, ObjectName listener) throws InstanceNotFoundException,
-                ListenerNotFoundException, IOException {
-            // TODO Auto-generated method stub
-
-        }
-
-        public void removeNotificationListener(ObjectName name, ObjectName listener, NotificationFilter filter, Object handback)
+        public void removeNotificationListener(final ObjectName name, final ObjectName listener)
                 throws InstanceNotFoundException, ListenerNotFoundException, IOException {
-            // TODO Auto-generated method stub
+            VersionedIoFuture<TypeExceptionHolder<Void>> future = new VersionedIoFuture<TypeExceptionHolder<Void>>();
+            final int correlationId = reserveNextCorrelationId(future);
+            try {
+                write(new MessageWriter() {
 
+                    @Override
+                    public void write(DataOutput output) throws IOException {
+                        output.writeByte(REMOVE_NOTIFICATION_LISTENER);
+                        output.writeInt(correlationId);
+
+                        output.writeByte(INTEGER);
+                        output.writeInt(2); // Sending 2 parameters.
+
+                        output.writeByte(OBJECT_NAME);
+                        Marshaller marshaller = prepareForMarshalling(output);
+                        marshaller.writeObject(name);
+
+                        marshaller.writeByte(OBJECT_NAME);
+                        marshaller.writeObject(listener);
+
+                        marshaller.close();
+                    }
+                });
+
+                log.tracef("[%d] removeNotificationListener - Request Sent", correlationId);
+
+                IoFuture.Status result = future.await(timeoutSeconds, TimeUnit.SECONDS);
+                switch (result) {
+                    case FAILED:
+                        throw future.getException();
+                    case DONE:
+                        TypeExceptionHolder<Void> response = future.get();
+
+                        if (response.e == null) {
+                            return;
+                        }
+
+                        instanceNotFoundException(response.e);
+                        throw toIoException(response.e);
+                    default:
+                        throw new IOException("Unable to invoke removeNotificationListener, status=" + result.toString());
+                }
+            } finally {
+                releaseCorrelationId(correlationId);
+            }
+        }
+
+        public void removeNotificationListener(final ObjectName name, final ObjectName listener,
+                final NotificationFilter filter, final Object handback) throws InstanceNotFoundException,
+                ListenerNotFoundException, IOException {
+            VersionedIoFuture<TypeExceptionHolder<Void>> future = new VersionedIoFuture<TypeExceptionHolder<Void>>();
+            final int correlationId = reserveNextCorrelationId(future);
+            try {
+                write(new MessageWriter() {
+
+                    @Override
+                    public void write(DataOutput output) throws IOException {
+                        output.writeByte(REMOVE_NOTIFICATION_LISTENER);
+                        output.writeInt(correlationId);
+
+                        output.writeByte(INTEGER);
+                        output.writeInt(4); // Sending 4 parameters.
+
+                        output.writeByte(OBJECT_NAME);
+                        Marshaller marshaller = prepareForMarshalling(output);
+                        marshaller.writeObject(name);
+
+                        marshaller.writeByte(OBJECT_NAME);
+                        marshaller.writeObject(listener);
+
+                        marshaller.writeByte(NOTIFICATION_FILTER);
+                        marshaller.writeObject(filter);
+
+                        marshaller.writeByte(OBJECT);
+                        marshaller.writeObject(handback);
+
+                        marshaller.close();
+                    }
+                });
+
+                log.tracef("[%d] removeNotificationListener - Request Sent", correlationId);
+
+                IoFuture.Status result = future.await(timeoutSeconds, TimeUnit.SECONDS);
+                switch (result) {
+                    case FAILED:
+                        throw future.getException();
+                    case DONE:
+                        TypeExceptionHolder<Void> response = future.get();
+
+                        if (response.e == null) {
+                            return;
+                        }
+
+                        instanceNotFoundException(response.e);
+                        throw toIoException(response.e);
+                    default:
+                        throw new IOException("Unable to invoke removeNotificationListener, status=" + result.toString());
+                }
+            } finally {
+                releaseCorrelationId(correlationId);
+            }
         }
 
         public void removeNotificationListener(ObjectName name, NotificationListener listener)

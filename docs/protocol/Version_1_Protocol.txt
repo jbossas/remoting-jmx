@@ -45,22 +45,24 @@ correlation id -  used to match a response id with the corresponding request. (i
 
 message id     -  Identifier for the message 00 to 7F (byte, 1 byte)
 
-                  createMBean         - 0x01
-                  unregisterMBean     - 0x02
-                  getObjectInstance   - 0x03
-                  queryMBeans         - 0x04
-                  queryNames          - 0x05
-                  isRegistered        - 0x06
-                  getMBeanCount       - 0x07
-                  getAttribute        - 0x08
-                  getAttributes       - 0x09
-                  setAttribute        - 0x0A
-                  setAttributes       - 0x0B
-                  invoke              - 0x0C
-                  getDefaultDomain    - 0x0D
-                  getDomains          - 0x0E
-                  getMBeanInfo        - 0x0F
-                  instanceOf          - 0x10
+                  createMBean                - 0x01
+                  unregisterMBean            - 0x02
+                  getObjectInstance          - 0x03
+                  queryMBeans                - 0x04
+                  queryNames                 - 0x05
+                  isRegistered               - 0x06
+                  getMBeanCount              - 0x07
+                  getAttribute               - 0x08
+                  getAttributes              - 0x09
+                  setAttribute               - 0x0A
+                  setAttributes              - 0x0B
+                  invoke                     - 0x0C
+                  getDefaultDomain           - 0x0D
+                  getDomains                 - 0x0E
+                  getMBeanInfo               - 0x0F
+                  instanceOf                 - 0x10
+                  addNotificationListener    - 0x11
+                  removeNotificationListener - 0x12
                                                                                                           
 
 outcome        -  Success = 0x00  // payload will be return type or if void return type method will return.
@@ -95,7 +97,9 @@ type           -
                   ObjectInstance       - 0x0C
                   ObjectInstance (Set) - 0x0D
                   MBeanInfo            - 0x0E
-                  ObjectName (Set)     - 0x0F                            
+                  ObjectName (Set)     - 0x0F   
+                  NotificationFilter   - 0x10
+                         
 
 ****************
 *  RPC Methods *
@@ -103,10 +107,29 @@ type           -
 These are the methods that directly call the server from the client and then pass a response
 back to the client.
 
+    public void addNotificationListener(ObjectName name,
+					ObjectName listener,
+					NotificationFilter filter,
+					Object handback)
+	    throws InstanceNotFoundException, IOException;
+
+    public void removeNotificationListener(ObjectName name,
+					   ObjectName listener) 
+	throws InstanceNotFoundException, ListenerNotFoundException,
+	       IOException;
+	       
+    public void removeNotificationListener(ObjectName name,
+					   ObjectName listener,
+					   NotificationFilter filter,
+					   Object handback)
+	    throws InstanceNotFoundException, ListenerNotFoundException,
+		   IOException;
+
     public ObjectInstance createMBean(String className, ObjectName name)
 	    throws ReflectionException, InstanceAlreadyExistsException,
 		   MBeanRegistrationException, MBeanException,
 		   NotCompliantMBeanException, IOException;
+
     public ObjectInstance createMBean(String className, ObjectName name,
 				      ObjectName loaderName) 
 	    throws ReflectionException, InstanceAlreadyExistsException,
@@ -199,25 +222,8 @@ registered NotificationListener instances.
 					NotificationListener listener,
 					NotificationFilter filter,
 					Object handback)
-	    throws InstanceNotFoundException, IOException;
+	    throws InstanceNotFoundException, IOException;	    
 	    
-    public void addNotificationListener(ObjectName name,
-					ObjectName listener,
-					NotificationFilter filter,
-					Object handback)
-	    throws InstanceNotFoundException, IOException;
-	    
-    public void removeNotificationListener(ObjectName name,
-					   ObjectName listener) 
-	throws InstanceNotFoundException, ListenerNotFoundException,
-	       IOException;
-	       
-    public void removeNotificationListener(ObjectName name,
-					   ObjectName listener,
-					   NotificationFilter filter,
-					   Object handback)
-	    throws InstanceNotFoundException, ListenerNotFoundException,
-		   IOException;
 		   
     public void removeNotificationListener(ObjectName name,
 					   NotificationListener listener)

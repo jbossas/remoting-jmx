@@ -21,6 +21,7 @@
  */
 package org.jboss.remoting3.jmx.protocol.v1;
 
+import static org.jboss.remoting3.jmx.protocol.v1.Constants.ADD_NOTIFICATION_LISTENER;
 import static org.jboss.remoting3.jmx.protocol.v1.Constants.ATTRIBUTE;
 import static org.jboss.remoting3.jmx.protocol.v1.Constants.ATTRIBUTE_LIST;
 import static org.jboss.remoting3.jmx.protocol.v1.Constants.BOOLEAN;
@@ -39,6 +40,7 @@ import static org.jboss.remoting3.jmx.protocol.v1.Constants.INTEGER;
 import static org.jboss.remoting3.jmx.protocol.v1.Constants.INVOKE;
 import static org.jboss.remoting3.jmx.protocol.v1.Constants.IS_REGISTERED;
 import static org.jboss.remoting3.jmx.protocol.v1.Constants.MBEAN_INFO;
+import static org.jboss.remoting3.jmx.protocol.v1.Constants.NOTIFICATION_FILTER;
 import static org.jboss.remoting3.jmx.protocol.v1.Constants.OBJECT;
 import static org.jboss.remoting3.jmx.protocol.v1.Constants.OBJECT_ARRAY;
 import static org.jboss.remoting3.jmx.protocol.v1.Constants.OBJECT_INSTANCE;
@@ -46,6 +48,7 @@ import static org.jboss.remoting3.jmx.protocol.v1.Constants.OBJECT_NAME;
 import static org.jboss.remoting3.jmx.protocol.v1.Constants.QUERY_EXP;
 import static org.jboss.remoting3.jmx.protocol.v1.Constants.QUERY_MBEANS;
 import static org.jboss.remoting3.jmx.protocol.v1.Constants.QUERY_NAMES;
+import static org.jboss.remoting3.jmx.protocol.v1.Constants.REMOVE_NOTIFICATION_LISTENER;
 import static org.jboss.remoting3.jmx.protocol.v1.Constants.RESPONSE_MASK;
 import static org.jboss.remoting3.jmx.protocol.v1.Constants.SET_ATTRIBUTE;
 import static org.jboss.remoting3.jmx.protocol.v1.Constants.SET_ATTRIBUTES;
@@ -73,10 +76,12 @@ import javax.management.InstanceAlreadyExistsException;
 import javax.management.InstanceNotFoundException;
 import javax.management.IntrospectionException;
 import javax.management.InvalidAttributeValueException;
+import javax.management.ListenerNotFoundException;
 import javax.management.MBeanException;
 import javax.management.MBeanInfo;
 import javax.management.MBeanRegistrationException;
 import javax.management.NotCompliantMBeanException;
+import javax.management.NotificationFilter;
 import javax.management.ObjectInstance;
 import javax.management.ObjectName;
 import javax.management.QueryExp;
@@ -116,6 +121,7 @@ class ServerProxy extends Common implements VersionedProxy {
 
     private Map<Byte, Common.MessageHandler> createHandlerRegistry() {
         Map<Byte, Common.MessageHandler> registry = new HashMap<Byte, Common.MessageHandler>();
+        registry.put(ADD_NOTIFICATION_LISTENER, new AddNotificationListenerHandler());
         registry.put(CREATE_MBEAN, new CreateMBeanHandler());
         registry.put(GET_ATTRIBUTE, new GetAttributeHandler());
         registry.put(GET_ATTRIBUTES, new GetAttributesHandler());
@@ -129,6 +135,7 @@ class ServerProxy extends Common implements VersionedProxy {
         registry.put(IS_REGISTERED, new IsRegisteredHandler());
         registry.put(QUERY_MBEANS, new QueryMBeansHandler());
         registry.put(QUERY_NAMES, new QueryNamesHandler());
+        registry.put(REMOVE_NOTIFICATION_LISTENER, new RemoveNotificationListenerHandler());
         registry.put(SET_ATTRIBUTE, new SetAttributeHandler());
         registry.put(SET_ATTRIBUTES, new SetAttributesHandler());
         registry.put(UNREGISTER_MBEAN, new UnregisterMBeanHandler());
@@ -352,6 +359,60 @@ class ServerProxy extends Common implements VersionedProxy {
             }
         });
 
+    }
+
+    private class AddNotificationListenerHandler implements Common.MessageHandler {
+
+        @Override
+        public void handle(DataInput input, int correlationId) throws IOException {
+            log.trace("AddNotificationListener");
+
+            byte paramType = input.readByte();
+            if (paramType != OBJECT_NAME) {
+                throw new IOException("Unexpected paramType");
+            }
+
+            Unmarshaller unmarshaller = prepareForUnMarshalling(input);
+            ObjectName name;
+            ObjectName listener;
+            NotificationFilter filter;
+            Object handback;
+
+            try {
+                name = unmarshaller.readObject(ObjectName.class);
+
+                paramType = unmarshaller.readByte();
+                if (paramType != OBJECT_NAME) {
+                    throw new IOException("Unexpected paramType");
+                }
+                listener = unmarshaller.readObject(ObjectName.class);
+
+                paramType = unmarshaller.readByte();
+                if (paramType != NOTIFICATION_FILTER) {
+                    throw new IOException("Unexpected paramType");
+                }
+                filter = unmarshaller.readObject(NotificationFilter.class);
+
+                paramType = unmarshaller.readByte();
+                if (paramType != OBJECT) {
+                    throw new IOException("Unexpected paramType");
+                }
+                handback = unmarshaller.readObject();
+            } catch (ClassNotFoundException cnfe) {
+                throw new IOException(cnfe);
+            }
+
+            try {
+                server.getMBeanServer().addNotificationListener(name, listener, filter, handback);
+
+                writeResponse(ADD_NOTIFICATION_LISTENER, correlationId);
+
+                log.tracef("[%d] AddNotificationListener - Success Response Sent", correlationId);
+            } catch (InstanceNotFoundException e) {
+                writeResponse(e, ADD_NOTIFICATION_LISTENER, correlationId);
+                log.tracef("[%d] AddNotificationListener - Failure Response Sent", correlationId);
+            }
+        }
     }
 
     private class CreateMBeanHandler implements Common.MessageHandler {
@@ -815,6 +876,80 @@ class ServerProxy extends Common implements VersionedProxy {
             } catch (MBeanException e) {
                 writeResponse(e, INVOKE, correlationId);
                 log.tracef("[%d] Invoke - Failure Response Sent", correlationId);
+            }
+        }
+    }
+
+    private class RemoveNotificationListenerHandler implements Common.MessageHandler {
+
+        @Override
+        public void handle(DataInput input, int correlationId) throws IOException {
+            log.trace("RemoveNotificationListener");
+
+            byte paramType = input.readByte();
+            if (paramType != INTEGER) {
+                throw new IOException("Unexpected paramType");
+            }
+            int count = input.readInt();
+            if (count != 2 && count != 4) {
+                throw new IOException("Invalid count received.");
+            }
+
+            ObjectName name;
+            ObjectName listener;
+            NotificationFilter filter;
+            Object handback;
+
+            paramType = input.readByte();
+            if (paramType != OBJECT_NAME) {
+                throw new IOException("Unexpected paramType");
+            }
+            Unmarshaller unmarshaller = prepareForUnMarshalling(input);
+            try {
+                name = unmarshaller.readObject(ObjectName.class);
+
+                paramType = unmarshaller.readByte();
+                if (paramType != OBJECT_NAME) {
+                    throw new IOException("Unexpected paramType");
+                }
+                listener = unmarshaller.readObject(ObjectName.class);
+
+                if (count == 4) {
+                    paramType = unmarshaller.readByte();
+                    if (paramType != NOTIFICATION_FILTER) {
+                        throw new IOException("Unexpected paramType");
+                    }
+                    filter = unmarshaller.readObject(NotificationFilter.class);
+
+                    paramType = unmarshaller.readByte();
+                    if (paramType != OBJECT) {
+                        throw new IOException("Unexpected paramType");
+                    }
+                    handback = unmarshaller.readObject();
+                } else {
+                    filter = null;
+                    handback = null;
+                }
+            } catch (ClassNotFoundException cnfe) {
+                throw new IOException(cnfe);
+            }
+
+            try {
+                if (count == 2) {
+                    server.getMBeanServer().removeNotificationListener(name, listener);
+                } else {
+                    server.getMBeanServer().removeNotificationListener(name, listener, filter, handback);
+                }
+
+                writeResponse(REMOVE_NOTIFICATION_LISTENER, correlationId);
+
+                log.tracef("[%d] RemoveNotificationListener - Success Response Sent", correlationId);
+            } catch (InstanceNotFoundException e) {
+                writeResponse(e, REMOVE_NOTIFICATION_LISTENER, correlationId);
+                log.tracef("[%d] RemoveNotificationListener - Failure Response Sent", correlationId);
+            } catch (ListenerNotFoundException e) {
+                writeResponse(e, REMOVE_NOTIFICATION_LISTENER, correlationId);
+                log.tracef("[%d] RemoveNotificationListener - Failure Response Sent", correlationId);
             }
         }
     }
