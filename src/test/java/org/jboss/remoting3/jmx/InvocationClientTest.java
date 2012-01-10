@@ -25,7 +25,12 @@ package org.jboss.remoting3.jmx;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 
 import javax.management.Attribute;
 import javax.management.AttributeList;
@@ -33,6 +38,9 @@ import javax.management.AttributeNotFoundException;
 import javax.management.MBeanServerConnection;
 import javax.management.ObjectName;
 import javax.management.ReflectionException;
+import javax.management.remote.JMXConnector;
+import javax.management.remote.JMXConnectorFactory;
+import javax.management.remote.JMXServiceURL;
 
 import org.jboss.remoting3.jmx.common.MyBean;
 import org.junit.Test;
@@ -232,6 +240,52 @@ public class InvocationClientTest extends AbstractTestBase {
             fail("Expected exception not thrown.");
         } catch (RuntimeException e) {
             assertEquals(NullPointerException.class, e.getCause().getClass());
+        } finally {
+            if (mbeanServer.isRegistered(beanName)) {
+                mbeanServer.unregisterMBean(beanName);
+            }
+        }
+
+    }
+
+    @Test
+    public void testInvoke_Timeout() throws Exception {
+        ObjectName beanName = new ObjectName(DEFAULT_DOMAIN, "test", "testInvoke_Timeout");
+        assertFalse(mbeanServer.isRegistered(beanName));
+
+        JMXServiceURL serviceUrl = new JMXServiceURL(URL);
+        Map<String, Object> env = new HashMap<String, Object>();
+        env.put("org.jboss.remoting-jmx.timeout", "1");
+        JMXConnector connector = JMXConnectorFactory.connect(serviceUrl, env);
+        MBeanServerConnection connection = connector.getMBeanServerConnection();
+
+        MyBean bean = new MyBean() {
+            @Override
+            public String transpose(String message) {
+                try {
+                    System.out.println("Sleeping");
+                    Thread.sleep(2000);
+                    System.out.println("Awake");
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+                return super.transpose(message);
+            }
+
+        };
+
+        assertFalse(connection.isRegistered(beanName));
+        mbeanServer.registerMBean(bean, beanName);
+        try {
+            final String someValue = "MyTestValue";
+
+            connection.invoke(beanName, "transpose", new Object[] { someValue }, new String[] { String.class.getName() });
+
+            fail("Expected exception not thrown.");
+
+        } catch (IOException ignored) {
+            // We expect this to indicate a timeout.
+            assertTrue(ignored.getMessage().contains("status=WAITING"));
         } finally {
             if (mbeanServer.isRegistered(beanName)) {
                 mbeanServer.unregisterMBean(beanName);
