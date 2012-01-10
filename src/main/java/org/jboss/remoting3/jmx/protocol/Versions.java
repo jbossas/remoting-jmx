@@ -22,6 +22,7 @@
 package org.jboss.remoting3.jmx.protocol;
 
 import java.io.IOException;
+import java.util.Map;
 
 import org.jboss.remoting3.Channel;
 import org.jboss.remoting3.jmx.RemotingConnectorServer;
@@ -50,9 +51,10 @@ public class Versions {
         return new byte[] { VersionOne.getVersionIdentifier() };
     }
 
-    public static VersionedConnection getVersionedConnection(final byte version, final Channel channel) throws IOException {
+    public static VersionedConnection getVersionedConnection(final byte version, final Channel channel,
+            final Map<String, ?> environment) throws IOException {
         if (version == VersionOne.getVersionIdentifier()) {
-            return VersionOne.getConnection(channel);
+            return VersionOne.getConnection(channel, environment);
         }
 
         throw new IllegalArgumentException("Unsupported protocol version.");

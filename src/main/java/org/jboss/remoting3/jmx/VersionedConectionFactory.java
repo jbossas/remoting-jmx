@@ -28,6 +28,7 @@ import static org.jboss.remoting3.jmx.Constants.STABLE;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import org.jboss.logging.Logger;
@@ -51,7 +52,8 @@ class VersionedConectionFactory {
 
     private static final Logger log = Logger.getLogger(VersionedConectionFactory.class);
 
-    static VersionedConnection createVersionedConnection(final Channel channel) throws IOException {
+    static VersionedConnection createVersionedConnection(final Channel channel, final Map<String, ?> environment)
+            throws IOException {
         // We don't want to start chaining the use of IoFutures otherwise multiple threads are tied up
         // for a single negotiation process so negotiate the connection sequentially.
 
@@ -77,7 +79,7 @@ class VersionedConectionFactory {
         }
 
         // getVersionedConnection may also make use of an IoFuture but our previous use of one has ended.
-        return Versions.getVersionedConnection(highest, channel);
+        return Versions.getVersionedConnection(highest, channel, environment);
     }
 
     /**

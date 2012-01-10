@@ -165,7 +165,7 @@ class RemotingConnector implements JMXConnector {
             throw new RuntimeException("Operation failed with status " + result);
         }
 
-        versionedConnection = VersionedConectionFactory.createVersionedConnection(channel);
+        versionedConnection = VersionedConectionFactory.createVersionedConnection(channel, env);
     }
 
     private OptionMap getOptionMap() {

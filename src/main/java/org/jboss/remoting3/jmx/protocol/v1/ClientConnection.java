@@ -105,11 +105,21 @@ import org.xnio.IoUtils;
  */
 class ClientConnection extends Common implements VersionedConnection {
 
+    /**
+     * System property that can be used to adjust the timeout
+     */
+    public static final String TIMEOUT_KEY = "org.jboss.remoting-jmx.timeout";
+
+    public static final int DEFAULT_TIMEOUT = 60;
+
     private static final Logger log = Logger.getLogger(ClientConnection.class);
 
     private final Channel channel;
     // Registry of handlers for the incoming messages.
     private final Map<Byte, Common.MessageHandler> handlerRegistry;
+
+    private final int timeoutSeconds;
+
     private String connectionId;
     private MBeanServerConnection mbeanServerConnection;
 
@@ -120,10 +130,28 @@ class ClientConnection extends Common implements VersionedConnection {
      */
     private final Map<Integer, VersionedIoFuture> requests = new HashMap<Integer, VersionedIoFuture>();
 
-    ClientConnection(final Channel channel) {
+    ClientConnection(final Channel channel, final Map<String, ?> environment) {
         super(channel);
         this.channel = channel;
         handlerRegistry = createHandlerRegistry();
+        Integer seconds = null;
+        if (environment != null && environment.containsKey(TIMEOUT_KEY)) {
+            final Object timeout = environment.get(TIMEOUT_KEY);
+            if (timeout instanceof Number) {
+                seconds = ((Number) timeout).intValue();
+            } else if (timeout instanceof String) {
+                try {
+                    seconds = Integer.parseInt((String) timeout);
+                } catch (NumberFormatException e) {
+                    log.warnf(e, "Could not parse configured timeout %s", timeout);
+                }
+            } else {
+                log.warnf("Timeout %s configured via environment is not valid ", timeout);
+            }
+        } else {
+            seconds = Integer.getInteger(TIMEOUT_KEY, DEFAULT_TIMEOUT);
+        }
+        timeoutSeconds = seconds == null ? DEFAULT_TIMEOUT : seconds;
     }
 
     private Map<Byte, Common.MessageHandler> createHandlerRegistry() {
@@ -153,7 +181,7 @@ class ClientConnection extends Common implements VersionedConnection {
     void start() throws IOException {
         sendVersionHeader();
         IoFuture<String> futureConnectionId = ConnectionIdReceiver.getConnectionId(channel);
-        IoFuture.Status result = futureConnectionId.await(5, TimeUnit.SECONDS);
+        IoFuture.Status result = futureConnectionId.await(timeoutSeconds, TimeUnit.SECONDS);
         switch (result) {
             case DONE:
                 connectionId = futureConnectionId.get();
@@ -329,7 +357,7 @@ class ClientConnection extends Common implements VersionedConnection {
 
                 log.tracef("[%d] createMBean - Request Sent", correlationId);
 
-                IoFuture.Status result = future.await(5, TimeUnit.SECONDS);
+                IoFuture.Status result = future.await(timeoutSeconds, TimeUnit.SECONDS);
                 switch (result) {
                     case FAILED:
                         throw future.getException();
@@ -385,7 +413,7 @@ class ClientConnection extends Common implements VersionedConnection {
 
                 log.tracef("[%d] createMBean - Request Sent", correlationId);
 
-                IoFuture.Status result = future.await(5, TimeUnit.SECONDS);
+                IoFuture.Status result = future.await(timeoutSeconds, TimeUnit.SECONDS);
                 switch (result) {
                     case FAILED:
                         throw future.getException();
@@ -450,7 +478,7 @@ class ClientConnection extends Common implements VersionedConnection {
                 });
                 log.tracef("[%d] createMBean - Request Sent", correlationId);
 
-                IoFuture.Status result = future.await(5, TimeUnit.SECONDS);
+                IoFuture.Status result = future.await(timeoutSeconds, TimeUnit.SECONDS);
                 switch (result) {
                     case FAILED:
                         throw future.getException();
@@ -518,7 +546,7 @@ class ClientConnection extends Common implements VersionedConnection {
 
                 log.tracef("[%d] createMBean - Request Sent", correlationId);
 
-                IoFuture.Status result = future.await(5, TimeUnit.SECONDS);
+                IoFuture.Status result = future.await(timeoutSeconds, TimeUnit.SECONDS);
                 switch (result) {
                     case FAILED:
                         throw future.getException();
@@ -563,7 +591,7 @@ class ClientConnection extends Common implements VersionedConnection {
 
                 log.tracef("[%d] unregisterMBean - Request Sent", correlationId);
 
-                IoFuture.Status result = future.await(5, TimeUnit.SECONDS);
+                IoFuture.Status result = future.await(timeoutSeconds, TimeUnit.SECONDS);
                 switch (result) {
                     case FAILED:
                         throw future.getException();
@@ -605,7 +633,7 @@ class ClientConnection extends Common implements VersionedConnection {
 
                 log.tracef("[%d] getObjectInstance - Request Sent", correlationId);
 
-                IoFuture.Status result = future.await(5, TimeUnit.SECONDS);
+                IoFuture.Status result = future.await(timeoutSeconds, TimeUnit.SECONDS);
                 switch (result) {
                     case FAILED:
                         throw future.getException();
@@ -648,7 +676,7 @@ class ClientConnection extends Common implements VersionedConnection {
 
                 log.tracef("[%d] queryMBeans - Request Sent", correlationId);
 
-                IoFuture.Status result = future.await(5, TimeUnit.SECONDS);
+                IoFuture.Status result = future.await(timeoutSeconds, TimeUnit.SECONDS);
                 switch (result) {
                     case FAILED:
                         throw future.getException();
@@ -690,7 +718,7 @@ class ClientConnection extends Common implements VersionedConnection {
 
                 log.tracef("[%d] queryNames - Request Sent", correlationId);
 
-                IoFuture.Status result = future.await(5, TimeUnit.SECONDS);
+                IoFuture.Status result = future.await(timeoutSeconds, TimeUnit.SECONDS);
                 switch (result) {
                     case FAILED:
                         throw future.getException();
@@ -729,7 +757,7 @@ class ClientConnection extends Common implements VersionedConnection {
 
                 log.tracef("[%d] isRegistered - Request Sent", correlationId);
 
-                IoFuture.Status result = future.await(5, TimeUnit.SECONDS);
+                IoFuture.Status result = future.await(timeoutSeconds, TimeUnit.SECONDS);
                 switch (result) {
                     case DONE:
                         TypeExceptionHolder<Boolean> response = future.get();
@@ -761,7 +789,7 @@ class ClientConnection extends Common implements VersionedConnection {
 
                 log.tracef("[%d] getMBeanCount - Request Sent", correlationId);
 
-                IoFuture.Status result = future.await(5, TimeUnit.SECONDS);
+                IoFuture.Status result = future.await(timeoutSeconds, TimeUnit.SECONDS);
                 switch (result) {
                     case DONE:
                         TypeExceptionHolder<Integer> response = future.get();
@@ -804,7 +832,7 @@ class ClientConnection extends Common implements VersionedConnection {
 
                 log.tracef("[%d] getAttribute - Request Sent", correlationId);
 
-                IoFuture.Status result = future.await(5, TimeUnit.SECONDS);
+                IoFuture.Status result = future.await(timeoutSeconds, TimeUnit.SECONDS);
                 switch (result) {
                     case FAILED:
                         throw future.getException();
@@ -854,7 +882,7 @@ class ClientConnection extends Common implements VersionedConnection {
 
                 log.tracef("[%d] getAttributes - Request Sent", correlationId);
 
-                IoFuture.Status result = future.await(5, TimeUnit.SECONDS);
+                IoFuture.Status result = future.await(timeoutSeconds, TimeUnit.SECONDS);
                 switch (result) {
                     case FAILED:
                         throw future.getException();
@@ -899,7 +927,7 @@ class ClientConnection extends Common implements VersionedConnection {
 
                 log.tracef("[%d] setAttribute - Request Sent", correlationId);
 
-                IoFuture.Status result = future.await(5, TimeUnit.SECONDS);
+                IoFuture.Status result = future.await(timeoutSeconds, TimeUnit.SECONDS);
                 switch (result) {
                     case FAILED:
                         throw future.getException();
@@ -949,7 +977,7 @@ class ClientConnection extends Common implements VersionedConnection {
 
                 log.tracef("[%d] setAttributes - Request Sent", correlationId);
 
-                IoFuture.Status result = future.await(5, TimeUnit.SECONDS);
+                IoFuture.Status result = future.await(timeoutSeconds, TimeUnit.SECONDS);
                 switch (result) {
                     case FAILED:
                         throw future.getException();
@@ -1014,7 +1042,7 @@ class ClientConnection extends Common implements VersionedConnection {
 
                 log.tracef("[%d] invoke - Request Sent", correlationId);
 
-                IoFuture.Status result = future.await(5, TimeUnit.SECONDS);
+                IoFuture.Status result = future.await(timeoutSeconds, TimeUnit.SECONDS);
                 switch (result) {
                     case FAILED:
                         throw future.getException();
@@ -1051,7 +1079,7 @@ class ClientConnection extends Common implements VersionedConnection {
 
                 log.tracef("[%d] getDefaultDomain - Request Sent", correlationId);
 
-                IoFuture.Status result = future.await(5, TimeUnit.SECONDS);
+                IoFuture.Status result = future.await(timeoutSeconds, TimeUnit.SECONDS);
                 switch (result) {
                     case DONE:
                         TypeExceptionHolder<String> response = future.get();
@@ -1084,7 +1112,7 @@ class ClientConnection extends Common implements VersionedConnection {
 
                 log.tracef("[%d] getDomains - Request Sent", correlationId);
 
-                IoFuture.Status result = future.await(5, TimeUnit.SECONDS);
+                IoFuture.Status result = future.await(timeoutSeconds, TimeUnit.SECONDS);
                 switch (result) {
                     case DONE:
                         TypeExceptionHolder<String[]> response = future.get();
@@ -1160,7 +1188,7 @@ class ClientConnection extends Common implements VersionedConnection {
 
                 log.tracef("[%d] getMBeanInfo - Request Sent", correlationId);
 
-                IoFuture.Status result = future.await(5, TimeUnit.SECONDS);
+                IoFuture.Status result = future.await(timeoutSeconds, TimeUnit.SECONDS);
                 switch (result) {
                     case FAILED:
                         throw future.getException();
@@ -1204,7 +1232,7 @@ class ClientConnection extends Common implements VersionedConnection {
 
                 log.tracef("[%d] isInstanceOf - Request Sent", correlationId);
 
-                IoFuture.Status result = future.await(5, TimeUnit.SECONDS);
+                IoFuture.Status result = future.await(timeoutSeconds, TimeUnit.SECONDS);
                 switch (result) {
                     case FAILED:
                         throw future.getException();

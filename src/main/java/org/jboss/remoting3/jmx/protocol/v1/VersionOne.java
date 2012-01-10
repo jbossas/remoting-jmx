@@ -22,6 +22,7 @@
 package org.jboss.remoting3.jmx.protocol.v1;
 
 import java.io.IOException;
+import java.util.Map;
 
 import org.jboss.remoting3.Channel;
 import org.jboss.remoting3.jmx.RemotingConnectorServer;
@@ -42,8 +43,8 @@ public class VersionOne {
         return 0x01;
     }
 
-    public static VersionedConnection getConnection(final Channel channel) throws IOException {
-        ClientConnection connection = new ClientConnection(channel);
+    public static VersionedConnection getConnection(final Channel channel, final Map<String, ?> environment) throws IOException {
+        ClientConnection connection = new ClientConnection(channel, environment);
         connection.start();
 
         return connection;
