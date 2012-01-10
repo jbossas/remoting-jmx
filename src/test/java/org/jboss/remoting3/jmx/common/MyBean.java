@@ -56,4 +56,9 @@ public class MyBean implements MyBeanMBean {
         return sb.toString();
     }
 
+    @Override
+    public String extractCustomValue(final CustomValueClass value) {
+        return value.getValue();
+    }
+
 }

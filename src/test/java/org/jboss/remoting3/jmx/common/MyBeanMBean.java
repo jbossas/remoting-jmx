@@ -39,4 +39,5 @@ public interface MyBeanMBean {
 
     String transpose(final String message);
 
+    String extractCustomValue(CustomValueClass value);
 }
