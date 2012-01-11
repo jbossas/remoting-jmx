@@ -22,39 +22,41 @@
 
 package org.jboss.remoting3.jmx.common;
 
-import javax.management.ListenerNotFoundException;
+import java.util.HashSet;
+import java.util.Set;
+
 import javax.management.Notification;
-import javax.management.NotificationBroadcasterSupport;
-import javax.management.NotificationFilter;
 import javax.management.NotificationListener;
 
 /**
- * The implementation of the MBean.
+ * A simple NotificationListener used for testing.
  *
  * @author <a href="mailto:darran.lofthouse@jboss.com">Darran Lofthouse</a>
  */
-public class NotificationBean extends NotificationBroadcasterSupport implements NotificationBeanMBean {
+public class Listener implements NotificationListener {
 
-    long sequenceCount = 1;
+    private final Set<Notification> notifications = new HashSet<Notification>();
 
-    @Override
-    public void notify(String message) {
-        Notification n = new Notification("test.notification", this, sequenceCount++);
-        n.setUserData(message);
-
-        sendNotification(n);
+    public synchronized void handleNotification(Notification notification, Object handback) {
+        notifications.add(notification);
+        notifyAll();
     }
 
-    @Override
-    public void removeNotificationListener(NotificationListener listener, NotificationFilter filter, Object handback)
-            throws ListenerNotFoundException {
-        super.removeNotificationListener(listener, filter, handback);
+    public synchronized Set<Notification> getRecievedNotifications() {
+        try {
+            return new HashSet<Notification>(notifications);
+        } finally {
+            notifications.clear();
+        }
     }
 
-    @Override
-    public void addNotificationListener(NotificationListener listener, NotificationFilter filter, Object handback) {
-        // TODO Auto-generated method stub
-        super.addNotificationListener(listener, filter, handback);
+    public synchronized Set<Notification> getNotEmptyNotofications(long timeout) throws InterruptedException {
+        long start = System.currentTimeMillis();
+        while (notifications.size() == 0 && System.currentTimeMillis() - start < timeout) {
+            wait(10);
+        }
+
+        return getRecievedNotifications();
     }
 
 }

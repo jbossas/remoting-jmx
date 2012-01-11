@@ -37,9 +37,11 @@ import static org.jboss.remoting3.jmx.protocol.v1.Constants.GET_MBEAN_INFO;
 import static org.jboss.remoting3.jmx.protocol.v1.Constants.GET_OBJECT_INSTANCE;
 import static org.jboss.remoting3.jmx.protocol.v1.Constants.INSTANCE_OF;
 import static org.jboss.remoting3.jmx.protocol.v1.Constants.INTEGER;
+import static org.jboss.remoting3.jmx.protocol.v1.Constants.INTEGER_ARRAY;
 import static org.jboss.remoting3.jmx.protocol.v1.Constants.INVOKE;
 import static org.jboss.remoting3.jmx.protocol.v1.Constants.IS_REGISTERED;
 import static org.jboss.remoting3.jmx.protocol.v1.Constants.MBEAN_INFO;
+import static org.jboss.remoting3.jmx.protocol.v1.Constants.NOTIFICATION;
 import static org.jboss.remoting3.jmx.protocol.v1.Constants.NOTIFICATION_FILTER;
 import static org.jboss.remoting3.jmx.protocol.v1.Constants.OBJECT;
 import static org.jboss.remoting3.jmx.protocol.v1.Constants.OBJECT_ARRAY;
@@ -50,6 +52,7 @@ import static org.jboss.remoting3.jmx.protocol.v1.Constants.QUERY_MBEANS;
 import static org.jboss.remoting3.jmx.protocol.v1.Constants.QUERY_NAMES;
 import static org.jboss.remoting3.jmx.protocol.v1.Constants.REMOVE_NOTIFICATION_LISTENER;
 import static org.jboss.remoting3.jmx.protocol.v1.Constants.RESPONSE_MASK;
+import static org.jboss.remoting3.jmx.protocol.v1.Constants.SEND_NOTIFICATION;
 import static org.jboss.remoting3.jmx.protocol.v1.Constants.SET_ATTRIBUTE;
 import static org.jboss.remoting3.jmx.protocol.v1.Constants.SET_ATTRIBUTES;
 import static org.jboss.remoting3.jmx.protocol.v1.Constants.SET_OBJECT_INSTANCE;
@@ -64,8 +67,10 @@ import java.io.DataInput;
 import java.io.DataInputStream;
 import java.io.DataOutput;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -83,6 +88,7 @@ import javax.management.MBeanInfo;
 import javax.management.MBeanRegistrationException;
 import javax.management.MBeanServerConnection;
 import javax.management.NotCompliantMBeanException;
+import javax.management.Notification;
 import javax.management.NotificationFilter;
 import javax.management.NotificationListener;
 import javax.management.ObjectInstance;
@@ -124,7 +130,8 @@ class ClientConnection extends Common implements VersionedConnection {
     private final int timeoutSeconds;
 
     private String connectionId;
-    private MBeanServerConnection mbeanServerConnection;
+    private TheConnection mbeanServerConnection;
+    private LocalNotificationManager localNotificationManager;
 
     private int nextCorrelationId = 1;
 
@@ -180,6 +187,8 @@ class ClientConnection extends Common implements VersionedConnection {
         registry.put((byte) (SET_ATTRIBUTES ^ RESPONSE_MASK), new MarshalledResponseHandler<AttributeList>(ATTRIBUTE_LIST));
         registry.put((byte) (UNREGISTER_MBEAN ^ RESPONSE_MASK), new MarshalledResponseHandler<Void>(VOID));
 
+        registry.put(SEND_NOTIFICATION, new NotificationHandler());
+
         return Collections.unmodifiableMap(registry);
     }
 
@@ -191,6 +200,7 @@ class ClientConnection extends Common implements VersionedConnection {
             case DONE:
                 connectionId = futureConnectionId.get();
                 mbeanServerConnection = new TheConnection();
+                localNotificationManager = new LocalNotificationManager();
                 channel.receiveMessage(new MessageReceiver());
                 break;
             case FAILED:
@@ -274,6 +284,115 @@ class ClientConnection extends Common implements VersionedConnection {
     private synchronized void releaseCorrelationId(int correlationId) {
         // TODO - Will maybe move to not removing by default and timeout failed requests.
         requests.remove(correlationId);
+    }
+
+    /**
+     * The local management of notifications.
+     */
+    private class LocalNotificationManager {
+
+        private int nextNotificationId = 1;
+
+        private Map<Integer, Association> listeners = new HashMap<Integer, ClientConnection.LocalNotificationManager.Association>();
+
+        private synchronized int getNextNotificationId() {
+            int next = nextNotificationId++;
+            // After the maximum integer start back at the beginning.
+            if (next < 0) {
+                nextNotificationId = 2;
+                next = 1;
+            }
+            return next;
+        }
+
+        private synchronized int associate(ObjectName target, NotificationListener listener, NotificationFilter filter,
+                Object handBack) {
+            Integer next = getNextNotificationId();
+
+            // Not likely but possible to use all IDs and start back at beginning while
+            // old request still in progress.
+            while (listeners.containsKey(next)) {
+                next = getNextNotificationId();
+            }
+
+            Association association = new Association();
+            association.target = target;
+            association.listener = listener;
+            association.filter = filter;
+            association.handBack = handBack;
+
+            listeners.put(next, association);
+            return next;
+        }
+
+        private synchronized void cancel(int id) {
+            listeners.remove(id);
+        }
+
+        private synchronized Association get(int id) {
+            return listeners.get(id);
+        }
+
+        private void notify(int id, Notification n, Object handback) {
+            Association association = get(id);
+            if (association != null) {
+                association.listener.handleNotification(n, handback);
+            } else {
+                // If an invalid ID is received don't throw an error, instead just send
+                // a message to the server canceling the notification by id.
+                try {
+                    log.warnf("Notification recieved for non existant NotificationListener %d", id);
+                    mbeanServerConnection.removeNotificationListener(new int[] { id });
+                } catch (InstanceNotFoundException e) {
+                } catch (ListenerNotFoundException e) {
+                } catch (IOException e) {
+                }
+            }
+        }
+
+        private synchronized int[] matchToRemove(ObjectName name, NotificationListener listener) {
+            List<Integer> toRemove = new ArrayList<Integer>();
+            for (Integer current : listeners.keySet()) {
+                Association association = listeners.get(current);
+                if ((name == association.target || name.equals(association.target) && listener == association.listener)) {
+                    toRemove.add(current);
+                }
+            }
+
+            int[] response = new int[toRemove.size()];
+            for (int i = 0; i < response.length; i++) {
+                response[i] = toRemove.get(i);
+                listeners.remove(response[i]);
+            }
+            return response;
+        }
+
+        private synchronized int[] matchToRemove(ObjectName name, NotificationListener listener, NotificationFilter filter,
+                Object handback) {
+            List<Integer> toRemove = new ArrayList<Integer>();
+            for (Integer current : listeners.keySet()) {
+                Association association = listeners.get(current);
+                if ((name == association.target || name.equals(association.target)) && listener == association.listener
+                        && filter == association.filter && handback == association.handBack) {
+                    toRemove.add(current);
+                }
+            }
+
+            int[] response = new int[toRemove.size()];
+            for (int i = 0; i < response.length; i++) {
+                response[i] = toRemove.get(i);
+                listeners.remove(response[i]);
+            }
+            return response;
+        }
+
+        private class Association {
+            private ObjectName target;
+            private NotificationListener listener;
+            private NotificationFilter filter;
+            private Object handBack;
+        }
+
     }
 
     private class MessageReceiver implements Channel.Receiver {
@@ -1135,10 +1254,62 @@ class ClientConnection extends Common implements VersionedConnection {
             }
         }
 
-        public void addNotificationListener(ObjectName name, NotificationListener listener, NotificationFilter filter,
-                Object handback) throws InstanceNotFoundException, IOException {
-            // TODO Auto-generated method stub
+        public void addNotificationListener(final ObjectName name, NotificationListener listener,
+                final NotificationFilter filter, final Object handback) throws InstanceNotFoundException, IOException {
+            final int notificationId = localNotificationManager.associate(name, listener, filter, handback);
 
+            VersionedIoFuture<TypeExceptionHolder<Void>> future = new VersionedIoFuture<TypeExceptionHolder<Void>>();
+            final int correlationId = reserveNextCorrelationId(future);
+            try {
+                write(new MessageWriter() {
+
+                    @Override
+                    public void write(DataOutput output) throws IOException {
+                        output.writeByte(ADD_NOTIFICATION_LISTENER);
+                        output.writeInt(correlationId);
+
+                        output.writeByte(OBJECT_NAME);
+                        Marshaller marshaller = prepareForMarshalling(output);
+                        marshaller.writeObject(name);
+
+                        // This indicates that the target is remote.
+                        marshaller.writeByte(INTEGER);
+                        marshaller.writeInt(notificationId);
+
+                        marshaller.writeByte(NOTIFICATION_FILTER);
+                        marshaller.writeObject(filter);
+
+                        marshaller.writeByte(OBJECT);
+                        marshaller.writeObject(handback);
+
+                        marshaller.close();
+                    }
+                });
+
+                log.tracef("[%d] addNotificationListener - Request Sent", correlationId);
+
+                IoFuture.Status result = future.await(timeoutSeconds, TimeUnit.SECONDS);
+                switch (result) {
+                    case FAILED:
+                        localNotificationManager.cancel(notificationId);
+                        throw future.getException();
+                    case DONE:
+                        TypeExceptionHolder<Void> response = future.get();
+
+                        if (response.e == null) {
+                            return;
+                        }
+
+                        localNotificationManager.cancel(notificationId);
+                        instanceNotFoundException(response.e);
+                        throw toIoException(response.e);
+                    default:
+                        localNotificationManager.cancel(notificationId);
+                        throw new IOException("Unable to invoke addNotificationListener, status=" + result.toString());
+                }
+            } finally {
+                releaseCorrelationId(correlationId);
+            }
         }
 
         public void addNotificationListener(final ObjectName name, final ObjectName listener, final NotificationFilter filter,
@@ -1298,16 +1469,63 @@ class ClientConnection extends Common implements VersionedConnection {
             }
         }
 
+        private void removeNotificationListener(final int[] listenerIds) throws InstanceNotFoundException,
+                ListenerNotFoundException, IOException {
+            VersionedIoFuture<TypeExceptionHolder<Void>> future = new VersionedIoFuture<TypeExceptionHolder<Void>>();
+            final int correlationId = reserveNextCorrelationId(future);
+            try {
+                write(new MessageWriter() {
+
+                    @Override
+                    public void write(DataOutput output) throws IOException {
+                        output.writeByte(REMOVE_NOTIFICATION_LISTENER);
+                        output.writeInt(correlationId);
+
+                        output.writeByte(INTEGER);
+                        output.writeInt(1); // Sending 2 parameters.
+
+                        output.writeByte(INTEGER_ARRAY);
+                        System.out.println(listenerIds.length);
+                        output.writeInt(listenerIds.length);
+                        for (int current : listenerIds) {
+                            output.writeInt(current);
+                        }
+                    }
+                });
+
+                log.tracef("[%d] removeNotificationListener - Request Sent", correlationId);
+
+                IoFuture.Status result = future.await(timeoutSeconds, TimeUnit.SECONDS);
+                switch (result) {
+                    case FAILED:
+                        throw future.getException();
+                    case DONE:
+                        TypeExceptionHolder<Void> response = future.get();
+
+                        if (response.e == null) {
+                            return;
+                        }
+
+                        instanceNotFoundException(response.e);
+                        listenerNotFoundException(response.e);
+                        throw toIoException(response.e);
+                    default:
+                        throw new IOException("Unable to invoke removeNotificationListener, status=" + result.toString());
+                }
+            } finally {
+                releaseCorrelationId(correlationId);
+            }
+
+        }
+
         public void removeNotificationListener(ObjectName name, NotificationListener listener)
                 throws InstanceNotFoundException, ListenerNotFoundException, IOException {
-            // TODO Auto-generated method stub
-
+            removeNotificationListener(localNotificationManager.matchToRemove(name, listener));
         }
 
         public void removeNotificationListener(ObjectName name, NotificationListener listener, NotificationFilter filter,
                 Object handback) throws InstanceNotFoundException, ListenerNotFoundException, IOException {
-            // TODO Auto-generated method stub
-
+            removeNotificationListener(localNotificationManager.matchToRemove(name, listener, filter, handback));
         }
 
         public MBeanInfo getMBeanInfo(final ObjectName name) throws InstanceNotFoundException, IntrospectionException,
@@ -1422,6 +1640,12 @@ class ClientConnection extends Common implements VersionedConnection {
         private void invalidAttributeValueException(Exception e) throws InvalidAttributeValueException {
             if (e != null && e instanceof InvalidAttributeValueException) {
                 throw (InvalidAttributeValueException) e;
+            }
+        }
+
+        private void listenerNotFoundException(Exception e) throws ListenerNotFoundException {
+            if (e != null && e instanceof ListenerNotFoundException) {
+                throw (ListenerNotFoundException) e;
             }
         }
 
@@ -1606,6 +1830,42 @@ class ClientConnection extends Common implements VersionedConnection {
             } catch (ClassCastException e) {
                 throw new IOException(e);
             }
+        }
+
+    }
+
+    private class NotificationHandler implements MessageHandler {
+
+        @Override
+        public void handle(DataInput input, int correlationId) throws IOException {
+            log.trace("Notification");
+
+            byte paramType = input.readByte();
+            if (paramType != INTEGER) {
+                throw new IOException("Unexpected paramType");
+            }
+            int listenerId = input.readInt();
+
+            paramType = input.readByte();
+            if (paramType != NOTIFICATION) {
+                throw new IOException("Unexpected paramType");
+            }
+
+            try {
+                Unmarshaller unmarshaller = prepareForUnMarshalling(input);
+                Notification notification = unmarshaller.readObject(Notification.class);
+
+                paramType = unmarshaller.readByte();
+                if (paramType != OBJECT) {
+                    throw new IOException("Unexpected paramType");
+                }
+                Object handBack = unmarshaller.readObject();
+
+                localNotificationManager.notify(listenerId, notification, handBack);
+            } catch (ClassNotFoundException cnfe) {
+                throw new IOException(cnfe);
+            }
+
         }
 
     }

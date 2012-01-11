@@ -50,6 +50,7 @@ class Constants {
     static final byte INSTANCE_OF = 0x10;
     static final byte ADD_NOTIFICATION_LISTENER = 0x11;
     static final byte REMOVE_NOTIFICATION_LISTENER = 0x12;
+    static final byte SEND_NOTIFICATION = 0x13;
 
     /*
      * Response Mask
@@ -85,6 +86,8 @@ class Constants {
     static final byte MBEAN_INFO = 0x0E;
     static final byte SET_OBJECT_NAME = 0x0F;
     static final byte NOTIFICATION_FILTER = 0x10;
+    static final byte NOTIFICATION = 0x11;
+    static final byte INTEGER_ARRAY = 0x12;
 
     /*
      * General

@@ -37,9 +37,11 @@ import static org.jboss.remoting3.jmx.protocol.v1.Constants.GET_MBEAN_INFO;
 import static org.jboss.remoting3.jmx.protocol.v1.Constants.GET_OBJECT_INSTANCE;
 import static org.jboss.remoting3.jmx.protocol.v1.Constants.INSTANCE_OF;
 import static org.jboss.remoting3.jmx.protocol.v1.Constants.INTEGER;
+import static org.jboss.remoting3.jmx.protocol.v1.Constants.INTEGER_ARRAY;
 import static org.jboss.remoting3.jmx.protocol.v1.Constants.INVOKE;
 import static org.jboss.remoting3.jmx.protocol.v1.Constants.IS_REGISTERED;
 import static org.jboss.remoting3.jmx.protocol.v1.Constants.MBEAN_INFO;
+import static org.jboss.remoting3.jmx.protocol.v1.Constants.NOTIFICATION;
 import static org.jboss.remoting3.jmx.protocol.v1.Constants.NOTIFICATION_FILTER;
 import static org.jboss.remoting3.jmx.protocol.v1.Constants.OBJECT;
 import static org.jboss.remoting3.jmx.protocol.v1.Constants.OBJECT_ARRAY;
@@ -50,6 +52,7 @@ import static org.jboss.remoting3.jmx.protocol.v1.Constants.QUERY_MBEANS;
 import static org.jboss.remoting3.jmx.protocol.v1.Constants.QUERY_NAMES;
 import static org.jboss.remoting3.jmx.protocol.v1.Constants.REMOVE_NOTIFICATION_LISTENER;
 import static org.jboss.remoting3.jmx.protocol.v1.Constants.RESPONSE_MASK;
+import static org.jboss.remoting3.jmx.protocol.v1.Constants.SEND_NOTIFICATION;
 import static org.jboss.remoting3.jmx.protocol.v1.Constants.SET_ATTRIBUTE;
 import static org.jboss.remoting3.jmx.protocol.v1.Constants.SET_ATTRIBUTES;
 import static org.jboss.remoting3.jmx.protocol.v1.Constants.SET_OBJECT_INSTANCE;
@@ -81,7 +84,9 @@ import javax.management.MBeanException;
 import javax.management.MBeanInfo;
 import javax.management.MBeanRegistrationException;
 import javax.management.NotCompliantMBeanException;
+import javax.management.Notification;
 import javax.management.NotificationFilter;
+import javax.management.NotificationListener;
 import javax.management.ObjectInstance;
 import javax.management.ObjectName;
 import javax.management.QueryExp;
@@ -101,6 +106,8 @@ import org.xnio.IoUtils;
 /**
  * The VersionOne server proxy.
  *
+ * The ServerProxy is a proxy for a single client connection, any state tracked by a proxy is client connection specific.
+ *
  * @author <a href="mailto:darran.lofthouse@jboss.com">Darran Lofthouse</a>
  */
 class ServerProxy extends Common implements VersionedProxy {
@@ -112,12 +119,14 @@ class ServerProxy extends Common implements VersionedProxy {
     private UUID connectionId;
     // Registry of handlers for the incoming messages.
     private final Map<Byte, Common.MessageHandler> handlerRegistry;
+    private final RemoteNotificationManager remoteNotificationManager;
 
     ServerProxy(final Channel channel, final RemotingConnectorServer server) {
         super(channel);
         this.channel = channel;
         this.server = server;
         this.handlerRegistry = createHandlerRegistry();
+        this.remoteNotificationManager = new RemoteNotificationManager();
     }
 
     private Map<Byte, Common.MessageHandler> createHandlerRegistry() {
@@ -249,6 +258,83 @@ class ServerProxy extends Common implements VersionedProxy {
 
     }
 
+    /**
+     * Manager to maintain the list of remote notifications and to pass these notifications back to the clients.
+     */
+    private class RemoteNotificationManager {
+
+        private Map<Integer, Association> listeners = new HashMap<Integer, Association>();
+
+        private synchronized void addNotificationListener(ObjectName name, int listenerId, NotificationFilter filter,
+                Object handback) throws InstanceNotFoundException {
+            NotificationProxy proxy = new NotificationProxy(listenerId);
+            server.getMBeanServer().addNotificationListener(name, proxy, filter, handback);
+            Association association = new Association();
+            association.name = name;
+            association.listener = proxy;
+            association.filter = filter;
+            association.handback = handback;
+            listeners.put(listenerId, association);
+        }
+
+        private synchronized void removeNotificationListener(int listenerId) throws ListenerNotFoundException,
+                InstanceNotFoundException {
+            Association association = listeners.remove(listenerId);
+            if (association != null) {
+                server.getMBeanServer().removeNotificationListener(association.name, association.listener, association.filter,
+                        association.handback);
+            } else {
+                log.warnf("Request to removeNotificationListener, listener with ID %d not found.", listenerId);
+            }
+        }
+
+        private void removeNotificationListeners(int[] listenerIds) {
+            for (int current : listenerIds) {
+                try {
+                    removeNotificationListener(current);
+                } catch (ListenerNotFoundException e) {
+                    log.warn("Failure removing notification listener", e);
+                } catch (InstanceNotFoundException e) {
+                    log.warn("Failure removing notification listener", e);
+                }
+            }
+        }
+
+        private class NotificationProxy implements NotificationListener {
+            private final int listenerId;
+
+            private NotificationProxy(final int listenerId) {
+                this.listenerId = listenerId;
+            }
+
+            public void handleNotification(final Notification notification, final Object handback) {
+                // Just send the notification to the client and let the client deal with it.
+
+                // By using the executor we can return the thread back to the NotificationBroadcaster quickly.
+                executor.execute(new Runnable() {
+
+                    @Override
+                    public void run() {
+                        try {
+                            writeNotification(listenerId, notification, handback);
+                        } catch (IOException e) {
+                            log.warnf("Unable to send notification to listener %d", listenerId);
+                        }
+
+                    }
+                });
+            }
+        }
+
+        private class Association {
+            private ObjectName name;
+            private NotificationListener listener;
+            private NotificationFilter filter;
+            private Object handback;
+        }
+
+    }
+
     private void writeResponse(final byte inResponseTo, final int correlationId) throws IOException {
         write(new MessageWriter() {
 
@@ -362,6 +448,32 @@ class ServerProxy extends Common implements VersionedProxy {
 
     }
 
+    private void writeNotification(final int listenerId, final Notification notification, final Object handback)
+            throws IOException {
+        write(new MessageWriter() {
+
+            @Override
+            public void write(DataOutput output) throws IOException {
+                output.writeByte(SEND_NOTIFICATION);
+                output.writeInt(0x00);
+
+                output.writeByte(INTEGER);
+                output.writeInt(listenerId);
+
+                output.writeByte(NOTIFICATION);
+
+                Marshaller marshaller = prepareForMarshalling(output);
+                marshaller.writeObject(notification);
+
+                marshaller.writeByte(OBJECT);
+                marshaller.writeObject(handback);
+
+                marshaller.finish();
+            }
+        });
+
+    }
+
     private class AddNotificationListenerHandler implements Common.MessageHandler {
 
         @Override
@@ -375,7 +487,9 @@ class ServerProxy extends Common implements VersionedProxy {
 
             Unmarshaller unmarshaller = prepareForUnMarshalling(input);
             ObjectName name;
-            ObjectName listener;
+            boolean remoteNotification;
+            int listenerId = -1;
+            ObjectName listener = null;
             NotificationFilter filter;
             Object handback;
 
@@ -383,10 +497,15 @@ class ServerProxy extends Common implements VersionedProxy {
                 name = unmarshaller.readObject(ObjectName.class);
 
                 paramType = unmarshaller.readByte();
-                if (paramType != OBJECT_NAME) {
+                if (paramType == INTEGER) {
+                    remoteNotification = true;
+                    listenerId = unmarshaller.readInt();
+                } else if (paramType == OBJECT_NAME) {
+                    remoteNotification = false;
+                    listener = unmarshaller.readObject(ObjectName.class);
+                } else {
                     throw new IOException("Unexpected paramType");
                 }
-                listener = unmarshaller.readObject(ObjectName.class);
 
                 paramType = unmarshaller.readByte();
                 if (paramType != NOTIFICATION_FILTER) {
@@ -404,7 +523,11 @@ class ServerProxy extends Common implements VersionedProxy {
             }
 
             try {
-                server.getMBeanServer().addNotificationListener(name, listener, filter, handback);
+                if (remoteNotification) {
+                    remoteNotificationManager.addNotificationListener(name, listenerId, filter, handback);
+                } else {
+                    server.getMBeanServer().addNotificationListener(name, listener, filter, handback);
+                }
 
                 writeResponse(ADD_NOTIFICATION_LISTENER, correlationId);
 
@@ -912,52 +1035,65 @@ class ServerProxy extends Common implements VersionedProxy {
             if (paramType != INTEGER) {
                 throw new IOException("Unexpected paramType");
             }
-            int count = input.readInt();
-            if (count != 2 && count != 4) {
+            final int count = input.readInt();
+            if (count != 1 && count != 2 && count != 4) {
                 throw new IOException("Invalid count received.");
             }
 
-            ObjectName name;
-            ObjectName listener;
-            NotificationFilter filter;
-            Object handback;
+            int[] toRemove = null;
+            ObjectName name = null;
+            ObjectName listener = null;
+            NotificationFilter filter = null;
+            Object handback = null;
 
-            paramType = input.readByte();
-            if (paramType != OBJECT_NAME) {
-                throw new IOException("Unexpected paramType");
-            }
-            Unmarshaller unmarshaller = prepareForUnMarshalling(input);
-            try {
-                name = unmarshaller.readObject(ObjectName.class);
-
-                paramType = unmarshaller.readByte();
+            if (count == 1) {
+                paramType = input.readByte();
+                if (paramType != INTEGER_ARRAY) {
+                    throw new IOException("Unexpected paramType");
+                }
+                int itemCount = input.readInt();
+                toRemove = new int[itemCount];
+                for (int i = 0; i < itemCount; i++) {
+                    System.out.println("i=" + i);
+                    toRemove[i] = input.readInt();
+                }
+            } else {
+                paramType = input.readByte();
                 if (paramType != OBJECT_NAME) {
                     throw new IOException("Unexpected paramType");
                 }
-                listener = unmarshaller.readObject(ObjectName.class);
-
-                if (count == 4) {
-                    paramType = unmarshaller.readByte();
-                    if (paramType != NOTIFICATION_FILTER) {
-                        throw new IOException("Unexpected paramType");
-                    }
-                    filter = unmarshaller.readObject(NotificationFilter.class);
+                Unmarshaller unmarshaller = prepareForUnMarshalling(input);
+                try {
+                    name = unmarshaller.readObject(ObjectName.class);
 
                     paramType = unmarshaller.readByte();
-                    if (paramType != OBJECT) {
+                    if (paramType != OBJECT_NAME) {
                         throw new IOException("Unexpected paramType");
                     }
-                    handback = unmarshaller.readObject();
-                } else {
-                    filter = null;
-                    handback = null;
+                    listener = unmarshaller.readObject(ObjectName.class);
+
+                    if (count == 4) {
+                        paramType = unmarshaller.readByte();
+                        if (paramType != NOTIFICATION_FILTER) {
+                            throw new IOException("Unexpected paramType");
+                        }
+                        filter = unmarshaller.readObject(NotificationFilter.class);
+
+                        paramType = unmarshaller.readByte();
+                        if (paramType != OBJECT) {
+                            throw new IOException("Unexpected paramType");
+                        }
+                        handback = unmarshaller.readObject();
+                    }
+                } catch (ClassNotFoundException cnfe) {
+                    throw new IOException(cnfe);
                 }
-            } catch (ClassNotFoundException cnfe) {
-                throw new IOException(cnfe);
             }
 
             try {
-                if (count == 2) {
+                if (count == 1) {
+                    remoteNotificationManager.removeNotificationListeners(toRemove);
+                } else if (count == 2) {
                     server.getMBeanServer().removeNotificationListener(name, listener);
                 } else {
                     server.getMBeanServer().removeNotificationListener(name, listener, filter, handback);

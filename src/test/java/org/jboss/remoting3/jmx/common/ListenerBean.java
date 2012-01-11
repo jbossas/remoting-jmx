@@ -22,29 +22,11 @@
 
 package org.jboss.remoting3.jmx.common;
 
-import java.util.HashSet;
-import java.util.Set;
-
-import javax.management.Notification;
-
 /**
+ * An extension of the test NotificationListener to allow it to be deployed as an MBean.
  *
  * @author <a href="mailto:darran.lofthouse@jboss.com">Darran Lofthouse</a>
  */
-public class ListenerBean implements ListenerBeanMBean {
-
-    private final Set<Notification> notifications = new HashSet<Notification>();
-
-    public synchronized void handleNotification(Notification notification, Object handback) {
-        notifications.add(notification);
-    }
-
-    public synchronized Set<Notification> getRecievedNotifications() {
-        try {
-            return new HashSet<Notification>(notifications);
-        } finally {
-            notifications.clear();
-        }
-    }
+public class ListenerBean extends Listener implements ListenerBeanMBean {
 
 }
