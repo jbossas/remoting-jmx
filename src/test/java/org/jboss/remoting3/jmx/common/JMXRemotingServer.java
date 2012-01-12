@@ -204,7 +204,7 @@ public class JMXRemotingServer {
         JMXRemotingServer server = new JMXRemotingServer(config);
         server.start();
 
-        System.out.println(String.format("Connect Using URL service:jmx:remote://localhost:%d", config.port));
+        System.out.println(String.format("Connect Using URL service:jmx:remoting-jmx://localhost:%d", config.port));
     }
 
     private static void getPort(String[] args, JMXRemotingConfig config) {

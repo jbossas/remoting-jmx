@@ -46,7 +46,7 @@ import org.junit.BeforeClass;
  */
 public abstract class AbstractTestBase {
 
-    protected static final String URL = "service:jmx:remote://localhost:" + DEFAULT_PORT;
+    protected static final String URL = "service:jmx:remoting-jmx://localhost:" + DEFAULT_PORT;
     protected static final String DEFAULT_DOMAIN = "org.jboss.remoting3.jmx";
 
     private static JMXRemotingServer remotingServer;

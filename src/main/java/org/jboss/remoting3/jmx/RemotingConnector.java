@@ -21,6 +21,7 @@
  */
 package org.jboss.remoting3.jmx;
 
+import static org.jboss.remoting3.jmx.Constants.CHANNEL_NAME;
 import static org.jboss.remoting3.jmx.Constants.CONNECTION_PROVIDER_URI;
 import static org.xnio.Options.SASL_POLICY_NOANONYMOUS;
 import static org.xnio.Options.SASL_POLICY_NOPLAINTEXT;
@@ -154,8 +155,15 @@ class RemotingConnector implements JMXConnector {
             throw new RuntimeException("Operation failed with status " + result);
         }
 
+        String serviceName = serviceUrl.getURLPath();
+        if (serviceName.length() == 0) {
+            serviceName = CHANNEL_NAME;
+        } else if (serviceName.startsWith("/") || serviceName.startsWith(";")) {
+            serviceName = serviceName.substring(1);
+        }
+
         // Now open the channel
-        final IoFuture<Channel> futureChannel = connection.openChannel("jmx", OptionMap.EMPTY);
+        final IoFuture<Channel> futureChannel = connection.openChannel(serviceName, OptionMap.EMPTY);
         result = futureChannel.await(5, TimeUnit.SECONDS);
         if (result == IoFuture.Status.DONE) {
             channel = futureChannel.get();

@@ -49,7 +49,7 @@ import org.junit.Test;
  */
 public class SecurityClientTest {
 
-    protected static final String URL = "service:jmx:remote://localhost:" + DEFAULT_PORT;
+    protected static final String URL = "service:jmx:remoting-jmx://localhost:" + DEFAULT_PORT;
 
     @Test
     public void testAnonymousAuthentication() throws Exception {
