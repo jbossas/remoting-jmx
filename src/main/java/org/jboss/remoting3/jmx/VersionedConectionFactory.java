@@ -116,7 +116,7 @@ class VersionedConectionFactory {
                     throw new IOException("Invalid leading bytes in header.");
                 }
                 log.tracef("Bytes Available %d", dis.available());
-                int versionCount = dis.read();
+                int versionCount = dis.readInt();
                 log.tracef("Expecting %d versions", versionCount);
                 byte[] versions = new byte[versionCount];
                 dis.read(versions);

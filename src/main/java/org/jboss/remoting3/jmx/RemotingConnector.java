@@ -52,7 +52,6 @@ import javax.security.sasl.RealmCallback;
 
 import org.jboss.logging.Logger;
 import org.jboss.remoting3.Channel;
-import org.jboss.remoting3.CloseHandler;
 import org.jboss.remoting3.Connection;
 import org.jboss.remoting3.Endpoint;
 import org.jboss.remoting3.Registration;
@@ -295,14 +294,6 @@ class RemotingConnector implements JMXConnector {
                 }
             }
 
-        }
-
-    }
-
-    private class ChannelCloseHandler implements CloseHandler<Channel> {
-
-        public void handleClose(Channel channel, IOException e) {
-            log.info("Client handleClose", e);
         }
 
     }

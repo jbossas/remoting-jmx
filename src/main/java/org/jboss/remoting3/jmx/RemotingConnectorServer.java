@@ -41,7 +41,6 @@ import javax.management.remote.JMXServiceURL;
 
 import org.jboss.logging.Logger;
 import org.jboss.remoting3.Channel;
-import org.jboss.remoting3.CloseHandler;
 import org.jboss.remoting3.Endpoint;
 import org.jboss.remoting3.MessageInputStream;
 import org.jboss.remoting3.OpenListener;
@@ -180,7 +179,7 @@ public class RemotingConnectorServer extends JMXConnectorServer {
         try {
             dos.writeBytes("JMX");
             byte[] versions = Versions.getSupportedVersions();
-            dos.write(versions.length);
+            dos.writeInt(versions.length);
             dos.write(versions);
             if (Version.isSnapshot()) {
                 dos.write(SNAPSHOT);
@@ -207,8 +206,6 @@ public class RemotingConnectorServer extends JMXConnectorServer {
         public void channelOpened(Channel channel) {
             log.trace("Channel Opened");
 
-            // Add a close handler so we can ensure we clean up when clients disconnect.
-            channel.addCloseHandler(new ChannelCloseHandler());
             try {
                 writeHeader(channel);
                 channel.receiveMessage(new ClientVersionReceiver());
@@ -225,10 +222,6 @@ public class RemotingConnectorServer extends JMXConnectorServer {
     }
 
     private class ClientVersionReceiver implements Channel.Receiver {
-
-        // TODO - Server side multiple versions need to be supported concurrently,
-        // client side 1:1 but here we may want some proxy interacting with the other
-        // versions.
 
         public void handleMessage(Channel channel, MessageInputStream messageInputStream) {
             // The incoming message will be in the form [JMX {selected version}], once verified
@@ -257,23 +250,10 @@ public class RemotingConnectorServer extends JMXConnectorServer {
         }
 
         public void handleError(Channel channel, IOException e) {
-            // TODO - something?
+            log.warn("Error on channel before fully established.", e);
         }
 
         public void handleEnd(Channel channel) {
-            // TODO - something?
-        }
-
-    }
-
-    /**
-     * Handler to perform required clean up when channel is closed.
-     */
-    private class ChannelCloseHandler implements CloseHandler<Channel> {
-
-        public void handleClose(Channel channel, IOException e) {
-            log.debug("Server handleClose");
-            // TODO - Perform Clean Up - possibly notification registrations and even connection registrations.
         }
 
     }
