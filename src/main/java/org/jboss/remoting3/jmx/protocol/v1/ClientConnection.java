@@ -73,6 +73,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import javax.management.Attribute;
@@ -126,7 +128,7 @@ class ClientConnection extends Common implements VersionedConnection {
     private final Channel channel;
     // Registry of handlers for the incoming messages.
     private final Map<Byte, Common.MessageHandler> handlerRegistry;
-
+    private final Executor executor;
     private final int timeoutSeconds;
 
     private String connectionId;
@@ -160,6 +162,11 @@ class ClientConnection extends Common implements VersionedConnection {
             }
         } else {
             seconds = Integer.getInteger(TIMEOUT_KEY, DEFAULT_TIMEOUT);
+        }
+        if (environment != null && environment.containsKey(Executor.class.getName())) {
+            executor = (Executor) environment.get(Executor.class.getName());
+        } else {
+            executor = Executors.newCachedThreadPool();
         }
         timeoutSeconds = seconds == null ? DEFAULT_TIMEOUT : seconds;
     }
@@ -333,9 +340,15 @@ class ClientConnection extends Common implements VersionedConnection {
             return listeners.get(id);
         }
 
+        /*
+         * The message received will already be being processed on a Thread obtained from the local Executor, for this reason
+         * there is no point in creating a new Runnable and passing it to the executor to process the Notification.
+         */
+
         private void notify(int id, Notification n, Object handback) {
             Association association = get(id);
             if (association != null) {
+
                 association.listener.handleNotification(n, handback);
             } else {
                 // If an invalid ID is received don't throw an error, instead just send
@@ -1835,6 +1848,11 @@ class ClientConnection extends Common implements VersionedConnection {
     }
 
     private class NotificationHandler implements MessageHandler {
+
+        /*
+         * The message received will already be being processed on a Thread obtained from the local Executor, for this reason
+         * there is no point in creating a new Runnable and passing it to the executor to process the Notification.
+         */
 
         @Override
         public void handle(DataInput input, int correlationId) throws IOException {

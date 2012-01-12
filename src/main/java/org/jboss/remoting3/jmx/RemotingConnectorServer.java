@@ -32,6 +32,8 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 
 import javax.management.MBeanServer;
 import javax.management.remote.JMXConnectorServer;
@@ -76,10 +78,16 @@ public class RemotingConnectorServer extends JMXConnectorServer {
      */
     private Endpoint endpoint;
     private Registration registration;
+    private Executor executor;
 
     public RemotingConnectorServer(final MBeanServer mbeanServer, final Endpoint endpoint) {
+        this(mbeanServer, endpoint, Executors.newCachedThreadPool());
+    }
+
+    public RemotingConnectorServer(final MBeanServer mbeanServer, final Endpoint endpoint, Executor executor) {
         super(mbeanServer);
         this.endpoint = endpoint;
+        this.executor = executor;
     }
 
     /*
@@ -148,6 +156,10 @@ public class RemotingConnectorServer extends JMXConnectorServer {
         log.debugf("Connection '%s' now opened.", connectionId);
         registeredConnections.put(connectionId, proxy);
         connectionOpened(connectionId, "", null);
+    }
+
+    public Executor getExecutor() {
+        return executor;
     }
 
     /**

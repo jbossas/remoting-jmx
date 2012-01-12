@@ -32,8 +32,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
 
 import org.jboss.marshalling.AbstractClassResolver;
 import org.jboss.marshalling.ByteInput;
@@ -57,8 +55,6 @@ import org.xnio.IoUtils;
 abstract class Common {
 
     private final Channel channel;
-    // TODO - Optionally use a provided executor or at least allow config of number of threads.
-    protected final Executor executor = Executors.newFixedThreadPool(10);
 
     private final MarshallerFactory marshallerFactory;
 

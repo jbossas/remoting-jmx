@@ -71,6 +71,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.Executor;
 
 import javax.management.Attribute;
 import javax.management.AttributeList;
@@ -117,6 +118,7 @@ class ServerProxy extends Common implements VersionedProxy {
     private final Channel channel;
     private final RemotingConnectorServer server;
     private UUID connectionId;
+    private final Executor executor;
     // Registry of handlers for the incoming messages.
     private final Map<Byte, Common.MessageHandler> handlerRegistry;
     private final RemoteNotificationManager remoteNotificationManager;
@@ -127,6 +129,7 @@ class ServerProxy extends Common implements VersionedProxy {
         this.server = server;
         this.handlerRegistry = createHandlerRegistry();
         this.remoteNotificationManager = new RemoteNotificationManager();
+        this.executor = server.getExecutor();
     }
 
     private Map<Byte, Common.MessageHandler> createHandlerRegistry() {
