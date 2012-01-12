@@ -176,7 +176,6 @@ class RemotingConnector implements JMXConnector {
     }
 
     private OptionMap getOptionMap() {
-        // TODO - This could be further controlled through the environment.
         OptionMap.Builder builder = OptionMap.builder();
         builder.set(SASL_POLICY_NOANONYMOUS, Boolean.FALSE);
         builder.set(SASL_POLICY_NOPLAINTEXT, Boolean.FALSE);
@@ -225,6 +224,11 @@ class RemotingConnector implements JMXConnector {
 
     public void close() throws IOException {
         log.trace("close()");
+        closed = true;
+
+        channel.writeShutdown();
+        channel.close();
+        endpoint.close();
     }
 
     public void addConnectionNotificationListener(NotificationListener listener, NotificationFilter filter, Object handback) {

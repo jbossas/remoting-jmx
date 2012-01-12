@@ -293,6 +293,14 @@ class ClientConnection extends Common implements VersionedConnection {
         requests.remove(correlationId);
     }
 
+    private synchronized void cancelAllRequests(final IOException io) {
+        for (VersionedIoFuture current : requests.values()) {
+            current.setException(io);
+        }
+
+        requests.clear();
+    }
+
     /**
      * The local management of notifications.
      */
@@ -447,16 +455,12 @@ class ClientConnection extends Common implements VersionedConnection {
             }
         }
 
-        @Override
         public void handleError(Channel channel, IOException error) {
-            // TODO Auto-generated method stub
-
+            cancelAllRequests(error);
         }
 
-        @Override
         public void handleEnd(Channel channel) {
-            // TODO Auto-generated method stub
-
+            cancelAllRequests(new IOException("Connection Ended"));
         }
 
     }

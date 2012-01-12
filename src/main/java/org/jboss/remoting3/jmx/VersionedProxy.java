@@ -33,4 +33,6 @@ public interface VersionedProxy {
 
     String getConnectionId();
 
+    void close();
+
 }

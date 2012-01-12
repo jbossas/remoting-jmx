@@ -68,6 +68,7 @@ import java.io.DataOutput;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -183,6 +184,17 @@ class ServerProxy extends Common implements VersionedProxy {
         return connectionId.toString();
     }
 
+    public void close() {
+        try {
+            channel.writeShutdown();
+            channel.close();
+        } catch (IOException e) {
+            log.warn("Unable to close channel");
+            // Can't rely on the Receiver to have called this if we can't close down.
+            remoteNotificationManager.removeNotificationListener();
+        }
+    }
+
     private class MessageReciever implements Channel.Receiver {
 
         @Override
@@ -242,21 +254,20 @@ class ServerProxy extends Common implements VersionedProxy {
                 log.error(e);
                 IoUtils.safeClose(dis);
             } finally {
-                // TODO - Propper shut down logic.
+                // On shut down we expect one of the following pair to be called
+                // so that will end the receive loop.
                 channel.receiveMessage(this);
             }
         }
 
-        @Override
         public void handleError(Channel channel, IOException error) {
-            // TODO Auto-generated method stub
-
+            log.warn("Channel closing due to error", error);
+            remoteNotificationManager.removeNotificationListener();
         }
 
         @Override
         public void handleEnd(Channel channel) {
-            // TODO Auto-generated method stub
-
+            remoteNotificationManager.removeNotificationListener();
         }
 
     }
@@ -278,6 +289,16 @@ class ServerProxy extends Common implements VersionedProxy {
             association.filter = filter;
             association.handback = handback;
             listeners.put(listenerId, association);
+        }
+
+        private synchronized void removeNotificationListener() {
+            Iterator<Integer> keys = listeners.keySet().iterator();
+            int[] all = new int[listeners.size()];
+            for (int i = 0; i < all.length; i++) {
+                all[i] = keys.next();
+            }
+
+            removeNotificationListeners(all);
         }
 
         private synchronized void removeNotificationListener(int listenerId) throws ListenerNotFoundException,
