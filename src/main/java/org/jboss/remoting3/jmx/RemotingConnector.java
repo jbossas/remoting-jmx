@@ -80,6 +80,7 @@ class RemotingConnector implements JMXConnector {
     private boolean closed = false;
     private Channel channel;
     private VersionedConnection versionedConnection;
+    private ShutDownHook shutDownHook;
 
     RemotingConnector(JMXServiceURL serviceURL, Map<String, ?> environment) throws IOException {
         this.serviceUrl = serviceURL;
@@ -173,6 +174,8 @@ class RemotingConnector implements JMXConnector {
         }
 
         versionedConnection = VersionedConectionFactory.createVersionedConnection(channel, env);
+
+        Runtime.getRuntime().addShutdownHook((shutDownHook = new ShutDownHook()));
     }
 
     private OptionMap getOptionMap() {
@@ -225,6 +228,12 @@ class RemotingConnector implements JMXConnector {
     public void close() throws IOException {
         log.trace("close()");
         closed = true;
+
+        final ShutDownHook shutDownHook;
+        if ((shutDownHook = this.shutDownHook) != null) {
+            Runtime.getRuntime().removeShutdownHook(shutDownHook);
+            this.shutDownHook = null;
+        }
 
         channel.writeShutdown();
         channel.close();
@@ -300,6 +309,23 @@ class RemotingConnector implements JMXConnector {
 
         }
 
+    }
+
+    private class ShutDownHook extends Thread {
+        private ShutDownHook() {
+            super(new Runnable() {
+
+                public void run() {
+                    if (closed == false) {
+                        try {
+                            shutDownHook = null;
+                            close();
+                        } catch (IOException ignored) {
+                        }
+                    }
+                }
+            });
+        }
     }
 
 }
