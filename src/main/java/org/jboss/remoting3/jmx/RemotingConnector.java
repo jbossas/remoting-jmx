@@ -88,7 +88,7 @@ class RemotingConnector implements JMXConnector {
         final Xnio xnio = Xnio.getInstance();
         endpoint = Remoting.createEndpoint("endpoint", xnio, OptionMap.EMPTY);
         registration = endpoint.addConnectionProvider(CONNECTION_PROVIDER_URI, new RemoteConnectionProviderFactory(),
-                OptionMap.create(Options.SSL_ENABLED, false));
+                OptionMap.EMPTY);
     }
 
     public void connect() throws IOException {
@@ -123,7 +123,7 @@ class RemotingConnector implements JMXConnector {
             log.trace(sb.toString());
         }
 
-        Map<String, Object> combinedEnvironment = new HashMap(environment);
+        Map<String, Object> combinedEnvironment = new HashMap<String, Object>(environment);
         if (env != null) {
             for (String key : env.keySet()) {
                 combinedEnvironment.put(key, env.get(key));
