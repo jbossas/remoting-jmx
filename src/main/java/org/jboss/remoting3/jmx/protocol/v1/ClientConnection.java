@@ -1502,7 +1502,6 @@ class ClientConnection extends Common implements VersionedConnection {
                         output.writeInt(1); // Sending 2 parameters.
 
                         output.writeByte(INTEGER_ARRAY);
-                        System.out.println(listenerIds.length);
                         output.writeInt(listenerIds.length);
                         for (int current : listenerIds) {
                             output.writeInt(current);

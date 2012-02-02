@@ -1078,7 +1078,6 @@ class ServerProxy extends Common implements VersionedProxy {
                 int itemCount = input.readInt();
                 toRemove = new int[itemCount];
                 for (int i = 0; i < itemCount; i++) {
-                    System.out.println("i=" + i);
                     toRemove[i] = input.readInt();
                 }
             } else {
