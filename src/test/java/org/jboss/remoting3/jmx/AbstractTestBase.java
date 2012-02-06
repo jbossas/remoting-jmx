@@ -85,7 +85,9 @@ public abstract class AbstractTestBase {
     @After
     public void disconnect() throws IOException {
         try {
-            connector.close();
+            if (connector != null) {
+                connector.close();
+            }
         } finally {
             connector = null;
         }

@@ -31,6 +31,8 @@ import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import java.security.Principal;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -40,7 +42,6 @@ import java.util.Set;
 import javax.management.MBeanServer;
 import javax.management.remote.JMXConnectorServer;
 import javax.security.auth.callback.Callback;
-import javax.security.auth.callback.CallbackHandler;
 import javax.security.auth.callback.NameCallback;
 import javax.security.auth.callback.PasswordCallback;
 import javax.security.auth.callback.UnsupportedCallbackException;
@@ -54,7 +55,10 @@ import org.jboss.remoting3.Remoting;
 import org.jboss.remoting3.jmx.RemotingConnectorServer;
 import org.jboss.remoting3.jmx.Version;
 import org.jboss.remoting3.remote.RemoteConnectionProviderFactory;
+import org.jboss.remoting3.security.AuthorizingCallbackHandler;
 import org.jboss.remoting3.security.ServerAuthenticationProvider;
+import org.jboss.remoting3.security.UserInfo;
+import org.jboss.remoting3.security.UserPrincipal;
 import org.jboss.remoting3.spi.NetworkServerProvider;
 import org.jboss.sasl.callback.VerifyPasswordCallback;
 import org.xnio.OptionMap;
@@ -228,22 +232,25 @@ public class JMXRemotingServer {
     private class DefaultAuthenticationProvider implements ServerAuthenticationProvider {
 
         @Override
-        public CallbackHandler getCallbackHandler(String mechanismName) {
+        public AuthorizingCallbackHandler getCallbackHandler(String mechanismName) {
             if (mechanismName.equals(ANONYMOUS)) {
-                return new CallbackHandler() {
+                return new AuthorizingCallbackHandler() {
 
-                    @Override
                     public void handle(Callback[] callbacks) throws IOException, UnsupportedCallbackException {
                         for (Callback current : callbacks) {
                             throw new UnsupportedCallbackException(current, "ANONYMOUS mechanism so not expecting a callback");
                         }
+                    }
+
+                    public UserInfo createUserInfo(Collection<Principal> principals) throws IOException {
+                        return JMXRemotingServer.createUserInfo(principals);
                     }
                 };
 
             }
 
             if (mechanismName.equals(DIGEST_MD5) || mechanismName.equals(PLAIN)) {
-                return new CallbackHandler() {
+                return new AuthorizingCallbackHandler() {
 
                     @Override
                     public void handle(Callback[] callbacks) throws IOException, UnsupportedCallbackException {
@@ -273,12 +280,16 @@ public class JMXRemotingServer {
                         }
 
                     }
+
+                    public UserInfo createUserInfo(Collection<Principal> principals) throws IOException {
+                        return JMXRemotingServer.createUserInfo(principals);
+                    }
                 };
 
             }
 
             if (mechanismName.equals(JBOSS_LOCAL_USER)) {
-                return new CallbackHandler() {
+                return new AuthorizingCallbackHandler() {
 
                     @Override
                     public void handle(Callback[] callbacks) throws IOException, UnsupportedCallbackException {
@@ -297,12 +308,31 @@ public class JMXRemotingServer {
                         }
 
                     }
+
+                    public UserInfo createUserInfo(Collection<Principal> principals) throws IOException {
+                        return JMXRemotingServer.createUserInfo(principals);
+                    }
                 };
 
             }
 
             return null;
         }
+
+    }
+
+    private static UserInfo createUserInfo(final Collection<Principal> users) {
+        return new UserInfo() {
+
+            public String getUserName() {
+                for (Principal current : users) {
+                    if (current instanceof UserPrincipal) {
+                        return current.getName();
+                    }
+                }
+                return null;
+            }
+        };
 
     }
 
