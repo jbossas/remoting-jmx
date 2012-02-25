@@ -21,11 +21,6 @@
  */
 package org.jboss.remoting3.jmx;
 
-import static org.jboss.remoting3.jmx.Constants.CHANNEL_NAME;
-import static org.jboss.remoting3.jmx.Constants.CONNECTION_PROVIDER_URI;
-import static org.xnio.Options.SASL_POLICY_NOANONYMOUS;
-import static org.xnio.Options.SASL_POLICY_NOPLAINTEXT;
-
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -63,6 +58,11 @@ import org.xnio.Options;
 import org.xnio.Property;
 import org.xnio.Sequence;
 import org.xnio.Xnio;
+
+import static org.jboss.remoting3.jmx.Constants.CHANNEL_NAME;
+import static org.jboss.remoting3.jmx.Constants.CONNECTION_PROVIDER_URI;
+import static org.xnio.Options.SASL_POLICY_NOANONYMOUS;
+import static org.xnio.Options.SASL_POLICY_NOPLAINTEXT;
 
 /**
  * @author <a href="mailto:darran.lofthouse@jboss.com">Darran Lofthouse</a>
@@ -198,7 +198,7 @@ class RemotingConnector implements JMXConnector {
         int port = serviceUrl.getPort();
 
         try {
-            return new URI(CONNECTION_PROVIDER_URI + "://" + host + ":" + port);
+            return new URI(CONNECTION_PROVIDER_URI + "://" + formatPossibleIpv6Address(host) + ":" + port);
         } catch (URISyntaxException e) {
             throw new IOException("Unable to create connection URI", e);
         }
@@ -326,6 +326,19 @@ class RemotingConnector implements JMXConnector {
                 }
             });
         }
+    }
+
+    private static String formatPossibleIpv6Address(String address) {
+        if (address == null) {
+            return address;
+        }
+        if (!address.contains(":")) {
+            return address;
+        }
+        if (address.startsWith("[") && address.endsWith("]")) {
+            return address;
+        }
+        return "[" + address + "]";
     }
 
 }
