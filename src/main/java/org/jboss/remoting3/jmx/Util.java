@@ -1,6 +1,6 @@
 /*
  * JBoss, Home of Professional Open Source.
- * Copyright 2011, Red Hat, Inc., and individual contributors
+ * Copyright 2012, Red Hat, Inc., and individual contributors
  * as indicated by the @author tags. See the copyright.txt file in the
  * distribution for a full listing of individual contributors.
  *
@@ -19,22 +19,38 @@
  * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
-package org.jboss.remoting3.jmx.common;
 
-import java.io.Serializable;
+package org.jboss.remoting3.jmx;
+
+import static org.jboss.remoting3.jmx.Constants.CONNECTION_PROVIDER_URI;
+
+import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
+
+import javax.management.remote.JMXServiceURL;
 
 /**
- * @author Stuart Douglas
+ * A holder for utility methods.
+ *
+ * @author <a href="mailto:darran.lofthouse@jboss.com">Darran Lofthouse</a>
  */
-public class CustomValueClass implements Serializable {
+public class Util {
 
-    private final String value;
-
-    public CustomValueClass(final String value) {
-        this.value = value;
+    // Prevent instantiation.
+    private Util() {
     }
 
-    public String getValue() {
-        return value;
+    public static URI convert(final JMXServiceURL serviceUrl) throws IOException {
+        String scheme = CONNECTION_PROVIDER_URI;
+        String host = serviceUrl.getHost();
+        int port = serviceUrl.getPort();
+
+        try {
+            return new URI(scheme, null, host, port, null, null, null);
+        } catch (URISyntaxException e) {
+            throw new IOException("Unable to create connection URI", e);
+        }
     }
+
 }
