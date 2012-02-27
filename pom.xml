@@ -143,4 +143,9 @@
         </dependency>
     </dependencies>
 
+    <scm>
+        <connection>scm:git:git://github.com/jbossas/remoting-jmx.git</connection>
+        <developerConnection>scm:git:git@github.com:jbossas/remoting-jmx.git</developerConnection>
+        <url>https://github.com/jbossas/remoting-jmx</url>
+    </scm>
 </project>
