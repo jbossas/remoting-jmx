@@ -76,7 +76,9 @@ import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.management.Attribute;
 import javax.management.AttributeList;
@@ -112,7 +114,7 @@ import org.xnio.IoUtils;
 
 /**
  * The VersionOne client connection.
- *
+ * 
  * @author <a href="mailto:darran.lofthouse@jboss.com">Darran Lofthouse</a>
  */
 class ClientConnection extends Common implements VersionedConnection {
@@ -121,6 +123,8 @@ class ClientConnection extends Common implements VersionedConnection {
      * System property that can be used to adjust the timeout
      */
     public static final String TIMEOUT_KEY = "org.jboss.remoting-jmx.timeout";
+    private static final String REMOTING_JMX = "remoting-jmx";
+    private static final String CLIENT_THREAD = "client-thread-";
 
     public static final int DEFAULT_TIMEOUT = 60;
 
@@ -168,7 +172,15 @@ class ClientConnection extends Common implements VersionedConnection {
         if (environment != null && environment.containsKey(Executor.class.getName())) {
             executor = (Executor) environment.get(Executor.class.getName());
         } else {
-            executor = Executors.newCachedThreadPool();
+            executor = Executors.newCachedThreadPool(new ThreadFactory() {
+
+                final ThreadGroup group = new ThreadGroup(REMOTING_JMX);
+                final AtomicInteger threadNumber = new AtomicInteger(1);
+
+                public Thread newThread(Runnable r) {
+                    return new Thread(group, r, REMOTING_JMX + " " + CLIENT_THREAD + threadNumber.getAndIncrement());
+                }
+            });
             manageExecutor = true;
         }
         timeoutSeconds = seconds == null ? DEFAULT_TIMEOUT : seconds;
@@ -257,7 +269,7 @@ class ClientConnection extends Common implements VersionedConnection {
      * Get the next correlation ID, returning to the beginning once all integers have been used.
      * <p/>
      * THIS METHOD IS NOT TO BE USED DIRECTLY WHERE A CORRELATION ID NEEDS TO BE RESERVED.
-     *
+     * 
      * @return The next correlationId.
      */
     private synchronized int getNextCorrelationId() {
@@ -272,7 +284,7 @@ class ClientConnection extends Common implements VersionedConnection {
 
     /**
      * Reserves a correlation ID by taking the next value and ensuring it is stored in the Map.
-     *
+     * 
      * @return the next reserved correlation ID
      */
     private synchronized int reserveNextCorrelationId(VersionedIoFuture future) {
