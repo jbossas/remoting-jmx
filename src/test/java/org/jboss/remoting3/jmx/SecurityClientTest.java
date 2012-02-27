@@ -22,6 +22,9 @@
 
 package org.jboss.remoting3.jmx;
 
+import static org.jboss.remoting3.jmx.common.Constants.BIND_ADDRESS_PROPERTY;
+import static org.jboss.remoting3.jmx.common.Constants.DEFAULT_BIND_ADDRESS;
+import static org.jboss.remoting3.jmx.common.Constants.PROTOCOL;
 import static org.jboss.remoting3.jmx.common.JMXRemotingServer.DEFAULT_PORT;
 import static org.jboss.remoting3.jmx.common.JMXRemotingServer.DIGEST_MD5;
 import static org.jboss.remoting3.jmx.common.JMXRemotingServer.JBOSS_LOCAL_USER;
@@ -30,6 +33,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -40,6 +44,8 @@ import javax.management.remote.JMXServiceURL;
 
 import org.jboss.remoting3.jmx.common.JMXRemotingServer;
 import org.jboss.remoting3.jmx.common.JMXRemotingServer.JMXRemotingConfig;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 /**
@@ -49,15 +55,28 @@ import org.junit.Test;
  */
 public class SecurityClientTest {
 
-    protected static final String URL = "service:jmx:remoting-jmx://localhost:" + DEFAULT_PORT;
+    private static JMXRemotingConfig config;
+    private static JMXServiceURL serviceURL;
+
+    @BeforeClass
+    public static void initialise() throws MalformedURLException {
+        String bindAddress = System.getProperty(BIND_ADDRESS_PROPERTY, DEFAULT_BIND_ADDRESS);
+        config = new JMXRemotingConfig();
+        config.host = bindAddress;
+
+        serviceURL = new JMXServiceURL(PROTOCOL, bindAddress, DEFAULT_PORT);
+    }
+
+    @AfterClass
+    public static void cleanUp() {
+        config = null;
+        serviceURL = null;
+    }
 
     @Test
     public void testAnonymousAuthentication() throws Exception {
-        JMXRemotingConfig config = new JMXRemotingConfig();
-
         JMXRemotingServer remotingServer = new JMXRemotingServer(config);
         remotingServer.start();
-        JMXServiceURL serviceURL = new JMXServiceURL(URL);
 
         Map<String, Object> env = new HashMap<String, Object>(0);
 
@@ -74,12 +93,10 @@ public class SecurityClientTest {
 
     @Test
     public void testDigestAuthentication() throws Exception {
-        JMXRemotingConfig config = new JMXRemotingConfig();
         config.saslMechanisms = Collections.singleton(DIGEST_MD5);
 
         JMXRemotingServer remotingServer = new JMXRemotingServer(config);
         remotingServer.start();
-        JMXServiceURL serviceURL = new JMXServiceURL(URL);
 
         Map<String, Object> env = new HashMap<String, Object>(1);
         env.put(JMXConnector.CREDENTIALS, new String[] { "DigestUser", "DigestPassword" });
@@ -103,12 +120,10 @@ public class SecurityClientTest {
 
     @Test
     public void testLocalAuthentication() throws Exception {
-        JMXRemotingConfig config = new JMXRemotingConfig();
         config.saslMechanisms = Collections.singleton(JBOSS_LOCAL_USER);
 
         JMXRemotingServer remotingServer = new JMXRemotingServer(config);
         remotingServer.start();
-        JMXServiceURL serviceURL = new JMXServiceURL(URL);
 
         Map<String, Object> env = new HashMap<String, Object>(1);
 
@@ -123,12 +138,10 @@ public class SecurityClientTest {
 
     @Test
     public void testPlainAuthentication() throws Exception {
-        JMXRemotingConfig config = new JMXRemotingConfig();
         config.saslMechanisms = Collections.singleton(PLAIN);
 
         JMXRemotingServer remotingServer = new JMXRemotingServer(config);
         remotingServer.start();
-        JMXServiceURL serviceURL = new JMXServiceURL(URL);
 
         Map<String, Object> env = new HashMap<String, Object>(1);
         env.put(JMXConnector.CREDENTIALS, new String[] { "DigestUser", "DigestPassword" });

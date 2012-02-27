@@ -50,23 +50,21 @@ public class BasicClientTest extends AbstractTestBase {
 
     @Test
     public void testNewJMXConnector() throws Exception {
-        JMXServiceURL serviceUrl = new JMXServiceURL(URL);
-        JMXConnector connector = JMXConnectorFactory.newJMXConnector(serviceUrl, null);
+        JMXConnector connector = JMXConnectorFactory.newJMXConnector(serviceURL, null);
 
         assertNotNull(connector);
     }
 
     @Test
     public void testConnect() throws Exception {
-        JMXServiceURL serviceUrl = new JMXServiceURL(URL);
-        JMXConnector connector = JMXConnectorFactory.connect(serviceUrl);
+        JMXConnector connector = JMXConnectorFactory.connect(serviceURL);
 
         assertNotNull(connector);
     }
 
     @Test
     public void testConnect_URI() throws Exception {
-        JMXServiceURL serviceUrl = new JMXServiceURL(URL + "/jmx");
+        JMXServiceURL serviceUrl = new JMXServiceURL(serviceURL.toString() + "/jmx");
         JMXConnector connector = JMXConnectorFactory.connect(serviceUrl);
 
         assertNotNull(connector);

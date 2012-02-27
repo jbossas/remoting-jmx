@@ -40,7 +40,6 @@ import javax.management.ObjectName;
 import javax.management.ReflectionException;
 import javax.management.remote.JMXConnector;
 import javax.management.remote.JMXConnectorFactory;
-import javax.management.remote.JMXServiceURL;
 
 import org.jboss.remoting3.jmx.common.MyBean;
 import org.junit.Test;
@@ -253,10 +252,9 @@ public class InvocationClientTest extends AbstractTestBase {
         ObjectName beanName = new ObjectName(DEFAULT_DOMAIN, "test", "testInvoke_Timeout");
         assertFalse(mbeanServer.isRegistered(beanName));
 
-        JMXServiceURL serviceUrl = new JMXServiceURL(URL);
         Map<String, Object> env = new HashMap<String, Object>();
         env.put("org.jboss.remoting-jmx.timeout", "1");
-        JMXConnector connector = JMXConnectorFactory.connect(serviceUrl, env);
+        JMXConnector connector = JMXConnectorFactory.connect(serviceURL, env);
         MBeanServerConnection connection = connector.getMBeanServerConnection();
 
         MyBean bean = new MyBean() {
