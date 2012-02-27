@@ -27,7 +27,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>org.jboss.remoting3</groupId>
+    <groupId>org.jboss.remotingjmx</groupId>
     <artifactId>remoting-jmx</artifactId>
     <version>1.0.2.Final-SNAPSHOT</version>
 
@@ -87,7 +87,7 @@
                             <expression>${project.version}</expression>
                             <targetMembers>
                                 <methodBodyReturn>
-                                    <className>org.jboss.remoting3.jmx.Version</className>
+                                    <className>org.jboss.remotingjmx.Version</className>
                                     <methodName>getVersionString</methodName>
                                 </methodBodyReturn>
                             </targetMembers>
