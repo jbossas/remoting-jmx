@@ -96,6 +96,7 @@ public class JMXRemotingServer {
 
     private static final Logger log = Logger.getLogger(JMXRemotingServer.class);
 
+    private final String host;
     private final int listenerPort;
     private final MBeanServer mbeanServer;
     private final Set<String> saslMechanisms;
@@ -118,6 +119,7 @@ public class JMXRemotingServer {
     public JMXRemotingServer(JMXRemotingConfig config) {
         listenerPort = config.port > 0 ? config.port : DEFAULT_PORT;
         config.port = listenerPort; // Allow to be passed back to caller;
+        host = config.host;
         mbeanServer = config.mbeanServer != null ? config.mbeanServer : ManagementFactory.getPlatformMBeanServer();
         saslMechanisms = Collections.unmodifiableSet(config.saslMechanisms != null ? config.saslMechanisms
                 : Collections.EMPTY_SET);
@@ -135,7 +137,7 @@ public class JMXRemotingServer {
         endpoint.addConnectionProvider("remote", new RemoteConnectionProviderFactory(), OptionMap.EMPTY);
 
         final NetworkServerProvider nsp = endpoint.getConnectionProviderInterface("remote", NetworkServerProvider.class);
-        final SocketAddress bindAddress = new InetSocketAddress("localhost", listenerPort);
+        final SocketAddress bindAddress = new InetSocketAddress(host, listenerPort);
         final OptionMap serverOptions = createOptionMap();
 
         server = nsp.createServer(bindAddress, serverOptions, authenticationProvider, null);
@@ -337,6 +339,7 @@ public class JMXRemotingServer {
     }
 
     public static class JMXRemotingConfig {
+        public String host = "localhost";
         public int port = -1;
         public MBeanServer mbeanServer = null;
         public Set<String> saslMechanisms = null;
