@@ -223,8 +223,10 @@ class RemotingConnector implements JMXConnector {
             this.shutDownHook = null;
         }
 
+        versionedConnection.close();
         channel.writeShutdown();
         channel.close();
+        connection.close();
         endpoint.close();
     }
 

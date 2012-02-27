@@ -74,6 +74,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
@@ -128,6 +129,7 @@ class ClientConnection extends Common implements VersionedConnection {
     private final Channel channel;
     // Registry of handlers for the incoming messages.
     private final Map<Byte, Common.MessageHandler> handlerRegistry;
+    private boolean manageExecutor = false;
     private final Executor executor;
     private final int timeoutSeconds;
 
@@ -167,6 +169,7 @@ class ClientConnection extends Common implements VersionedConnection {
             executor = (Executor) environment.get(Executor.class.getName());
         } else {
             executor = Executors.newCachedThreadPool();
+            manageExecutor = true;
         }
         timeoutSeconds = seconds == null ? DEFAULT_TIMEOUT : seconds;
     }
@@ -245,7 +248,9 @@ class ClientConnection extends Common implements VersionedConnection {
     }
 
     public void close() {
-        // TODO - Messages to close the connection.
+        if (manageExecutor && executor instanceof ExecutorService) {
+            ((ExecutorService) executor).shutdown();
+        }
     }
 
     /**
