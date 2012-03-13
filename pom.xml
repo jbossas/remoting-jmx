@@ -34,7 +34,7 @@
     <parent>
         <groupId>org.jboss</groupId>
         <artifactId>jboss-parent</artifactId>
-        <version>7</version>
+        <version>8</version>
     </parent>
     
     <licenses>
@@ -49,17 +49,22 @@
         <name>JBoss, a division of Red Hat, Inc.</name>
         <url>http://www.jboss.org/</url>
     </organization>    
-
+      
+    <properties>
+        <version.surefire.plugin>2.12</version.surefire.plugin>
+    </properties>     
+        
     <build>
         <plugins>
             <!-- Surefire -->
             <plugin>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
+                    <systemPropertyVariables>
+                      <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
+                    </systemPropertyVariables>                                  
                     <redirectTestOutputToFile>true</redirectTestOutputToFile>
                     <trimStackTrace>false</trimStackTrace>
-                     <!-- Modules ignores Class-Path -->
-                    <useManifestOnlyJar>false</useManifestOnlyJar>
                     <printSummary>true</printSummary>
                     <includes>
                         <include>**/*Test.java</include>

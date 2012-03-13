@@ -42,6 +42,7 @@ import javax.management.remote.JMXConnector;
 import javax.management.remote.JMXConnectorFactory;
 import javax.management.remote.JMXServiceURL;
 
+import org.jboss.logging.Logger;
 import org.jboss.remotingjmx.common.JMXRemotingServer;
 import org.jboss.remotingjmx.common.JMXRemotingServer.JMXRemotingConfig;
 import org.junit.AfterClass;
@@ -55,6 +56,8 @@ import org.junit.Test;
  */
 public class SecurityClientTest {
 
+    private static final Logger log = Logger.getLogger(SecurityClientTest.class);
+    
     private static JMXRemotingConfig config;
     private static JMXServiceURL serviceURL;
 
@@ -75,6 +78,7 @@ public class SecurityClientTest {
 
     @Test
     public void testAnonymousAuthentication() throws Exception {
+        log.info("testAnonymousAuthentication - Begin");
         JMXRemotingServer remotingServer = new JMXRemotingServer(config);
         remotingServer.start();
 
@@ -93,6 +97,7 @@ public class SecurityClientTest {
 
     @Test
     public void testDigestAuthentication() throws Exception {
+        log.info("testDigestAuthentication - Begin");
         config.saslMechanisms = Collections.singleton(DIGEST_MD5);
 
         JMXRemotingServer remotingServer = new JMXRemotingServer(config);
@@ -120,6 +125,7 @@ public class SecurityClientTest {
 
     @Test
     public void testLocalAuthentication() throws Exception {
+        log.info("testLocalAuthentication - Begin");
         config.saslMechanisms = Collections.singleton(JBOSS_LOCAL_USER);
 
         JMXRemotingServer remotingServer = new JMXRemotingServer(config);
@@ -138,6 +144,7 @@ public class SecurityClientTest {
 
     @Test
     public void testPlainAuthentication() throws Exception {
+        log.info("testPlainAuthentication - Begin");
         config.saslMechanisms = Collections.singleton(PLAIN);
 
         JMXRemotingServer remotingServer = new JMXRemotingServer(config);
