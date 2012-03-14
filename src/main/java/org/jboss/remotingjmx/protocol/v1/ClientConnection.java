@@ -114,7 +114,7 @@ import org.xnio.IoUtils;
 
 /**
  * The VersionOne client connection.
- * 
+ *
  * @author <a href="mailto:darran.lofthouse@jboss.com">Darran Lofthouse</a>
  */
 class ClientConnection extends Common implements VersionedConnection {
@@ -269,7 +269,7 @@ class ClientConnection extends Common implements VersionedConnection {
      * Get the next correlation ID, returning to the beginning once all integers have been used.
      * <p/>
      * THIS METHOD IS NOT TO BE USED DIRECTLY WHERE A CORRELATION ID NEEDS TO BE RESERVED.
-     * 
+     *
      * @return The next correlationId.
      */
     private synchronized int getNextCorrelationId() {
@@ -284,7 +284,7 @@ class ClientConnection extends Common implements VersionedConnection {
 
     /**
      * Reserves a correlation ID by taking the next value and ensuring it is stored in the Map.
-     * 
+     *
      * @return the next reserved correlation ID
      */
     private synchronized int reserveNextCorrelationId(VersionedIoFuture future) {

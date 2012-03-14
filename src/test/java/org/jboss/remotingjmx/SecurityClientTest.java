@@ -45,8 +45,8 @@ import javax.management.remote.JMXServiceURL;
 import org.jboss.logging.Logger;
 import org.jboss.remotingjmx.common.JMXRemotingServer;
 import org.jboss.remotingjmx.common.JMXRemotingServer.JMXRemotingConfig;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 
 /**
@@ -57,12 +57,12 @@ import org.junit.Test;
 public class SecurityClientTest {
 
     private static final Logger log = Logger.getLogger(SecurityClientTest.class);
-    
-    private static JMXRemotingConfig config;
-    private static JMXServiceURL serviceURL;
 
-    @BeforeClass
-    public static void initialise() throws MalformedURLException {
+    private JMXRemotingConfig config;
+    private JMXServiceURL serviceURL;
+
+    @Before
+    public void initialise() throws MalformedURLException {
         String bindAddress = System.getProperty(BIND_ADDRESS_PROPERTY, DEFAULT_BIND_ADDRESS);
         config = new JMXRemotingConfig();
         config.host = bindAddress;
@@ -70,8 +70,8 @@ public class SecurityClientTest {
         serviceURL = new JMXServiceURL(PROTOCOL, bindAddress, DEFAULT_PORT);
     }
 
-    @AfterClass
-    public static void cleanUp() {
+    @After
+    public void cleanUp() {
         config = null;
         serviceURL = null;
     }
