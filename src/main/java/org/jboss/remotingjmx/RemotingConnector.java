@@ -27,6 +27,7 @@ import static org.jboss.remotingjmx.Util.convert;
 import static org.xnio.Options.SASL_POLICY_NOANONYMOUS;
 import static org.xnio.Options.SASL_POLICY_NOPLAINTEXT;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -53,7 +54,6 @@ import org.jboss.logging.Logger;
 import org.jboss.remoting3.Channel;
 import org.jboss.remoting3.Connection;
 import org.jboss.remoting3.Endpoint;
-import org.jboss.remoting3.Registration;
 import org.jboss.remoting3.Remoting;
 import org.jboss.remoting3.remote.RemoteConnectionProviderFactory;
 import org.xnio.IoFuture;
@@ -72,9 +72,8 @@ class RemotingConnector implements JMXConnector {
 
     private final JMXServiceURL serviceUrl;
     private final Map<String, ?> environment;
-    private final Endpoint endpoint;
-    private final Registration registration;
 
+    private Endpoint endpoint;
     private Connection connection;
     private boolean closed = false;
     private Channel channel;
@@ -84,11 +83,6 @@ class RemotingConnector implements JMXConnector {
     RemotingConnector(JMXServiceURL serviceURL, Map<String, ?> environment) throws IOException {
         this.serviceUrl = serviceURL;
         this.environment = Collections.unmodifiableMap(environment);
-
-        final Xnio xnio = Xnio.getInstance();
-        endpoint = Remoting.createEndpoint("endpoint", xnio, OptionMap.EMPTY);
-        registration = endpoint.addConnectionProvider(CONNECTION_PROVIDER_URI, new RemoteConnectionProviderFactory(),
-                OptionMap.EMPTY);
     }
 
     public void connect() throws IOException {
@@ -96,11 +90,31 @@ class RemotingConnector implements JMXConnector {
     }
 
     public void connect(Map<String, ?> env) throws IOException {
+        try {
+            internalConnect(env);
+        } catch (Exception e) {
+            close();
+            if (e instanceof RuntimeException) {
+                throw (RuntimeException) e;
+            } else if (e instanceof IOException) {
+                throw (IOException) e;
+            } else {
+                // Added for completeness but this line should not be reachable.
+                throw new IOException(e);
+            }
+        }
+    }
+
+    private void internalConnect(Map<String, ?> env) throws IOException {
         // Once closed a connector is not allowed to connect again.
         // NB If a connect call fails clients are permitted to try the call again.
         if (closed) {
             throw new IOException("Connector already closed.");
         }
+
+        final Xnio xnio = Xnio.getInstance();
+        endpoint = Remoting.createEndpoint("endpoint", xnio, OptionMap.EMPTY);
+        endpoint.addConnectionProvider(CONNECTION_PROVIDER_URI, new RemoteConnectionProviderFactory(), OptionMap.EMPTY);
 
         if (log.isTraceEnabled()) {
             StringBuffer sb = new StringBuffer("connect(");
@@ -223,11 +237,29 @@ class RemotingConnector implements JMXConnector {
             this.shutDownHook = null;
         }
 
-        versionedConnection.close();
-        channel.writeShutdown();
-        channel.close();
-        connection.close();
-        endpoint.close();
+        safeClose(versionedConnection);
+        safeClose(channel);
+        safeClose(connection);
+        safeClose(endpoint);
+    }
+
+    private void safeClose(final Channel channel) {
+        if (channel != null) {
+            try {
+                channel.writeShutdown();
+            } catch (Exception ignored) {
+            }
+        }
+        safeClose((Closeable) channel);
+    }
+
+    private void safeClose(final Closeable closeable) {
+        if (closeable != null) {
+            try {
+                closeable.close();
+            } catch (Exception ignored) {
+            }
+        }
     }
 
     public void addConnectionNotificationListener(NotificationListener listener, NotificationFilter filter, Object handback) {

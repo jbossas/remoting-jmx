@@ -21,6 +21,8 @@
  */
 package org.jboss.remotingjmx;
 
+import java.io.Closeable;
+
 import javax.management.MBeanServerConnection;
 import javax.security.auth.Subject;
 
@@ -29,7 +31,7 @@ import javax.security.auth.Subject;
  *
  * @author <a href="mailto:darran.lofthouse@jboss.com">Darran Lofthouse</a>
  */
-public interface VersionedConnection {
+public interface VersionedConnection extends Closeable {
 
     String getConnectionId();
 
