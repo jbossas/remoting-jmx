@@ -107,7 +107,9 @@ import org.jboss.logging.Logger;
 import org.jboss.marshalling.Marshaller;
 import org.jboss.marshalling.Unmarshaller;
 import org.jboss.remoting3.Channel;
+import org.jboss.remoting3.Connection;
 import org.jboss.remoting3.MessageInputStream;
+import org.jboss.remotingjmx.RemotingMBeanServerConnection;
 import org.jboss.remotingjmx.VersionedConnection;
 import org.xnio.IoFuture;
 import org.xnio.IoUtils;
@@ -482,7 +484,12 @@ class ClientConnection extends Common implements VersionedConnection {
 
     }
 
-    private class TheConnection implements MBeanServerConnection {
+    private class TheConnection implements RemotingMBeanServerConnection {
+
+        public Connection getConnection() {
+            return channel.getConnection();
+        }
+
         // TODO - Consider a proxy so the specific methods only need to marshall their specific
         // portion of the protocol.
 

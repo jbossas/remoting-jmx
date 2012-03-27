@@ -289,4 +289,11 @@ public class BasicClientTest extends AbstractTestBase {
             }
         }
     }
+
+    @Test
+    public void testUnderlyingRemotingConnection() throws Exception {
+        MBeanServerConnection connection = connector.getMBeanServerConnection();
+        RemotingMBeanServerConnection rmsc = (RemotingMBeanServerConnection) connection;
+        assertNotNull("The underlying connection.", rmsc.getConnection());
+    }
 }
