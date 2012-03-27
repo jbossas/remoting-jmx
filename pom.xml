@@ -118,29 +118,26 @@
             <groupId>org.jboss.logging</groupId>
             <artifactId>jboss-logging-processor</artifactId>
             <version>1.0.0.Final</version>
-            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.jboss.marshalling</groupId>
             <artifactId>jboss-marshalling</artifactId>
-            <version>1.3.9.GA</version>
+            <version>1.3.13.GA</version>
         </dependency>
         <dependency>
             <groupId>org.jboss.marshalling</groupId>
             <artifactId>jboss-marshalling-river</artifactId>
-            <version>1.3.9.GA</version>
-            <scope>provided</scope>
+            <version>1.3.13.GA</version>
         </dependency>        
         <dependency>
             <groupId>org.jboss.remoting3</groupId>
             <artifactId>jboss-remoting</artifactId>
-            <version>3.2.2.GA</version>
+            <version>3.2.4.GA</version>
         </dependency>
         <dependency>
             <groupId>org.jboss.sasl</groupId>
             <artifactId>jboss-sasl</artifactId>
             <version>1.0.0.Final</version>
-            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.jboss.xnio</groupId>
@@ -151,7 +148,6 @@
             <groupId>org.jboss.xnio</groupId>
             <artifactId>xnio-nio</artifactId>
             <version>3.0.3.GA</version>
-            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>junit</groupId>
