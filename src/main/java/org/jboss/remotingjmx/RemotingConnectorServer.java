@@ -67,12 +67,6 @@ public class RemotingConnectorServer extends JMXConnectorServer {
     private boolean stopped = false;
 
     /**
-     * A map of the connections registered with this RemotingConnectorServer
-     */
-    // TODO - Not sure if really needed but lets maintain for now.
-    private final Map<String, VersionedProxy> registeredConnections = new HashMap<String, VersionedProxy>();
-
-    /**
      * The Remoting Endpoint this ConnectorServer will register against when it is started.
      */
     private Endpoint endpoint;
@@ -153,7 +147,6 @@ public class RemotingConnectorServer extends JMXConnectorServer {
     public void connectionOpened(final VersionedProxy proxy) {
         String connectionId = proxy.getConnectionId();
         log.debugf("Connection '%s' now opened.", connectionId);
-        registeredConnections.put(connectionId, proxy);
         connectionOpened(connectionId, "", null);
     }
 
