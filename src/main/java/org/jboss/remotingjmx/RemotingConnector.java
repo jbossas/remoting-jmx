@@ -112,10 +112,6 @@ class RemotingConnector implements JMXConnector {
             throw new IOException("Connector already closed.");
         }
 
-        final Xnio xnio = Xnio.getInstance();
-        endpoint = Remoting.createEndpoint("endpoint", xnio, OptionMap.create(Options.THREAD_DAEMON, true));
-        endpoint.addConnectionProvider(CONNECTION_PROVIDER_URI, new RemoteConnectionProviderFactory(), OptionMap.EMPTY);
-
         if (log.isTraceEnabled()) {
             StringBuffer sb = new StringBuffer("connect(");
             if (env != null) {
@@ -144,6 +140,53 @@ class RemotingConnector implements JMXConnector {
             }
         }
 
+        Connection connection = internalRemotingConnect(combinedEnvironment);
+
+        String serviceName = serviceUrl.getURLPath();
+        if (serviceName.length() == 0) {
+            serviceName = CHANNEL_NAME;
+        } else if (serviceName.startsWith("/") || serviceName.startsWith(";")) {
+            serviceName = serviceName.substring(1);
+        }
+
+        // Now open the channel
+        final IoFuture<Channel> futureChannel = connection.openChannel(serviceName, OptionMap.EMPTY);
+        IoFuture.Status result = futureChannel.await(5, TimeUnit.SECONDS);
+        if (result == IoFuture.Status.DONE) {
+            channel = futureChannel.get();
+        } else if (result == IoFuture.Status.FAILED) {
+            throw new IOException(futureChannel.getException());
+        } else {
+            throw new RuntimeException("Operation failed with status " + result);
+        }
+
+        versionedConnection = VersionedConectionFactory.createVersionedConnection(channel, env);
+
+        Runtime.getRuntime().addShutdownHook((shutDownHook = new ShutDownHook()));
+    }
+
+    /**
+     * Internal method to either return the Remoting connection provided within the environment settings or establish and return
+     * a new connection.
+     *
+     * The Connection will only be cached by this RemotingConnector if this RemotingConnector actually creates it - that way we
+     * will not accidentally close a connection being managed elsewhere.
+     *
+     * Note: This method does not verify that the supplied Connection matches the address in the URL.
+     *
+     * @return The Remoting connection to use to connect to the channel.
+     * @throws IOException - If there is any failure establishing the connection.
+     */
+    private Connection internalRemotingConnect(Map<String, ?> env) throws IOException {
+        if (env.containsKey(Connection.class.getName())) {
+            // DO NOT Cache this.
+            return (Connection) env.get(Connection.class.getName());
+        }
+
+        final Xnio xnio = Xnio.getInstance();
+        endpoint = Remoting.createEndpoint("endpoint", xnio, OptionMap.create(Options.THREAD_DAEMON, true));
+        endpoint.addConnectionProvider(CONNECTION_PROVIDER_URI, new RemoteConnectionProviderFactory(), OptionMap.EMPTY);
+
         // The credentials.
         CallbackHandler handler = null;
         if (env != null) {
@@ -168,27 +211,7 @@ class RemotingConnector implements JMXConnector {
             throw new RuntimeException("Operation failed with status " + result);
         }
 
-        String serviceName = serviceUrl.getURLPath();
-        if (serviceName.length() == 0) {
-            serviceName = CHANNEL_NAME;
-        } else if (serviceName.startsWith("/") || serviceName.startsWith(";")) {
-            serviceName = serviceName.substring(1);
-        }
-
-        // Now open the channel
-        final IoFuture<Channel> futureChannel = connection.openChannel(serviceName, OptionMap.EMPTY);
-        result = futureChannel.await(5, TimeUnit.SECONDS);
-        if (result == IoFuture.Status.DONE) {
-            channel = futureChannel.get();
-        } else if (result == IoFuture.Status.FAILED) {
-            throw new IOException(futureChannel.getException());
-        } else {
-            throw new RuntimeException("Operation failed with status " + result);
-        }
-
-        versionedConnection = VersionedConectionFactory.createVersionedConnection(channel, env);
-
-        Runtime.getRuntime().addShutdownHook((shutDownHook = new ShutDownHook()));
+        return connection;
     }
 
     private OptionMap getOptionMap() {

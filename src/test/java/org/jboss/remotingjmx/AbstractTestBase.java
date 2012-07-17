@@ -51,15 +51,16 @@ public abstract class AbstractTestBase {
 
     protected static final String DEFAULT_DOMAIN = "org.jboss.remotingjmx";
 
-    private static JMXRemotingServer remotingServer;
+    protected static JMXRemotingServer remotingServer;
     protected static MBeanServer mbeanServer;
     protected static JMXServiceURL serviceURL;
+    protected static String bindAddress;
 
     protected JMXConnector connector;
 
     @BeforeClass
     public static void setupServer() throws IOException {
-        String bindAddress = System.getProperty(BIND_ADDRESS_PROPERTY, DEFAULT_BIND_ADDRESS);
+        bindAddress = System.getProperty(BIND_ADDRESS_PROPERTY, DEFAULT_BIND_ADDRESS);
 
         mbeanServer = MBeanServerFactory.createMBeanServer(DEFAULT_DOMAIN);
 
@@ -79,7 +80,6 @@ public abstract class AbstractTestBase {
         } finally {
             remotingServer = null;
         }
-
     }
 
     @Before

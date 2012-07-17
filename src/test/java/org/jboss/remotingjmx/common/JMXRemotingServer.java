@@ -147,6 +147,10 @@ public class JMXRemotingServer {
         connectorServer.start();
     }
 
+    public Endpoint getEndpoint() {
+        return endpoint;
+    }
+
     // This duplicates the RealmSecurityProvider of AS7 to mimic the same security set-up
     private OptionMap createOptionMap() {
         List<String> mechanisms = new LinkedList<String>();
