@@ -1,6 +1,6 @@
 /*
  * JBoss, Home of Professional Open Source.
- * Copyright 2011, Red Hat, Inc., and individual contributors
+ * Copyright 2012, Red Hat, Inc., and individual contributors
  * as indicated by the @author tags. See the copyright.txt file in the
  * distribution for a full listing of individual contributors.
  *
@@ -19,43 +19,27 @@
  * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
-package org.jboss.remotingjmx.protocol.v1;
+package org.jboss.remotingjmx.protocol.v2;
 
 import java.io.IOException;
-import java.util.Map;
-import java.util.concurrent.Executor;
 
-import org.jboss.remoting3.Channel;
-import org.jboss.remotingjmx.VersionedConnection;
-import org.jboss.remotingjmx.VersionedProxy;
-import org.jboss.remotingjmx.WrappedMBeanServerConnection;
+import org.xnio.AbstractIoFuture;
 
 /**
- * The entry point to VersionOne
+ * An IOFuture used within VersionTwo.
  *
  * @author <a href="mailto:darran.lofthouse@jboss.com">Darran Lofthouse</a>
  */
-public class VersionOne {
+class VersionedIoFuture<T> extends AbstractIoFuture<T> {
 
-    private VersionOne() {
+    @Override
+    protected boolean setResult(T result) {
+        return super.setResult(result);
     }
 
-    public static byte getVersionIdentifier() {
-        return 0x01;
-    }
-
-    public static VersionedConnection getConnection(final Channel channel, final Map<String, ?> environment) throws IOException {
-        ClientConnection connection = new ClientConnection(channel, environment);
-        connection.start();
-
-        return connection;
-    }
-
-    public static VersionedProxy getProxy(final Channel channel, final WrappedMBeanServerConnection server, final Executor executor) throws IOException {
-        ServerProxy proxy = new ServerProxy(channel, server, executor);
-        proxy.start();
-
-        return proxy;
+    @Override
+    protected boolean setException(IOException exception) {
+        return super.setException(exception);
     }
 
 }

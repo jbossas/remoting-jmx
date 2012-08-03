@@ -1,6 +1,6 @@
 /*
  * JBoss, Home of Professional Open Source.
- * Copyright 2011, Red Hat, Inc., and individual contributors
+ * Copyright 2012, Red Hat, Inc., and individual contributors
  * as indicated by the @author tags. See the copyright.txt file in the
  * distribution for a full listing of individual contributors.
  *
@@ -19,23 +19,17 @@
  * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
+
 package org.jboss.remotingjmx;
 
 /**
+ * Wrapper around the MBeanServerLocator in use to call the locator to locate the MBeanServerConnection to use and then wrap it
+ * with the internal wrapper used to pass it around internaly.
+ * 
  * @author <a href="mailto:darran.lofthouse@jboss.com">Darran Lofthouse</a>
  */
-class Constants {
+public interface MBeanServerManager {
 
-    // Note: These two do not need to be the same.
-    static final String PROTOCOL = "remoting-jmx";
-    static final String CONNECTION_PROVIDER_URI = "remote";
-
-    static final String CHANNEL_NAME = "jmx";
-
-    static final byte STABLE = 0x00;
-    static final byte SNAPSHOT = 0x01;
-
-    static final String JMX = "JMX";
-    static final byte[] JMX_BYTES = JMX.getBytes();
+    WrappedMBeanServerConnection getDefaultMBeanServer();
 
 }

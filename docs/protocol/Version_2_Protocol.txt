@@ -1,4 +1,15 @@
-This file documents the protocol in use for Version 1 messages.
+This file documents the protocol in use for Version 2 messages.
+
+This version of the protocol is almost identical to version 1 except that before JMX message processing begins
+there are a couple of additional internal invocations to allow for some additional information to be sent to the
+server before the communication really begins.
+
+ setKeyPair(String name, String value) - Sets a key value pair within the connection specific state map.
+ begin() - Starts the JMX message processing, the start process begins by using the MBeanServerLocator provided to the server
+           to identify which MBeanServer to use based on the accumulated state within the connection specific state map,
+           setKeyPair could have been called multiple times allowing for multiple parameters to be used in the selection.
+           
+Once begin has been called neither of these message types can be subsequently used.
 
 The majority of the methods of the MBeanServerConnection are Request/Response
 based with the request originating from the client, however there needs to be
@@ -64,6 +75,11 @@ message id     -  Identifier for the message 00 to 7F (byte, 1 byte)
                   addNotificationListener    - 0x11  (Overloaded)
                   removeNotificationListener - 0x12  (Overloaded)
                   sendNotification           - 0x13
+                  
+// Internal Messages
+
+                  setKeyPair                 - 0x70
+                  begin                      - 0x71                  
                                                                                                           
 
 outcome        -  Success = 0x00  // payload will be return type or if void return type method will return.

@@ -20,9 +20,9 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.remotingjmx.protocol.v1;
+package org.jboss.remotingjmx.protocol.v2;
 
-import static org.jboss.remotingjmx.protocol.v1.Constants.MARSHALLING_STRATEGY;
+import static org.jboss.remotingjmx.protocol.v2.Constants.MARSHALLING_STRATEGY;
 
 import java.io.DataInput;
 import java.io.DataOutput;

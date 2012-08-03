@@ -15,7 +15,7 @@ Client -> Server  -  JMX {selected version}
 Server -> Client  -  JMX {connection id}
 
 At this point the connection is established and bi-directional communication can begin, however in general
-the client is going to need to send in some registrations first before notifications are emitted althoug
+the client is going to need to send in some registrations first before notifications are emitted although
 the first message from the server could be to indicate a shut down.
 
 

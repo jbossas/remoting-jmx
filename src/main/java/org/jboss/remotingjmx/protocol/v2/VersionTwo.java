@@ -19,7 +19,7 @@
  * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
-package org.jboss.remotingjmx.protocol.v1;
+package org.jboss.remotingjmx.protocol.v2;
 
 import java.io.IOException;
 import java.util.Map;
@@ -31,17 +31,17 @@ import org.jboss.remotingjmx.VersionedProxy;
 import org.jboss.remotingjmx.WrappedMBeanServerConnection;
 
 /**
- * The entry point to VersionOne
+ * The entry point to VersionThree
  *
  * @author <a href="mailto:darran.lofthouse@jboss.com">Darran Lofthouse</a>
  */
-public class VersionOne {
+public class VersionTwo {
 
-    private VersionOne() {
+    private VersionTwo() {
     }
 
     public static byte getVersionIdentifier() {
-        return 0x01;
+        return 0x02;
     }
 
     public static VersionedConnection getConnection(final Channel channel, final Map<String, ?> environment) throws IOException {

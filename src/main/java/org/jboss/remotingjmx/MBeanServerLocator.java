@@ -1,6 +1,6 @@
 /*
  * JBoss, Home of Professional Open Source.
- * Copyright 2011, Red Hat, Inc., and individual contributors
+ * Copyright 2012, Red Hat, Inc., and individual contributors
  * as indicated by the @author tags. See the copyright.txt file in the
  * distribution for a full listing of individual contributors.
  *
@@ -19,23 +19,36 @@
  * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
+
 package org.jboss.remotingjmx;
 
+import java.util.Map;
+
+import javax.management.MBeanServerConnection;
+
 /**
+ * The interface to be implemented for providing access to the MBeanServers.
+ * 
+ * The result of the method calls may be cached, this is especially true if the returned
+ * MBeanServerConnection is actually an MBeanServer.
+ * 
  * @author <a href="mailto:darran.lofthouse@jboss.com">Darran Lofthouse</a>
  */
-class Constants {
+public interface MBeanServerLocator {
 
-    // Note: These two do not need to be the same.
-    static final String PROTOCOL = "remoting-jmx";
-    static final String CONNECTION_PROVIDER_URI = "remote";
+    /**
+     * Obtain the default MBeanServerConnection for when no parameters have been specified.
+     * 
+     * @return The default MBeanServerConnection.
+     */
+    MBeanServerConnection getDefaultMBeanServer();
 
-    static final String CHANNEL_NAME = "jmx";
-
-    static final byte STABLE = 0x00;
-    static final byte SNAPSHOT = 0x01;
-
-    static final String JMX = "JMX";
-    static final byte[] JMX_BYTES = JMX.getBytes();
+    /**
+     * Obtain the MBeanServerConnection based on the provided parameters.
+     *   
+     * @param parameters - The connection parameters from the remote client.
+     * @return The MBeanServerConnection based on the provided parameters.
+     */
+    MBeanServerConnection getMBeanServer(final Map<String, String> parameters);
 
 }

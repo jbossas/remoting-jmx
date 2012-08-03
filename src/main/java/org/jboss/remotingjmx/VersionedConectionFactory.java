@@ -21,7 +21,7 @@
  */
 package org.jboss.remotingjmx;
 
-import static org.jboss.remotingjmx.Constants.JMX;
+import static org.jboss.remotingjmx.Constants.JMX_BYTES;
 import static org.jboss.remotingjmx.Constants.SNAPSHOT;
 import static org.jboss.remotingjmx.Constants.STABLE;
 
@@ -112,7 +112,7 @@ class VersionedConectionFactory {
                 byte[] firstThree = new byte[3];
                 dis.read(firstThree);
                 log.tracef("First Three %s", new String(firstThree));
-                if (Arrays.equals(firstThree, JMX) == false) {
+                if (Arrays.equals(firstThree, JMX_BYTES) == false) {
                     throw new IOException("Invalid leading bytes in header.");
                 }
                 log.tracef("Bytes Available %d", dis.available());

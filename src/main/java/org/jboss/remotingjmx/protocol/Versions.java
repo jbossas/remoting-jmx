@@ -23,19 +23,21 @@ package org.jboss.remotingjmx.protocol;
 
 import java.io.IOException;
 import java.util.Map;
+import java.util.concurrent.Executor;
 
 import org.jboss.remoting3.Channel;
-import org.jboss.remotingjmx.RemotingConnectorServer;
+import org.jboss.remotingjmx.MBeanServerManager;
 import org.jboss.remotingjmx.VersionedConnection;
 import org.jboss.remotingjmx.VersionedProxy;
 import org.jboss.remotingjmx.protocol.v1.VersionOne;
+import org.jboss.remotingjmx.protocol.v2.VersionTwo;
 
 /**
  * Single access point to locate the supported versions.
  * <p/>
  * As the client and server are written in parallel this makes no distinction between clients and servers when listing the
  * supported versions.
- *
+ * 
  * @author <a href="mailto:darran.lofthouse@jboss.com">Darran Lofthouse</a>
  */
 public class Versions {
@@ -48,22 +50,26 @@ public class Versions {
 
     public static byte[] getSupportedVersions() {
         // At a later point a more complex registry or discovery could be implemented.
-        return new byte[] { VersionOne.getVersionIdentifier() };
+        return new byte[] { VersionOne.getVersionIdentifier(), VersionTwo.getVersionIdentifier() };
     }
 
     public static VersionedConnection getVersionedConnection(final byte version, final Channel channel,
             final Map<String, ?> environment) throws IOException {
         if (version == VersionOne.getVersionIdentifier()) {
             return VersionOne.getConnection(channel, environment);
+        } else if (version == VersionTwo.getVersionIdentifier()) {
+            return VersionTwo.getConnection(channel, environment);
         }
 
         throw new IllegalArgumentException("Unsupported protocol version.");
     }
 
     public static VersionedProxy getVersionedProxy(final byte version, final Channel channel,
-            final RemotingConnectorServer server) throws IOException {
+            final MBeanServerManager serverManager, final Executor executor) throws IOException {
         if (version == VersionOne.getVersionIdentifier()) {
-            return VersionOne.getProxy(channel, server);
+            return VersionOne.getProxy(channel, serverManager.getDefaultMBeanServer(), executor);
+        } else if (version == VersionTwo.getVersionIdentifier()) {
+            return VersionTwo.getProxy(channel, serverManager.getDefaultMBeanServer(), executor);
         }
 
         throw new IllegalArgumentException("Unsupported protocol version.");
