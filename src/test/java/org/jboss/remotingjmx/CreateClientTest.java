@@ -58,6 +58,27 @@ public class CreateClientTest extends AbstractTestBase {
                 mbeanServer.unregisterMBean(beanName);
             }
         }
+    }
 
+    @Test
+    public void tesCreateWithArgs() throws Exception {
+        ObjectName beanName = new ObjectName(DEFAULT_DOMAIN, "test", "testCreate");
+        assertFalse(mbeanServer.isRegistered(beanName));
+
+        MBeanServerConnection connection = connector.getMBeanServerConnection();
+
+        try {
+            assertFalse(connection.isRegistered(beanName));
+            Object[] args = new String[] { "a", "b" };
+            String[] types = new String[] { String.class.getName(), String.class.getName() };
+            ObjectInstance instance = connection.createMBean(MyBean.class.getName(), beanName, args, types);
+            assertEquals(beanName, instance.getObjectName());
+            assertEquals(MyBean.class.getName(), instance.getClassName());
+            assertTrue(connection.isRegistered(beanName));
+        } finally {
+            if (mbeanServer.isRegistered(beanName)) {
+                mbeanServer.unregisterMBean(beanName);
+            }
+        }
     }
 }

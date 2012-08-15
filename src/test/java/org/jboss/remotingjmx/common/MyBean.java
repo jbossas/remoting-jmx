@@ -23,6 +23,7 @@
 package org.jboss.remotingjmx.common;
 
 /**
+ * A simple MBean used for testing.
  *
  * @author <a href="mailto:darran.lofthouse@jboss.com">Darran Lofthouse</a>
  */
@@ -30,6 +31,15 @@ public class MyBean implements MyBeanMBean {
 
     private String someValue;
     private String anotherValue;
+
+    // The no-arg constructor for the most basic create.
+    public MyBean() {
+    }
+
+    public MyBean(String someValue, String anotherValue) {
+        this.someValue = someValue;
+        this.anotherValue = anotherValue;
+    }
 
     public String getSomeValue() {
         return someValue;

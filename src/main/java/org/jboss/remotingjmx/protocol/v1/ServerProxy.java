@@ -595,7 +595,6 @@ class ServerProxy extends Common implements VersionedProxy {
                         try {
                             if (name == null) {
                                 name = unmarshaller.readObject(ObjectName.class);
-                                switchClassLoaderForMBean(name, resolver);
                             } else if (loader == null) {
                                 loader = unmarshaller.readObject(ObjectName.class);
                                 switchClassLoaderForLoader(loader, resolver);
@@ -607,7 +606,6 @@ class ServerProxy extends Common implements VersionedProxy {
                         }
                         break;
                     case OBJECT_ARRAY:
-                        // TODO - If we have a loader may need to use it here.
                         if (params == null) {
                             int count = unmarshaller.readInt();
                             params = new Object[count];
