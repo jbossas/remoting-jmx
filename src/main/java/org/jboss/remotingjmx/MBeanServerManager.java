@@ -25,7 +25,7 @@ package org.jboss.remotingjmx;
 /**
  * Wrapper around the MBeanServerLocator in use to call the locator to locate the MBeanServerConnection to use and then wrap it
  * with the internal wrapper used to pass it around internaly.
- * 
+ *
  * @author <a href="mailto:darran.lofthouse@jboss.com">Darran Lofthouse</a>
  */
 public interface MBeanServerManager {

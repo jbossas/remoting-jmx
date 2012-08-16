@@ -28,24 +28,24 @@ import javax.management.MBeanServerConnection;
 
 /**
  * The interface to be implemented for providing access to the MBeanServers.
- * 
- * The result of the method calls may be cached, this is especially true if the returned
- * MBeanServerConnection is actually an MBeanServer.
- * 
+ *
+ * The result of the method calls may be cached, this is especially true if the returned MBeanServerConnection is actually an
+ * MBeanServer.
+ *
  * @author <a href="mailto:darran.lofthouse@jboss.com">Darran Lofthouse</a>
  */
 public interface MBeanServerLocator {
 
     /**
      * Obtain the default MBeanServerConnection for when no parameters have been specified.
-     * 
+     *
      * @return The default MBeanServerConnection.
      */
     MBeanServerConnection getDefaultMBeanServer();
 
     /**
      * Obtain the MBeanServerConnection based on the provided parameters.
-     *   
+     *
      * @param parameters - The connection parameters from the remote client.
      * @return The MBeanServerConnection based on the provided parameters.
      */

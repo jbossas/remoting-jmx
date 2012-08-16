@@ -37,7 +37,7 @@ import org.jboss.remotingjmx.protocol.v2.VersionTwo;
  * <p/>
  * As the client and server are written in parallel this makes no distinction between clients and servers when listing the
  * supported versions.
- * 
+ *
  * @author <a href="mailto:darran.lofthouse@jboss.com">Darran Lofthouse</a>
  */
 public class Versions {

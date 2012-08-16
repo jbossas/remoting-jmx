@@ -26,7 +26,7 @@ import javax.management.MBeanServerConnection;
 
 /**
  * The generic wrapper around the different MBeanServerConnections.
- * 
+ *
  * @author <a href="mailto:darran.lofthouse@jboss.com">Darran Lofthouse</a>
  */
 public interface WrappedMBeanServerConnection {

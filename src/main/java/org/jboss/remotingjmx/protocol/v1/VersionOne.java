@@ -51,7 +51,8 @@ public class VersionOne {
         return connection;
     }
 
-    public static VersionedProxy getProxy(final Channel channel, final WrappedMBeanServerConnection server, final Executor executor) throws IOException {
+    public static VersionedProxy getProxy(final Channel channel, final WrappedMBeanServerConnection server,
+            final Executor executor) throws IOException {
         ServerProxy proxy = new ServerProxy(channel, server, executor);
         proxy.start();
 

@@ -52,7 +52,7 @@ import org.xnio.OptionMap;
 /**
  * A RemotingConnectorServer implementation that can delegate to multiple MBeanServers both local and remote through the use of
  * an MBeanServerLocator.
- * 
+ *
  * @author <a href="mailto:darran.lofthouse@jboss.com">Darran Lofthouse</a>
  */
 public class DelegatingRemotingConnectorServer {
@@ -80,13 +80,14 @@ public class DelegatingRemotingConnectorServer {
         this.endpoint = endpoint;
         this.executor = executor;
     }
-    
-    DelegatingRemotingConnectorServer(final MBeanServerManager mbeanServerManager, final Endpoint endpoint, final Executor executor) {
+
+    DelegatingRemotingConnectorServer(final MBeanServerManager mbeanServerManager, final Endpoint endpoint,
+            final Executor executor) {
         this.mbeanServerManager = mbeanServerManager;
         this.endpoint = endpoint;
         this.executor = executor;
     }
-    
+
     /*
      * Methods from JMXConnectorServerMBean
      */
@@ -142,9 +143,7 @@ public class DelegatingRemotingConnectorServer {
     public Map<String, ?> getAttributes() {
         // TODO - What attributes are there to return?
         return Collections.emptyMap();
-    }    
-    
-    
+    }
 
     /**
      * Write the header message to the client.
@@ -154,15 +153,15 @@ public class DelegatingRemotingConnectorServer {
      * - The bytes for the characters 'JMX' - not completely fail safe but will allow early detection the client is connected to
      * the correct channel. - The number of versions supported by the server. (single byte) - The versions listed sequentially.
      * - A single byte to identify if the server is a SNAPSHOT release 0x00 = Stable, 0x01 - Snapshot
-     * 
+     *
      * @param channel
      * @throws IOException
      */
-    private void writeHeader(final Channel channel) throws IOException {
+    private void writeVersionHeader(final Channel channel, final boolean fullVersionList) throws IOException {
         CancellableDataOutputStream dos = new CancellableDataOutputStream(channel.writeMessage());
         try {
             dos.writeBytes(JMX);
-            byte[] versions = Versions.getSupportedVersions();
+            byte[] versions = getSupportedVersions(fullVersionList);
             dos.writeInt(versions.length);
             dos.write(versions);
             if (Version.isSnapshot()) {
@@ -170,12 +169,35 @@ public class DelegatingRemotingConnectorServer {
             } else {
                 dos.write(STABLE);
             }
+
+            if (fullVersionList) {
+                String remotingJMXVersion = Version.getVersionString();
+                byte[] versionBytes = remotingJMXVersion.getBytes("UTF-8");
+                dos.writeInt(versionBytes.length);
+                dos.write(versionBytes);
+            }
         } catch (IOException e) {
             dos.cancel();
             throw e;
         } finally {
             dos.close();
         }
+    }
+
+    private byte[] getSupportedVersions(final boolean fullVersionList) {
+        byte[] versions = Versions.getSupportedVersions();
+        if (fullVersionList) {
+            return versions;
+        }
+        for (byte current : versions) {
+            // For older clients (1.0.4.Final and before) we send a special version list that allows them
+            // to select protocol 0x01 whilst indicating to newer clients that there are more versions available.
+            if (current == 0x01) {
+                return new byte[] { 0x00, 0x01 };
+            }
+        }
+
+        return new byte[] { 0x00 };
     }
 
     private class DelegatingMBeanServerManager implements MBeanServerManager {
@@ -206,7 +228,7 @@ public class DelegatingRemotingConnectorServer {
             log.trace("Channel Opened");
 
             try {
-                writeHeader(channel);
+                writeVersionHeader(channel, false);
                 channel.receiveMessage(new ClientVersionReceiver());
             } catch (IOException e) {
                 log.error("Unable to send header, closing channel", e);
@@ -237,6 +259,19 @@ public class DelegatingRemotingConnectorServer {
                 log.tracef("Bytes Available %d", dis.available());
                 byte version = dis.readByte();
                 log.debugf("Chosen version 0x0%d", version);
+
+                if (version == 0x00) {
+                    int length = dis.readInt();
+                    byte[] versionBytes = new byte[length];
+                    dis.read(versionBytes);
+                    String clientVersion = new String(versionBytes, "UTF-8");
+                    log.debugf("Client version %s", clientVersion);
+
+                    // This is the client saying it can handle the full version list.
+                    writeVersionHeader(channel, true);
+                    channel.receiveMessage(this);
+                    return;
+                }
 
                 // The VersionedProxy is responsible for registering with the RemotingConnectorServer which
                 // could vary depending on the version of the protocol.

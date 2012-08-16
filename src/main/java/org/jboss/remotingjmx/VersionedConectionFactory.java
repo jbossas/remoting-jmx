@@ -21,6 +21,7 @@
  */
 package org.jboss.remotingjmx;
 
+import static org.jboss.remotingjmx.Constants.JMX;
 import static org.jboss.remotingjmx.Constants.JMX_BYTES;
 import static org.jboss.remotingjmx.Constants.SNAPSHOT;
 import static org.jboss.remotingjmx.Constants.STABLE;
@@ -34,6 +35,7 @@ import java.util.concurrent.TimeUnit;
 import org.jboss.logging.Logger;
 import org.jboss.remoting3.Channel;
 import org.jboss.remoting3.MessageInputStream;
+import org.jboss.remotingjmx.protocol.CancellableDataOutputStream;
 import org.jboss.remotingjmx.protocol.Versions;
 import org.xnio.AbstractIoFuture;
 import org.xnio.IoFuture;
@@ -70,12 +72,21 @@ class VersionedConectionFactory {
 
         InitialHeader header = futureHeader.get();
 
-        // Find the highest version.
+        byte[] supportedVersions = Versions.getSupportedVersions();
+
+        // Find the highest version. - By this point the exceptional handling of version 0x00 will have completed.
         byte highest = 0x00;
         for (byte current : header.versions) {
-            if (current > highest) {
-                highest = current;
+            for (byte currentSupported : supportedVersions) {
+                // Only accept it if it is one of the supported versions otherwise ignore as noise.
+                if (current == currentSupported && current > highest) {
+                    highest = current;
+                }
             }
+        }
+
+        if (highest == 0x00) {
+            throw new IllegalStateException("No matching supported protocol version found.");
         }
 
         // getVersionedConnection may also make use of an IoFuture but our previous use of one has ended.
@@ -88,6 +99,7 @@ class VersionedConectionFactory {
     private static class ClientVersionReceiver implements org.jboss.remoting3.Channel.Receiver {
 
         private final VersionedIoFuture<InitialHeader> future;
+        private boolean expectServerVersion = false;
 
         private ClientVersionReceiver(VersionedIoFuture<InitialHeader> future) {
             this.future = future;
@@ -99,6 +111,24 @@ class VersionedConectionFactory {
             channel.receiveMessage(new ClientVersionReceiver(future));
 
             return future;
+        }
+
+        private void sendVersionZeroHeader(Channel channel) throws IOException {
+            log.debug("Selecting version 0x00 to receive full version list.");
+            CancellableDataOutputStream dos = new CancellableDataOutputStream(channel.writeMessage());
+            try {
+                dos.writeBytes(JMX);
+                dos.writeByte(0x00);
+                String remotingJMXVersion = Version.getVersionString();
+                byte[] versionBytes = remotingJMXVersion.getBytes("UTF-8");
+                dos.writeInt(versionBytes.length);
+                dos.write(versionBytes);
+            } catch (IOException e) {
+                dos.cancel();
+                throw e;
+            } finally {
+                IoUtils.safeClose(dos);
+            }
         }
 
         /**
@@ -141,9 +171,28 @@ class VersionedConectionFactory {
                         throw new IOException("Unrecognised stability value.");
                 }
 
+                String serverVersion = null;
+                if (expectServerVersion) {
+                    int length = dis.readInt();
+                    byte[] versionBytes = new byte[length];
+                    dis.read(versionBytes);
+                    serverVersion = new String(versionBytes, "UTF-8");
+                    log.debugf("Server version %s", serverVersion);
+                }
+
+                for (byte current : versions) {
+                    if (current == 0x00) {
+                        sendVersionZeroHeader(channel);
+                        expectServerVersion = true;
+                        channel.receiveMessage(this);
+                        return;
+                    }
+                }
+
                 InitialHeader ih = new InitialHeader();
                 ih.versions = versions;
                 ih.stability = stability;
+                ih.serverVersion = serverVersion;
                 future.setResult(ih);
             } catch (IOException e) {
                 log.error("Unable to negotiate connection.", e);
@@ -168,6 +217,7 @@ class VersionedConectionFactory {
     private static class InitialHeader {
         private byte[] versions;
         private byte stability;
+        private String serverVersion;
     }
 
     private static class VersionedIoFuture<T> extends AbstractIoFuture<T> {

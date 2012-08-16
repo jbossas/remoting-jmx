@@ -9,6 +9,39 @@ Server -> Client  -  JMX {version count} {list of versions} {stability indicator
  Client selects a version.
 Client -> Server  -  JMX {selected version}
 
+Note - due to a bug discovered in versions 1.0.0.Final to 1.0.4.Final the version negotiation exchange now splits into two steps,
+the reason is that the affected clients iterate the list of versions returned and attempt to use the highest version sent from
+the server - they should however have eliminated the versions they don't support but did not do do this as when the server
+supports versions later that they support they fail to negotiate a connection.
+
+The affected versions only support VersionOne or 0x01 of the versions list, to remain interoperabile with the affected clients the
+server will now advertise it's capabilities as: -
+
+Server -> Client  -  JMX {version count} {list of versions} {stability indicator}
+
+Where {version count} is either 1 or 2, and {list of versions} contains version 0x01 if supported AND a version 0x00.
+
+The 0x00 version is a dummy version that later clients can use to indicate that they need to send a second request for more versions.
+
+i.e.
+
+Client -> Server  -  JMX 0x00 {client version}
+
+This message will also contain the version of Remoting JMX in use by the client.
+
+The server will then respond with: -
+
+Server -> Client  -  JMX {version count} {list of versions} {stability indicator} {server version}
+
+At any point the client can respond with the original version selection message: -
+
+Client -> Server  -  JMX {selected version}
+
+This remains supported for all versions with 0x00 being a special case to overcome the bug 
+in REMJMX-50 whilst remaining backwards compatible. 
+
+ 
+
 * Version One *
 
  Welcome Message

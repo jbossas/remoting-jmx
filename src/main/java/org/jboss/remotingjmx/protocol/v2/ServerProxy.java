@@ -103,7 +103,6 @@ import org.jboss.marshalling.Marshaller;
 import org.jboss.marshalling.Unmarshaller;
 import org.jboss.remoting3.Channel;
 import org.jboss.remoting3.MessageInputStream;
-import org.jboss.remotingjmx.RemotingConnectorServer;
 import org.jboss.remotingjmx.VersionedProxy;
 import org.jboss.remotingjmx.WrappedMBeanServerConnection;
 import org.xnio.IoUtils;
@@ -167,7 +166,7 @@ class ServerProxy extends Common implements VersionedProxy {
         // Send ID to client
         sendConnectionId();
         // Inform server the connection is now open
-        server.connectionOpened(this); 
+        server.connectionOpened(this);
         channel.receiveMessage(new MessageReciever());
     }
 
@@ -305,11 +304,11 @@ class ServerProxy extends Common implements VersionedProxy {
         }
 
         private synchronized void removeNotificationListener(int listenerId) throws ListenerNotFoundException,
-                InstanceNotFoundException, IOException  {
+                InstanceNotFoundException, IOException {
             Association association = listeners.remove(listenerId);
             if (association != null) {
-                server.getMBeanServerConnection().removeNotificationListener(association.name, association.listener, association.filter,
-                        association.handback);
+                server.getMBeanServerConnection().removeNotificationListener(association.name, association.listener,
+                        association.filter, association.handback);
             } else {
                 log.warnf("Request to removeNotificationListener, listener with ID %d not found.", listenerId);
             }
