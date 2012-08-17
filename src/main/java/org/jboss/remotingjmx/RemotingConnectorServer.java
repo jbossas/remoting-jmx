@@ -51,6 +51,10 @@ public class RemotingConnectorServer extends JMXConnectorServer {
         this(mbeanServer, endpoint, Executors.newCachedThreadPool());
     }
 
+    public RemotingConnectorServer(final MBeanServer mbeanServer, final Endpoint endpoint, final Map<String, ?> environment) {
+        this(mbeanServer, endpoint, Executors.newCachedThreadPool(), environment);
+    }
+
     public RemotingConnectorServer(final MBeanServer mbeanServer, final Endpoint endpoint, Executor executor) {
         this(mbeanServer, endpoint, executor, Collections.EMPTY_MAP);
     }

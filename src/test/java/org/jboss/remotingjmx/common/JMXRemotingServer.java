@@ -21,6 +21,7 @@
  */
 package org.jboss.remotingjmx.common;
 
+import static org.jboss.remotingjmx.Constants.EXCLUDED_VERSIONS;
 import static org.xnio.Options.SASL_MECHANISMS;
 import static org.xnio.Options.SASL_POLICY_NOANONYMOUS;
 import static org.xnio.Options.SASL_POLICY_NOPLAINTEXT;
@@ -34,9 +35,11 @@ import java.net.SocketAddress;
 import java.security.Principal;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import javax.management.MBeanServer;
@@ -101,6 +104,7 @@ public class JMXRemotingServer {
     private final MBeanServer mbeanServer;
     private final Set<String> saslMechanisms;
     private final ServerAuthenticationProvider authenticationProvider;
+    private final String excludedVersions;
 
     private Endpoint endpoint;
     // TODO - This may not live here - maybe in the RemotingConnectorServer
@@ -125,6 +129,7 @@ public class JMXRemotingServer {
                 : Collections.EMPTY_SET);
         authenticationProvider = config.authenticationProvider != null ? config.authenticationProvider
                 : new DefaultAuthenticationProvider();
+        excludedVersions = config.excludedVersions;
     }
 
     public void start() throws IOException {
@@ -142,8 +147,12 @@ public class JMXRemotingServer {
 
         server = nsp.createServer(bindAddress, serverOptions, authenticationProvider, null);
 
+        Map<String, Object> configMap = new HashMap<String, Object>();
+        if (excludedVersions != null) {
+            configMap.put(EXCLUDED_VERSIONS, excludedVersions);
+        }
         // Initialise the components that will provide JMX connectivity.
-        connectorServer = new RemotingConnectorServer(mbeanServer, endpoint);
+        connectorServer = new RemotingConnectorServer(mbeanServer, endpoint, configMap);
         connectorServer.start();
     }
 
@@ -348,6 +357,7 @@ public class JMXRemotingServer {
         public MBeanServer mbeanServer = null;
         public Set<String> saslMechanisms = null;
         public ServerAuthenticationProvider authenticationProvider = null;
+        public String excludedVersions = null;
     }
 
 }

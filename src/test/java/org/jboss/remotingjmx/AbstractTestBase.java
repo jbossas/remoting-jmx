@@ -22,12 +22,15 @@
 
 package org.jboss.remotingjmx;
 
+import static org.jboss.remotingjmx.Constants.EXCLUDED_VERSIONS;
 import static org.jboss.remotingjmx.common.Constants.BIND_ADDRESS_PROPERTY;
 import static org.jboss.remotingjmx.common.Constants.DEFAULT_BIND_ADDRESS;
 import static org.jboss.remotingjmx.common.Constants.PROTOCOL;
 import static org.jboss.remotingjmx.common.JMXRemotingServer.DEFAULT_PORT;
 
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 
 import javax.management.MBeanServer;
 import javax.management.MBeanServerFactory;
@@ -60,6 +63,10 @@ public abstract class AbstractTestBase {
 
     @BeforeClass
     public static void setupServer() throws IOException {
+        setupServer(null);
+    }
+
+    public static void setupServer(String excludedVersions) throws IOException {
         bindAddress = System.getProperty(BIND_ADDRESS_PROPERTY, DEFAULT_BIND_ADDRESS);
 
         mbeanServer = MBeanServerFactory.createMBeanServer(DEFAULT_DOMAIN);
@@ -67,6 +74,7 @@ public abstract class AbstractTestBase {
         JMXRemotingConfig config = new JMXRemotingConfig();
         config.mbeanServer = mbeanServer;
         config.host = bindAddress;
+        config.excludedVersions = excludedVersions;
 
         remotingServer = new JMXRemotingServer(config);
         remotingServer.start();
@@ -84,6 +92,14 @@ public abstract class AbstractTestBase {
 
     @Before
     public void connect() throws IOException {
+        connect(null);
+    }
+
+    public void connect(String excludedVersions) throws IOException {
+        Map<String, Object> environment = new HashMap<String, Object>();
+        if (excludedVersions != null) {
+            environment.put(EXCLUDED_VERSIONS, excludedVersions);
+        }
         connector = JMXConnectorFactory.connect(serviceURL);
     }
 

@@ -84,7 +84,10 @@ public class Versions {
         String[] values = from.split(",");
         for (String current : values) {
             try {
-                to.add(Byte.valueOf(current.trim()));
+                String temp = current.trim();
+                if (temp.length() > 0) {
+                    to.add(Byte.valueOf(current.trim()));
+                }
             } catch (NumberFormatException e) {
                 log.warnf("Unrecognised version '%s' in list.", current);
             }
