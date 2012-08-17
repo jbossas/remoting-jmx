@@ -33,6 +33,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
@@ -69,23 +70,26 @@ public class DelegatingRemotingConnectorServer {
     private Endpoint endpoint;
     private Registration registration;
     private Executor executor;
+    private Versions versions;
 
     public DelegatingRemotingConnectorServer(final MBeanServerLocator mbeanServerLocator, final Endpoint endpoint) {
-        this(mbeanServerLocator, endpoint, Executors.newCachedThreadPool());
+        this(mbeanServerLocator, endpoint, Executors.newCachedThreadPool(), Collections.EMPTY_MAP);
     }
 
     public DelegatingRemotingConnectorServer(final MBeanServerLocator mbeanServerLocator, final Endpoint endpoint,
-            final Executor executor) {
+            final Executor executor, final Map<String, ?> environment) {
         this.mbeanServerManager = new DelegatingMBeanServerManager(mbeanServerLocator);
         this.endpoint = endpoint;
         this.executor = executor;
+        versions = new Versions(environment);
     }
 
     DelegatingRemotingConnectorServer(final MBeanServerManager mbeanServerManager, final Endpoint endpoint,
-            final Executor executor) {
+            final Executor executor, final Map<String, ?> environment) {
         this.mbeanServerManager = mbeanServerManager;
         this.endpoint = endpoint;
         this.executor = executor;
+        versions = new Versions(environment);
     }
 
     /*
@@ -185,11 +189,17 @@ public class DelegatingRemotingConnectorServer {
     }
 
     private byte[] getSupportedVersions(final boolean fullVersionList) {
-        byte[] versions = Versions.getSupportedVersions();
+        Set<Byte> supportedVersions = versions.getSupportedVersions();
         if (fullVersionList) {
-            return versions;
+            Byte[] temp = supportedVersions.toArray(new Byte[supportedVersions.size()]);
+            byte[] response = new byte[temp.length];
+            for (int i = 0; i < temp.length; i++) {
+                response[i] = temp[i];
+            }
+
+            return response;
         }
-        for (byte current : versions) {
+        for (byte current : supportedVersions) {
             // For older clients (1.0.4.Final and before) we send a special version list that allows them
             // to select protocol 0x01 whilst indicating to newer clients that there are more versions available.
             if (current == 0x01) {
@@ -275,7 +285,7 @@ public class DelegatingRemotingConnectorServer {
 
                 // The VersionedProxy is responsible for registering with the RemotingConnectorServer which
                 // could vary depending on the version of the protocol.
-                Versions.getVersionedProxy(version, channel, mbeanServerManager, executor);
+                versions.getVersionedProxy(version, channel, mbeanServerManager, executor);
             } catch (IOException e) {
                 log.error("Error determining version selected by client.");
             } finally {

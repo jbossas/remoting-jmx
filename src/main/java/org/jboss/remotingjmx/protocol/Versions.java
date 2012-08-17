@@ -21,10 +21,16 @@
  */
 package org.jboss.remotingjmx.protocol;
 
+import static org.jboss.remotingjmx.Constants.EXCLUDED_VERSIONS;
+
 import java.io.IOException;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Executor;
 
+import org.jboss.logging.Logger;
 import org.jboss.remoting3.Channel;
 import org.jboss.remotingjmx.MBeanServerManager;
 import org.jboss.remotingjmx.VersionedConnection;
@@ -42,34 +48,77 @@ import org.jboss.remotingjmx.protocol.v2.VersionTwo;
  */
 public class Versions {
 
-    /**
-     * Private constructor, static methods will be used to locate the supported versions and instantiate them.
-     */
-    private Versions() {
+    private static final Logger log = Logger.getLogger(Versions.class);
+
+    private final Map<String, ?> environment;
+    private final Set<Byte> supportedVersions;
+
+    public Versions(final Map<String, ?> environment) {
+        this.environment = environment;
+
+        Set<Byte> supportedVersions = new HashSet<Byte>();
+        supportedVersions.add(VersionOne.getVersionIdentifier());
+        supportedVersions.add(VersionTwo.getVersionIdentifier());
+        supportedVersions.removeAll(getExcludedVersions());
+
+        this.supportedVersions = Collections.unmodifiableSet(supportedVersions);
     }
 
-    public static byte[] getSupportedVersions() {
-        // At a later point a more complex registry or discovery could be implemented.
-        return new byte[] { VersionOne.getVersionIdentifier(), VersionTwo.getVersionIdentifier() };
+    private Set<Byte> getExcludedVersions() {
+        Set<Byte> excluded = new HashSet<Byte>();
+        Object list;
+        if (environment != null && environment.containsKey(EXCLUDED_VERSIONS)
+                && (list = environment.get(EXCLUDED_VERSIONS)) != null) {
+            if (list instanceof String) {
+                split((String) list, excluded);
+            } else {
+                log.warnf("Ignoring excluded versions list of type '%s'", list.getClass().getName());
+            }
+        }
+        split(System.getProperty(EXCLUDED_VERSIONS, ""), excluded);
+
+        return excluded;
     }
 
-    public static VersionedConnection getVersionedConnection(final byte version, final Channel channel,
-            final Map<String, ?> environment) throws IOException {
-        if (version == VersionOne.getVersionIdentifier()) {
-            return VersionOne.getConnection(channel, environment);
-        } else if (version == VersionTwo.getVersionIdentifier()) {
-            return VersionTwo.getConnection(channel, environment);
+    private void split(final String from, final Set<Byte> to) {
+        String[] values = from.split(",");
+        for (String current : values) {
+            try {
+                to.add(Byte.valueOf(current.trim()));
+            } catch (NumberFormatException e) {
+                log.warnf("Unrecognised version '%s' in list.", current);
+            }
+        }
+    }
+
+    public Set<Byte> getSupportedVersions() {
+        return supportedVersions;
+    }
+
+    public VersionedConnection getVersionedConnection(final byte version, final Channel channel) throws IOException {
+        if (supportedVersions.contains(version)) {
+            if (version == VersionOne.getVersionIdentifier()) {
+                return VersionOne.getConnection(channel, environment);
+            } else if (version == VersionTwo.getVersionIdentifier()) {
+                return VersionTwo.getConnection(channel, environment);
+            }
+        } else {
+            log.warnf("An attempt has been made to select an unsupported version 0x0%d", version);
         }
 
         throw new IllegalArgumentException("Unsupported protocol version.");
     }
 
-    public static VersionedProxy getVersionedProxy(final byte version, final Channel channel,
-            final MBeanServerManager serverManager, final Executor executor) throws IOException {
-        if (version == VersionOne.getVersionIdentifier()) {
-            return VersionOne.getProxy(channel, serverManager.getDefaultMBeanServer(), executor);
-        } else if (version == VersionTwo.getVersionIdentifier()) {
-            return VersionTwo.getProxy(channel, serverManager.getDefaultMBeanServer(), executor);
+    public VersionedProxy getVersionedProxy(final byte version, final Channel channel, final MBeanServerManager serverManager,
+            final Executor executor) throws IOException {
+        if (supportedVersions.contains(version)) {
+            if (version == VersionOne.getVersionIdentifier()) {
+                return VersionOne.getProxy(channel, serverManager.getDefaultMBeanServer(), executor);
+            } else if (version == VersionTwo.getVersionIdentifier()) {
+                return VersionTwo.getProxy(channel, serverManager.getDefaultMBeanServer(), executor);
+            }
+        } else {
+            log.warnf("An attempt has been made to select an unsupported version 0x0%d", version);
         }
 
         throw new IllegalArgumentException("Unsupported protocol version.");

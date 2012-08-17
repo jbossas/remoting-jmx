@@ -30,6 +30,7 @@ import java.io.DataInputStream;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import org.jboss.logging.Logger;
@@ -72,16 +73,15 @@ class VersionedConectionFactory {
 
         InitialHeader header = futureHeader.get();
 
-        byte[] supportedVersions = Versions.getSupportedVersions();
+        Versions versions = new Versions(environment);
+        Set<Byte> supportedVersions = versions.getSupportedVersions();
 
         // Find the highest version. - By this point the exceptional handling of version 0x00 will have completed.
         byte highest = 0x00;
         for (byte current : header.versions) {
-            for (byte currentSupported : supportedVersions) {
-                // Only accept it if it is one of the supported versions otherwise ignore as noise.
-                if (current == currentSupported && current > highest) {
-                    highest = current;
-                }
+            // Only accept it if it is one of the supported versions otherwise ignore as noise.
+            if (supportedVersions.contains(current) && current > highest) {
+                highest = current;
             }
         }
 
@@ -90,7 +90,7 @@ class VersionedConectionFactory {
         }
 
         // getVersionedConnection may also make use of an IoFuture but our previous use of one has ended.
-        return Versions.getVersionedConnection(highest, channel, environment);
+        return versions.getVersionedConnection(highest, channel);
     }
 
     /**

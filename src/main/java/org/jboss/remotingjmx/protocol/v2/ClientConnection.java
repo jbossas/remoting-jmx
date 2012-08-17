@@ -21,6 +21,7 @@
  */
 package org.jboss.remotingjmx.protocol.v2;
 
+import static org.jboss.remotingjmx.Constants.TIMEOUT_KEY;
 import static org.jboss.remotingjmx.protocol.v2.Constants.ADD_NOTIFICATION_LISTENER;
 import static org.jboss.remotingjmx.protocol.v2.Constants.ATTRIBUTE;
 import static org.jboss.remotingjmx.protocol.v2.Constants.ATTRIBUTE_LIST;
@@ -121,10 +122,6 @@ import org.xnio.IoUtils;
  */
 class ClientConnection extends Common implements VersionedConnection {
 
-    /**
-     * System property that can be used to adjust the timeout
-     */
-    public static final String TIMEOUT_KEY = "org.jboss.remoting-jmx.timeout";
     private static final String REMOTING_JMX = "remoting-jmx";
     private static final String CLIENT_THREAD = "client-thread-";
 

@@ -24,7 +24,32 @@ package org.jboss.remotingjmx;
 /**
  * @author <a href="mailto:darran.lofthouse@jboss.com">Darran Lofthouse</a>
  */
-class Constants {
+public class Constants {
+
+    // Supported System and Environment Properties
+    /**
+     * Property used to specify the timeout within clients when waiting for a response from the server.
+     *
+     * Currently used within version 0x01 and 0x02 of the protocol, however this property may be unsupported in future protocol
+     * versions when update message exchanges are added.
+     */
+    public static final String TIMEOUT_KEY = "org.jboss.remoting-jmx.timeout";
+    /**
+     * A comma separated list of protocol versions to be excluded from the list of supported versions.
+     *
+     * Server side this property causes the specified versions to be removed from the list of advertised versions and will also
+     * prevent selection of the mechanism if selected despite not being offered.
+     *
+     * Client side this property will cause the specified mechanisms to be removed from the list of mechanisms supported by the
+     * client, if the server offers the excluded mechanism the client will not select it.
+     *
+     * If the value is specified as both a System property and within the environment map then both will be combined, care
+     * should be taken to avoid excluding all mechanisms.
+     *
+     * The System property is read on initialisation so should not be used to attempt real time updates to the list of supported
+     * versions.
+     */
+    public static final String EXCLUDED_VERSIONS = "org.jboss.remoting-jmx.excluded-versions";
 
     // Note: These two do not need to be the same.
     static final String PROTOCOL = "remoting-jmx";

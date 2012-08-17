@@ -22,6 +22,7 @@
 package org.jboss.remotingjmx;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
@@ -51,6 +52,11 @@ public class RemotingConnectorServer extends JMXConnectorServer {
     }
 
     public RemotingConnectorServer(final MBeanServer mbeanServer, final Endpoint endpoint, Executor executor) {
+        this(mbeanServer, endpoint, executor, Collections.EMPTY_MAP);
+    }
+
+    public RemotingConnectorServer(final MBeanServer mbeanServer, final Endpoint endpoint, Executor executor,
+            final Map<String, ?> environment) {
         super(mbeanServer);
         MBeanServerManager serverManager = new MBeanServerManager() {
             private final WrappedMBeanServerConnection connection = new WrappedMBeanServerConnection() {
@@ -81,7 +87,7 @@ public class RemotingConnectorServer extends JMXConnectorServer {
             }
         };
 
-        connectorServer = new DelegatingRemotingConnectorServer(serverManager, endpoint, executor);
+        connectorServer = new DelegatingRemotingConnectorServer(serverManager, endpoint, executor, environment);
     }
 
     /*
