@@ -113,7 +113,7 @@ class RemotingConnector implements JMXConnector {
         }
 
         final Xnio xnio = Xnio.getInstance();
-        endpoint = Remoting.createEndpoint("endpoint", xnio, OptionMap.EMPTY);
+        endpoint = Remoting.createEndpoint("endpoint", xnio, OptionMap.create(Options.THREAD_DAEMON, true));
         endpoint.addConnectionProvider(CONNECTION_PROVIDER_URI, new RemoteConnectionProviderFactory(), OptionMap.EMPTY);
 
         if (log.isTraceEnabled()) {
