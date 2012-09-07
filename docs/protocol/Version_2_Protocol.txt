@@ -5,9 +5,11 @@ there are a couple of additional internal invocations to allow for some addition
 server before the communication really begins.
 
  setKeyPair(String name, String value) - Sets a key value pair within the connection specific state map.
- begin() - Starts the JMX message processing, the start process begins by using the MBeanServerLocator provided to the server
+ String begin() - Starts the JMX message processing, the start process begins by using the MBeanServerLocator provided to the server
            to identify which MBeanServer to use based on the accumulated state within the connection specific state map,
            setKeyPair could have been called multiple times allowing for multiple parameters to be used in the selection.
+           
+           Note - the return type to begin is now a String representing the connection ID - this replaces the connection ID
            
 Once begin has been called neither of these message types can be subsequently used.
 

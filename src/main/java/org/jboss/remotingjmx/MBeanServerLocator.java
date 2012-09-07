@@ -47,7 +47,7 @@ public interface MBeanServerLocator {
      * Obtain the MBeanServerConnection based on the provided parameters.
      *
      * @param parameters - The connection parameters from the remote client.
-     * @return The MBeanServerConnection based on the provided parameters.
+     * @return The MBeanServerConnection based on the provided parameters, or null if no MBeanServerConnection selected.
      */
     MBeanServerConnection getMBeanServer(final Map<String, String> parameters);
 

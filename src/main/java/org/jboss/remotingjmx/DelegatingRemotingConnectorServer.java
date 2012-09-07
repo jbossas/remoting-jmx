@@ -37,6 +37,7 @@ import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
+import javax.management.MBeanServerConnection;
 import javax.management.remote.JMXServiceURL;
 
 import org.jboss.logging.Logger;
@@ -74,6 +75,11 @@ public class DelegatingRemotingConnectorServer {
 
     public DelegatingRemotingConnectorServer(final MBeanServerLocator mbeanServerLocator, final Endpoint endpoint) {
         this(mbeanServerLocator, endpoint, Executors.newCachedThreadPool(), Collections.EMPTY_MAP);
+    }
+
+    public DelegatingRemotingConnectorServer(final MBeanServerLocator mbeanServerLocator, final Endpoint endpoint,
+            final Map<String, ?> environment) {
+        this(mbeanServerLocator, endpoint, Executors.newCachedThreadPool(), environment);
     }
 
     public DelegatingRemotingConnectorServer(final MBeanServerLocator mbeanServerLocator, final Endpoint endpoint,
@@ -219,8 +225,34 @@ public class DelegatingRemotingConnectorServer {
         }
 
         public WrappedMBeanServerConnection getDefaultMBeanServer() {
-            // TODO Auto-generated method stub
-            return null;
+            return getMBeanServer(null);
+        }
+
+        @Override
+        public WrappedMBeanServerConnection getMBeanServer(Map<String, String> parameters) {
+            final MBeanServerConnection mbeanServerConnection = parameters == null ? mbeanServerLocator.getDefaultMBeanServer()
+                    : mbeanServerLocator.getMBeanServer(parameters);
+            if (mbeanServerConnection instanceof WrappedMBeanServerConnection) {
+                return (WrappedMBeanServerConnection) mbeanServerConnection;
+            }
+            return new WrappedMBeanServerConnection() {
+
+                @Override
+                public MBeanServerConnection getMBeanServerConnection() {
+                    return mbeanServerConnection;
+                }
+
+                @Override
+                public void connectionOpened(VersionedProxy proxy) {
+                    // TODO - Do we need to pass on this notification?
+                }
+
+                @Override
+                public void connectionClosed(VersionedProxy proxy) {
+                    // TODO - Also do we need to pass on this one?
+                }
+            };
+
         }
 
     }
@@ -285,7 +317,7 @@ public class DelegatingRemotingConnectorServer {
 
                 // The VersionedProxy is responsible for registering with the RemotingConnectorServer which
                 // could vary depending on the version of the protocol.
-                versions.getVersionedProxy(version, channel, mbeanServerManager, executor);
+                versions.startServer(version, channel, mbeanServerManager, executor);
             } catch (IOException e) {
                 log.error("Error determining version selected by client.");
             } finally {

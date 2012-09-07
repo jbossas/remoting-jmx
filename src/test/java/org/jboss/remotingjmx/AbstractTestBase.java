@@ -100,7 +100,7 @@ public abstract class AbstractTestBase {
         if (excludedVersions != null) {
             environment.put(EXCLUDED_VERSIONS, excludedVersions);
         }
-        connector = JMXConnectorFactory.connect(serviceURL);
+        connector = JMXConnectorFactory.connect(serviceURL, environment);
     }
 
     @After

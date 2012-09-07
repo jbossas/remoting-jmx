@@ -22,12 +22,14 @@
 package org.jboss.remotingjmx.protocol.v1;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Executor;
 
 import org.jboss.remoting3.Channel;
+import org.jboss.remotingjmx.Capability;
 import org.jboss.remotingjmx.VersionedConnection;
-import org.jboss.remotingjmx.VersionedProxy;
 import org.jboss.remotingjmx.WrappedMBeanServerConnection;
 
 /**
@@ -44,6 +46,10 @@ public class VersionOne {
         return 0x01;
     }
 
+    public static Set<Capability> getCapabilites() {
+        return Collections.emptySet();
+    }
+
     public static VersionedConnection getConnection(final Channel channel, final Map<String, ?> environment) throws IOException {
         ClientConnection connection = new ClientConnection(channel, environment);
         connection.start();
@@ -51,12 +57,10 @@ public class VersionOne {
         return connection;
     }
 
-    public static VersionedProxy getProxy(final Channel channel, final WrappedMBeanServerConnection server,
-            final Executor executor) throws IOException {
+    public static void startServer(final Channel channel, final WrappedMBeanServerConnection server, final Executor executor)
+            throws IOException {
         ServerProxy proxy = new ServerProxy(channel, server, executor);
         proxy.start();
-
-        return proxy;
     }
 
 }

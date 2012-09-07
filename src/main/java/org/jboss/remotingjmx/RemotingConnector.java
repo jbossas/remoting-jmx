@@ -143,10 +143,15 @@ class RemotingConnector implements JMXConnector {
         Connection connection = internalRemotingConnect(combinedEnvironment);
 
         String serviceName = serviceUrl.getURLPath();
+        if (serviceName.startsWith("/") || serviceName.startsWith(";")) {
+            serviceName = serviceName.substring(1);
+            if (serviceName.contains("?")) {
+                // Drop any query parameters when identifying the service name.
+                serviceName = serviceName.substring(0, serviceName.indexOf('?'));
+            }
+        }
         if (serviceName.length() == 0) {
             serviceName = CHANNEL_NAME;
-        } else if (serviceName.startsWith("/") || serviceName.startsWith(";")) {
-            serviceName = serviceName.substring(1);
         }
 
         // Now open the channel
@@ -160,7 +165,7 @@ class RemotingConnector implements JMXConnector {
             throw new RuntimeException("Operation failed with status " + result);
         }
 
-        versionedConnection = VersionedConectionFactory.createVersionedConnection(channel, env);
+        versionedConnection = VersionedConectionFactory.createVersionedConnection(channel, env, serviceUrl);
 
         Runtime.getRuntime().addShutdownHook((shutDownHook = new ShutDownHook()));
     }

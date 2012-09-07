@@ -32,6 +32,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
+import java.util.Map;
 
 import org.jboss.marshalling.AbstractClassResolver;
 import org.jboss.marshalling.ByteInput;
@@ -66,6 +67,8 @@ abstract class Common {
         }
         this.channel = channel;
     }
+
+    abstract Map<Byte, Common.MessageHandler> getHandlerRegistry();
 
     /**
      * Creates and returns a {@link org.jboss.marshalling.Marshaller} which is ready to be used for marshalling. The

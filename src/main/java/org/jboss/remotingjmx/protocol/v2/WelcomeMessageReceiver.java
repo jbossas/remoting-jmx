@@ -32,27 +32,30 @@ import org.xnio.IoFuture;
 import org.xnio.IoUtils;
 
 /**
- * The ConnectionId Receiver used by the client.
+ * The WelcomeMessageReceiver Receiver used by the client.
  *
  * This is a special receiver as unlike the other messages blocking on the result is desired to ensure the connection is
  * established before any client interactions occur.
  *
+ * Unlike version one of the protocol this version does not receive any data from the server, just the welcome message to
+ * confirm the server is ready to handle requests.
+ *
  * @author <a href="mailto:darran.lofthouse@jboss.com">Darran Lofthouse</a>
  */
-class ConnectionIdReceiver implements Channel.Receiver {
+class WelcomeMessageReceiver implements Channel.Receiver {
 
-    private static final Logger log = Logger.getLogger(ConnectionIdReceiver.class);
+    private static final Logger log = Logger.getLogger(WelcomeMessageReceiver.class);
 
-    private final VersionedIoFuture<String> future;
+    private final VersionedIoFuture<Void> future;
 
-    private ConnectionIdReceiver(VersionedIoFuture<String> future) {
+    private WelcomeMessageReceiver(VersionedIoFuture<Void> future) {
         this.future = future;
     }
 
-    public static IoFuture<String> getConnectionId(final Channel channel) {
-        VersionedIoFuture<String> future = new VersionedIoFuture<String>();
+    public static IoFuture<Void> awaitWelcomeMessage(final Channel channel) {
+        VersionedIoFuture<Void> future = new VersionedIoFuture<Void>();
 
-        channel.receiveMessage(new ConnectionIdReceiver(future));
+        channel.receiveMessage(new WelcomeMessageReceiver(future));
         return future;
     }
 
@@ -66,10 +69,8 @@ class ConnectionIdReceiver implements Channel.Receiver {
             if (Arrays.equals(firstThree, "JMX".getBytes()) == false) {
                 throw new IOException("Invalid leading bytes in header.");
             }
-            log.tracef("Bytes Available %d", dis.available());
-            String connectionId = dis.readUTF();
-            future.setResult(connectionId);
 
+            future.setResult(null);
         } catch (IOException e) {
             future.setException(e);
         } finally {

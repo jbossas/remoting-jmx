@@ -22,7 +22,7 @@
 package org.jboss.remotingjmx.protocol.v2;
 
 /**
- * The version 1 constants.
+ * The version 2 constants.
  *
  * @author <a href="mailto:darran.lofthouse@jboss.com">Darran Lofthouse</a>
  */
@@ -51,6 +51,8 @@ class Constants {
     static final byte ADD_NOTIFICATION_LISTENER = 0x11;
     static final byte REMOVE_NOTIFICATION_LISTENER = 0x12;
     static final byte SEND_NOTIFICATION = 0x13;
+    static final byte SET_KEY_PAIR = 0x70;
+    static final byte BEGIN = 0x71;
 
     /*
      * Response Mask

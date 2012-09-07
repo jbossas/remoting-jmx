@@ -61,6 +61,8 @@ import org.jboss.remoting3.security.ServerAuthenticationProvider;
 import org.jboss.remoting3.security.UserInfo;
 import org.jboss.remoting3.security.UserPrincipal;
 import org.jboss.remoting3.spi.NetworkServerProvider;
+import org.jboss.remotingjmx.DelegatingRemotingConnectorServer;
+import org.jboss.remotingjmx.MBeanServerLocator;
 import org.jboss.remotingjmx.RemotingConnectorServer;
 import org.jboss.remotingjmx.Version;
 import org.jboss.sasl.callback.VerifyPasswordCallback;
@@ -105,11 +107,13 @@ public class JMXRemotingServer {
     private final Set<String> saslMechanisms;
     private final ServerAuthenticationProvider authenticationProvider;
     private final String excludedVersions;
+    private final MBeanServerLocator mbeanServerLocator;
 
     private Endpoint endpoint;
-    // TODO - This may not live here - maybe in the RemotingConnectorServer
     private AcceptingChannel<? extends ConnectedStreamChannel> server;
+
     private JMXConnectorServer connectorServer;
+    private DelegatingRemotingConnectorServer delegatingServer;
 
     /**
      * Constructor to instantiate a JMXRemotingServer with the default settings.
@@ -130,6 +134,7 @@ public class JMXRemotingServer {
         authenticationProvider = config.authenticationProvider != null ? config.authenticationProvider
                 : new DefaultAuthenticationProvider();
         excludedVersions = config.excludedVersions;
+        mbeanServerLocator = config.mbeanServerLocator;
     }
 
     public void start() throws IOException {
@@ -152,8 +157,14 @@ public class JMXRemotingServer {
             configMap.put(EXCLUDED_VERSIONS, excludedVersions);
         }
         // Initialise the components that will provide JMX connectivity.
-        connectorServer = new RemotingConnectorServer(mbeanServer, endpoint, configMap);
-        connectorServer.start();
+        if (mbeanServerLocator == null) {
+            connectorServer = new RemotingConnectorServer(mbeanServer, endpoint, configMap);
+            connectorServer.start();
+        } else {
+            delegatingServer = new DelegatingRemotingConnectorServer(mbeanServerLocator, endpoint, configMap);
+            delegatingServer.start();
+        }
+
     }
 
     public Endpoint getEndpoint() {
@@ -204,6 +215,9 @@ public class JMXRemotingServer {
         // to disassociate it from Remoting.
         if (connectorServer != null) {
             connectorServer.stop();
+        }
+        if (delegatingServer != null) {
+            delegatingServer.stop();
         }
         if (server != null) {
             server.close();
@@ -358,6 +372,7 @@ public class JMXRemotingServer {
         public Set<String> saslMechanisms = null;
         public ServerAuthenticationProvider authenticationProvider = null;
         public String excludedVersions = null;
+        public MBeanServerLocator mbeanServerLocator = null;
     }
 
 }

@@ -26,8 +26,6 @@ import static org.jboss.remotingjmx.protocol.v2.Constants.ATTRIBUTE;
 import static org.jboss.remotingjmx.protocol.v2.Constants.ATTRIBUTE_LIST;
 import static org.jboss.remotingjmx.protocol.v2.Constants.BOOLEAN;
 import static org.jboss.remotingjmx.protocol.v2.Constants.CREATE_MBEAN;
-import static org.jboss.remotingjmx.protocol.v2.Constants.EXCEPTION;
-import static org.jboss.remotingjmx.protocol.v2.Constants.FAILURE;
 import static org.jboss.remotingjmx.protocol.v2.Constants.GET_ATTRIBUTE;
 import static org.jboss.remotingjmx.protocol.v2.Constants.GET_ATTRIBUTES;
 import static org.jboss.remotingjmx.protocol.v2.Constants.GET_DEFAULT_DOMAIN;
@@ -63,7 +61,6 @@ import static org.jboss.remotingjmx.protocol.v2.Constants.SUCCESS;
 import static org.jboss.remotingjmx.protocol.v2.Constants.UNREGISTER_MBEAN;
 
 import java.io.DataInput;
-import java.io.DataInputStream;
 import java.io.DataOutput;
 import java.io.IOException;
 import java.util.Collections;
@@ -95,17 +92,14 @@ import javax.management.ObjectInstance;
 import javax.management.ObjectName;
 import javax.management.QueryExp;
 import javax.management.ReflectionException;
-import javax.management.RuntimeMBeanException;
 
 import org.jboss.logging.Logger;
 import org.jboss.marshalling.AbstractClassResolver;
 import org.jboss.marshalling.Marshaller;
 import org.jboss.marshalling.Unmarshaller;
 import org.jboss.remoting3.Channel;
-import org.jboss.remoting3.MessageInputStream;
 import org.jboss.remotingjmx.VersionedProxy;
 import org.jboss.remotingjmx.WrappedMBeanServerConnection;
-import org.xnio.IoUtils;
 
 /**
  * The VersionOne server proxy.
@@ -114,7 +108,7 @@ import org.xnio.IoUtils;
  *
  * @author <a href="mailto:darran.lofthouse@jboss.com">Darran Lofthouse</a>
  */
-class ServerProxy extends Common implements VersionedProxy {
+class ServerProxy extends ServerCommon implements VersionedProxy {
 
     private static final Logger log = Logger.getLogger(ServerProxy.class);
 
@@ -127,10 +121,10 @@ class ServerProxy extends Common implements VersionedProxy {
     private final RemoteNotificationManager remoteNotificationManager;
 
     ServerProxy(final Channel channel, final WrappedMBeanServerConnection server, final Executor executor) {
-        super(channel);
+        super(channel, executor);
         this.channel = channel;
         this.server = server;
-        this.handlerRegistry = createHandlerRegistry();
+        handlerRegistry = createHandlerRegistry();
         this.remoteNotificationManager = new RemoteNotificationManager();
         this.executor = executor;
     }
@@ -159,27 +153,23 @@ class ServerProxy extends Common implements VersionedProxy {
         return Collections.unmodifiableMap(registry);
     }
 
+    @Override
+    Map<Byte, Common.MessageHandler> getHandlerRegistry() {
+        return handlerRegistry;
+    }
+
+    @Override
+    void end() {
+        remoteNotificationManager.removeNotificationListener();
+    }
+
     void start() throws IOException {
         // Create a connection ID
         connectionId = UUID.randomUUID();
         log.debugf("Created connectionID %s", connectionId.toString());
-        // Send ID to client
-        sendConnectionId();
         // Inform server the connection is now open
         server.connectionOpened(this);
         channel.receiveMessage(new MessageReciever());
-    }
-
-    private void sendConnectionId() throws IOException {
-        write(new MessageWriter() {
-
-            @Override
-            public void write(DataOutput output) throws IOException {
-                output.writeBytes("JMX");
-                output.writeUTF(connectionId.toString());
-            }
-        });
-        log.tracef("Written connectionId %s", connectionId.toString());
     }
 
     public String getConnectionId() {
@@ -195,83 +185,6 @@ class ServerProxy extends Common implements VersionedProxy {
             // Can't rely on the Receiver to have called this if we can't close down.
             remoteNotificationManager.removeNotificationListener();
         }
-    }
-
-    private class MessageReciever implements Channel.Receiver {
-
-        @Override
-        public void handleMessage(final Channel channel, MessageInputStream message) {
-            final DataInputStream dis = new DataInputStream(message);
-            try {
-                final byte messageId = dis.readByte();
-                final int correlationId = dis.readInt();
-                log.tracef("Message Received id(%h), correlationId(%d)", messageId, correlationId);
-
-                final Common.MessageHandler mh = handlerRegistry.get(messageId);
-                if (mh != null) {
-                    executor.execute(new Runnable() {
-
-                        @Override
-                        public void run() {
-                            try {
-                                mh.handle(dis, correlationId);
-                            } catch (Throwable t) {
-                                if (correlationId != 0x00) {
-                                    Exception response;
-                                    if (t instanceof IOException) {
-                                        response = (Exception) t;
-                                    } else if (t instanceof RuntimeMBeanException) {
-                                        response = (Exception) t;
-                                    } else {
-                                        response = new IOException("Internal server error.");
-                                        log.warn("Unexpected internal error", t);
-                                    }
-
-                                    sendIOException(response);
-                                } else {
-                                    log.error("null correlationId so error not sent to client", t);
-                                }
-                            } finally {
-                                IoUtils.safeClose(dis);
-                            }
-                        }
-
-                        private void sendIOException(final Exception e) {
-                            try {
-                                writeResponse(e, messageId, correlationId);
-
-                                log.tracef("[%d] %h - Success Response Sent", correlationId, messageId);
-                            } catch (IOException ioe) {
-                                // Here there is nothing left we can do, we know we can not sent to the client though.
-                                log.error(ioe);
-                            }
-                        }
-
-                    });
-
-                } else {
-                    throw new IOException("Unrecognised Message ID");
-                }
-            } catch (IOException e) {
-                log.error(e);
-                IoUtils.safeClose(dis);
-            } finally {
-                // On shut down we expect one of the following pair to be called
-                // so that will end the receive loop.
-                channel.receiveMessage(this);
-            }
-        }
-
-        public void handleError(Channel channel, IOException error) {
-            log.warn("Channel closing due to error", error);
-            remoteNotificationManager.removeNotificationListener();
-        }
-
-        @Override
-        public void handleEnd(Channel channel) {
-            remoteNotificationManager.removeNotificationListener();
-        }
-
     }
 
     /**
@@ -363,37 +276,6 @@ class ServerProxy extends Common implements VersionedProxy {
 
     }
 
-    private void writeResponse(final byte inResponseTo, final int correlationId) throws IOException {
-        write(new MessageWriter() {
-
-            @Override
-            public void write(DataOutput output) throws IOException {
-                output.writeByte(inResponseTo ^ RESPONSE_MASK);
-                output.writeInt(correlationId);
-                output.writeByte(SUCCESS);
-            }
-        });
-
-    }
-
-    private void writeResponse(final Exception e, final byte inResponseTo, final int correlationId) throws IOException {
-        write(new MessageWriter() {
-
-            @Override
-            public void write(DataOutput output) throws IOException {
-                output.writeByte(inResponseTo ^ RESPONSE_MASK);
-                output.writeInt(correlationId);
-                output.writeByte(FAILURE);
-                output.writeByte(EXCEPTION);
-
-                Marshaller marshaller = prepareForMarshalling(output);
-                marshaller.writeObject(e);
-                marshaller.finish();
-            }
-        });
-
-    }
-
     private void writeResponse(final boolean response, final byte inResponseTo, final int correlationId) throws IOException {
         write(new MessageWriter() {
 
@@ -438,21 +320,6 @@ class ServerProxy extends Common implements VersionedProxy {
                 Marshaller marshaller = prepareForMarshalling(output);
                 marshaller.writeObject(response);
                 marshaller.finish();
-            }
-        });
-
-    }
-
-    private void writeResponse(final String response, final byte inResponseTo, final int correlationId) throws IOException {
-        write(new MessageWriter() {
-
-            @Override
-            public void write(DataOutput output) throws IOException {
-                output.writeByte(inResponseTo ^ RESPONSE_MASK);
-                output.writeInt(correlationId);
-                output.writeByte(SUCCESS);
-                output.writeByte(STRING);
-                output.writeUTF(response);
             }
         });
 

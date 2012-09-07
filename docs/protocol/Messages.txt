@@ -39,7 +39,6 @@ Client -> Server  -  JMX {selected version}
 
 This remains supported for all versions with 0x00 being a special case to overcome the bug 
 in REMJMX-50 whilst remaining backwards compatible. 
-
  
 
 * Version One *
@@ -50,6 +49,20 @@ Server -> Client  -  JMX {connection id}
 At this point the connection is established and bi-directional communication can begin, however in general
 the client is going to need to send in some registrations first before notifications are emitted although
 the first message from the server could be to indicate a shut down.
+
+* Version Two *
+
+ Welcome Message
+Server -> Client  -  JMX
+
+The connection ID is not yet sent as we have not actually connected to an MBeanServer at this point, instead the parameters are sent in one 
+by one with the setKeyPair method and when begin is called the return type of begin() will be a String containing the connection ID. 
+
+If begin fails then an exception indicating the failure will be returned instead.
+
+At this point communications will be as seen before in Version One.
+  
+
 
 
 

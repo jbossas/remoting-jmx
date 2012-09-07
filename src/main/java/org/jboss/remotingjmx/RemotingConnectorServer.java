@@ -67,7 +67,7 @@ public class RemotingConnectorServer extends JMXConnectorServer {
 
                 @Override
                 public MBeanServerConnection getMBeanServerConnection() {
-                    return getMBeanServer();
+                    return RemotingConnectorServer.this.getMBeanServer();
                 }
 
                 @Override
@@ -88,6 +88,15 @@ public class RemotingConnectorServer extends JMXConnectorServer {
             @Override
             public WrappedMBeanServerConnection getDefaultMBeanServer() {
                 return connection;
+            }
+
+            @Override
+            public WrappedMBeanServerConnection getMBeanServer(Map<String, String> parameters) {
+                if (parameters.isEmpty()) {
+                    return getDefaultMBeanServer();
+                }
+                // Only a single server do don't support parameters.
+                return null;
             }
         };
 

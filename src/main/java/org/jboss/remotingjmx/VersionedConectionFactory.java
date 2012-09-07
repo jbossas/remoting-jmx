@@ -29,9 +29,12 @@ import static org.jboss.remotingjmx.Constants.STABLE;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+
+import javax.management.remote.JMXServiceURL;
 
 import org.jboss.logging.Logger;
 import org.jboss.remoting3.Channel;
@@ -55,8 +58,8 @@ class VersionedConectionFactory {
 
     private static final Logger log = Logger.getLogger(VersionedConectionFactory.class);
 
-    static VersionedConnection createVersionedConnection(final Channel channel, final Map<String, ?> environment)
-            throws IOException {
+    static VersionedConnection createVersionedConnection(final Channel channel, final Map<String, ?> environment,
+            final JMXServiceURL serviceURL) throws IOException {
         // We don't want to start chaining the use of IoFutures otherwise multiple threads are tied up
         // for a single negotiation process so negotiate the connection sequentially.
 
@@ -74,7 +77,7 @@ class VersionedConectionFactory {
         InitialHeader header = futureHeader.get();
 
         Versions versions = new Versions(environment);
-        Set<Byte> supportedVersions = versions.getSupportedVersions();
+        Set<Byte> supportedVersions = versions.getSupportedVersions(getRequiredCapabilities(serviceURL));
 
         // Find the highest version. - By this point the exceptional handling of version 0x00 will have completed.
         byte highest = 0x00;
@@ -90,7 +93,18 @@ class VersionedConectionFactory {
         }
 
         // getVersionedConnection may also make use of an IoFuture but our previous use of one has ended.
-        return versions.getVersionedConnection(highest, channel);
+        return versions.getVersionedConnection(highest, channel, serviceURL);
+    }
+
+    private static Capability[] getRequiredCapabilities(final JMXServiceURL serviceURL) {
+        Set<Capability> requiredCapabilities = new HashSet<Capability>();
+        String path = serviceURL.getURLPath();
+        // The ? delimiter is only used if there will be subsequent parameters.
+        if (path.contains("?")) {
+            requiredCapabilities.add(Capability.PASS_PARAMETERS);
+        }
+
+        return requiredCapabilities.toArray(new Capability[requiredCapabilities.size()]);
     }
 
     /**

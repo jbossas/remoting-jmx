@@ -22,13 +22,17 @@
 package org.jboss.remotingjmx.protocol.v2;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Executor;
 
+import javax.management.remote.JMXServiceURL;
+
 import org.jboss.remoting3.Channel;
+import org.jboss.remotingjmx.Capability;
+import org.jboss.remotingjmx.MBeanServerManager;
 import org.jboss.remotingjmx.VersionedConnection;
-import org.jboss.remotingjmx.VersionedProxy;
-import org.jboss.remotingjmx.WrappedMBeanServerConnection;
 
 /**
  * The entry point to VersionThree
@@ -44,19 +48,21 @@ public class VersionTwo {
         return 0x02;
     }
 
-    public static VersionedConnection getConnection(final Channel channel, final Map<String, ?> environment) throws IOException {
-        ClientConnection connection = new ClientConnection(channel, environment);
-        connection.start();
-
-        return connection;
+    public static Set<Capability> getCapabilities() {
+        return Collections.singleton(Capability.PASS_PARAMETERS);
     }
 
-    public static VersionedProxy getProxy(final Channel channel, final WrappedMBeanServerConnection server,
-            final Executor executor) throws IOException {
-        ServerProxy proxy = new ServerProxy(channel, server, executor);
-        proxy.start();
+    public static VersionedConnection getConnection(final Channel channel, final Map<String, ?> environment,
+            final JMXServiceURL serviceURL) throws IOException {
+        ParameterConnection parameterConnection = new ParameterConnection(channel, environment, serviceURL);
 
-        return proxy;
+        return parameterConnection.getConnection();
+    }
+
+    public static void startServer(final Channel channel, final MBeanServerManager mbeanServerManager, final Executor executor)
+            throws IOException {
+        ParameterProxy proxy = new ParameterProxy(channel, mbeanServerManager, executor);
+        proxy.start();
     }
 
 }

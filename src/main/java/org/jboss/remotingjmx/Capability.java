@@ -22,18 +22,20 @@
 
 package org.jboss.remotingjmx;
 
-import java.util.Map;
-
 /**
- * Wrapper around the MBeanServerLocator in use to call the locator to locate the MBeanServerConnection to use and then wrap it
- * with the internal wrapper used to pass it around internaly.
+ * An enumeration to represent capabilities required on opening a new connection.
+ *
+ * These capabilities could be detected from items within the URL, items specified in the environment or from System properties.
+ *
+ * Capabilties are only checked on the client side, server side capabilities may be added when required but there is then a risk
+ * of breaking connectivity from older clients.
  *
  * @author <a href="mailto:darran.lofthouse@jboss.com">Darran Lofthouse</a>
  */
-public interface MBeanServerManager {
-
-    WrappedMBeanServerConnection getDefaultMBeanServer();
-
-    WrappedMBeanServerConnection getMBeanServer(Map<String, String> parameters);
-
+public enum Capability {
+    /**
+     * The protocol being selected requires that parameters are passed to the server before the connection is actually
+     * established.
+     */
+    PASS_PARAMETERS
 }
