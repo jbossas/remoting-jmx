@@ -1,1 +1,11 @@
 A project to provide the integration required to expose JMX over Remoting 3 connections.
+
+Issues with this library are tracked in the following Jira location: -
+
+  https://issues.jboss.org/browse/REMJMX
+
+Changes for JBoss AS 7.1.x should be committed to the 1.0 branch which is being used for the 1.0.x releases of Remoting JMX.
+
+Changes for JBoss AS 7.2.x and later should be committed to master which is being used for the 1.1.x releases of Remoting JMX.
+
+All changes to the 1.0 branch must also be ported to master.
