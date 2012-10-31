@@ -56,7 +56,8 @@ public class ParameterProxy extends ServerCommon {
     private final Executor executor;
     private final ServerMessageEventHandler serverMessageEventHandler;
 
-    ParameterProxy(Channel channel, MBeanServerManager mbeanServerManager, Executor executor, ServerMessageEventHandler serverMessageEventHandler) {
+    ParameterProxy(Channel channel, MBeanServerManager mbeanServerManager, Executor executor,
+            ServerMessageEventHandler serverMessageEventHandler) {
         super(channel, executor, null);
         this.channel = channel;
         this.executor = executor;

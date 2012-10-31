@@ -164,7 +164,8 @@ public class JMXRemotingServer {
             connectorServer = new RemotingConnectorServer(mbeanServer, endpoint, configMap, serverMessageEventHandlerFactory);
             connectorServer.start();
         } else {
-            delegatingServer = new DelegatingRemotingConnectorServer(mbeanServerLocator, endpoint, configMap, serverMessageEventHandlerFactory);
+            delegatingServer = new DelegatingRemotingConnectorServer(mbeanServerLocator, endpoint, configMap,
+                    serverMessageEventHandlerFactory);
             delegatingServer.start();
         }
 

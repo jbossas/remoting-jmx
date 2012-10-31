@@ -60,8 +60,8 @@ public class VersionTwo {
         return parameterConnection.getConnection();
     }
 
-    public static void startServer(final Channel channel, final MBeanServerManager mbeanServerManager, final Executor executor, final ServerMessageEventHandler serverMessageEventHandler)
-            throws IOException {
+    public static void startServer(final Channel channel, final MBeanServerManager mbeanServerManager, final Executor executor,
+            final ServerMessageEventHandler serverMessageEventHandler) throws IOException {
         ParameterProxy proxy = new ParameterProxy(channel, mbeanServerManager, executor, serverMessageEventHandler);
         proxy.start();
     }

@@ -51,7 +51,8 @@ public class RemotingConnectorServer extends JMXConnectorServer {
         this(mbeanServer, endpoint, Collections.EMPTY_MAP);
     }
 
-    public RemotingConnectorServer(final MBeanServer mbeanServer, final Endpoint endpoint, ServerMessageEventHandlerFactory serverMessageEventHandlerFactory) {
+    public RemotingConnectorServer(final MBeanServer mbeanServer, final Endpoint endpoint,
+            ServerMessageEventHandlerFactory serverMessageEventHandlerFactory) {
         this(mbeanServer, endpoint, Executors.newCachedThreadPool(), Collections.EMPTY_MAP, serverMessageEventHandlerFactory);
     }
 
@@ -59,7 +60,8 @@ public class RemotingConnectorServer extends JMXConnectorServer {
         this(mbeanServer, endpoint, Executors.newCachedThreadPool(), environment, null);
     }
 
-    public RemotingConnectorServer(final MBeanServer mbeanServer, final Endpoint endpoint, final Map<String, ?> environment, ServerMessageEventHandlerFactory serverMessageEventHandlerFactory) {
+    public RemotingConnectorServer(final MBeanServer mbeanServer, final Endpoint endpoint, final Map<String, ?> environment,
+            ServerMessageEventHandlerFactory serverMessageEventHandlerFactory) {
         this(mbeanServer, endpoint, Executors.newCachedThreadPool(), environment, serverMessageEventHandlerFactory);
     }
 
@@ -108,7 +110,8 @@ public class RemotingConnectorServer extends JMXConnectorServer {
             }
         };
 
-        connectorServer = new DelegatingRemotingConnectorServer(serverManager, endpoint, executor, environment, serverMessageEventHandlerFactory);
+        connectorServer = new DelegatingRemotingConnectorServer(serverManager, endpoint, executor, environment,
+                serverMessageEventHandlerFactory);
     }
 
     /*

@@ -128,7 +128,8 @@ class ServerProxy extends Common implements VersionedProxy {
     private final Map<Byte, Common.MessageHandler> handlerRegistry;
     private final RemoteNotificationManager remoteNotificationManager;
 
-    ServerProxy(final Channel channel, final WrappedMBeanServerConnection server, final Executor executor, final ServerMessageEventHandler serverMessageEventHandler) {
+    ServerProxy(final Channel channel, final WrappedMBeanServerConnection server, final Executor executor,
+            final ServerMessageEventHandler serverMessageEventHandler) {
         super(channel);
         this.channel = channel;
         this.server = server;

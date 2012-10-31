@@ -107,7 +107,7 @@ public class ServerMessageEventHandlerTest {
      */
     @Test
     public void testVersionOne() throws Exception {
-        doTestForVersion((byte)0x01);
+        doTestForVersion((byte) 0x01);
     }
 
     /**
@@ -115,10 +115,10 @@ public class ServerMessageEventHandlerTest {
      */
     @Test
     public void testVersionTwo() throws Exception {
-        doTestForVersion((byte)0x02);
+        doTestForVersion((byte) 0x02);
     }
 
-    private void doTestForVersion(byte versionId)  throws Exception {
+    private void doTestForVersion(byte versionId) throws Exception {
         Versions versions = new Versions(Collections.EMPTY_MAP);
         Set<Byte> supportedVersions = versions.getSupportedVersions();
         StringBuilder sb = null;
@@ -146,7 +146,6 @@ public class ServerMessageEventHandlerTest {
 
         connector.close();
     }
-
 
     private static class TestMBeanServerLocator implements MBeanServerLocator {
 

@@ -94,7 +94,8 @@ public class DelegatingRemotingConnectorServer {
     }
 
     public DelegatingRemotingConnectorServer(final MBeanServerLocator mbeanServerLocator, final Endpoint endpoint,
-            final Executor executor, final Map<String, ?> environment, final ServerMessageEventHandlerFactory serverMessageEventHandlerFactory) {
+            final Executor executor, final Map<String, ?> environment,
+            final ServerMessageEventHandlerFactory serverMessageEventHandlerFactory) {
         this.mbeanServerManager = new DelegatingMBeanServerManager(mbeanServerLocator);
         this.endpoint = endpoint;
         this.executor = executor;
@@ -103,7 +104,8 @@ public class DelegatingRemotingConnectorServer {
     }
 
     DelegatingRemotingConnectorServer(final MBeanServerManager mbeanServerManager, final Endpoint endpoint,
-            final Executor executor, final Map<String, ?> environment, final ServerMessageEventHandlerFactory serverMessageEventHandlerFactory) {
+            final Executor executor, final Map<String, ?> environment,
+            final ServerMessageEventHandlerFactory serverMessageEventHandlerFactory) {
         this.mbeanServerManager = mbeanServerManager;
         this.endpoint = endpoint;
         this.executor = executor;

@@ -58,8 +58,8 @@ public class VersionOne {
         return connection;
     }
 
-    public static void startServer(final Channel channel, final WrappedMBeanServerConnection server, final Executor executor, final ServerMessageEventHandler serverMessageEventHandler)
-            throws IOException {
+    public static void startServer(final Channel channel, final WrappedMBeanServerConnection server, final Executor executor,
+            final ServerMessageEventHandler serverMessageEventHandler) throws IOException {
         ServerProxy proxy = new ServerProxy(channel, server, executor, serverMessageEventHandler);
         proxy.start();
     }
