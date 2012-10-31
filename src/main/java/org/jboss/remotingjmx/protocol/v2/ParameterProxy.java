@@ -36,6 +36,7 @@ import java.util.concurrent.Executor;
 import org.jboss.logging.Logger;
 import org.jboss.remoting3.Channel;
 import org.jboss.remotingjmx.MBeanServerManager;
+import org.jboss.remotingjmx.ServerMessageEventHandler;
 import org.jboss.remotingjmx.WrappedMBeanServerConnection;
 
 /**
@@ -53,13 +54,15 @@ public class ParameterProxy extends ServerCommon {
     private final Map<String, String> keyPairs = new HashMap<String, String>();
     private final MBeanServerManager mbeanServerManager;
     private final Executor executor;
+    private final ServerMessageEventHandler serverMessageEventHandler;
 
-    ParameterProxy(Channel channel, MBeanServerManager mbeanServerManager, Executor executor) {
-        super(channel, executor);
+    ParameterProxy(Channel channel, MBeanServerManager mbeanServerManager, Executor executor, ServerMessageEventHandler serverMessageEventHandler) {
+        super(channel, executor, null);
         this.channel = channel;
         this.executor = executor;
         this.mbeanServerManager = mbeanServerManager;
         registry = createHandlerRegistry();
+        this.serverMessageEventHandler = serverMessageEventHandler;
     }
 
     private Map<Byte, Common.MessageHandler> createHandlerRegistry() {
@@ -123,7 +126,7 @@ public class ParameterProxy extends ServerCommon {
             WrappedMBeanServerConnection mbeanServer = mbeanServerManager.getMBeanServer(keyPairs);
 
             if (mbeanServer != null) {
-                ServerProxy server = new ServerProxy(channel, mbeanServer, executor);
+                ServerProxy server = new ServerProxy(channel, mbeanServer, executor, serverMessageEventHandler);
                 server.start();
 
                 String connectionId = server.getConnectionId();
