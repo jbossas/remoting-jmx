@@ -39,6 +39,7 @@ import org.jboss.logging.Logger;
 import org.jboss.marshalling.Marshaller;
 import org.jboss.remoting3.Channel;
 import org.jboss.remoting3.MessageInputStream;
+import org.jboss.remotingjmx.ServerMessageEventHandler;
 import org.xnio.IoUtils;
 
 /**
@@ -51,10 +52,12 @@ public abstract class ServerCommon extends Common {
     private static final Logger log = Logger.getLogger(ServerCommon.class);
 
     private final Executor executor;
+    private final ServerMessageEventHandler serverMessageEventHandler;
 
-    ServerCommon(Channel channel, Executor executor) {
+    ServerCommon(Channel channel, Executor executor, ServerMessageEventHandler serverMessageEventHandler) {
         super(channel);
         this.executor = executor;
+        this.serverMessageEventHandler = serverMessageEventHandler;
     }
 
     protected void sendWelcomeMessage() throws IOException {
@@ -141,9 +144,14 @@ public abstract class ServerCommon extends Common {
 
                         @Override
                         public void run() {
+                            Throwable thrown = null;
                             try {
+                                if (serverMessageEventHandler != null) {
+                                    serverMessageEventHandler.beforeEvent();
+                                }
                                 mh.handle(dis, correlationId);
                             } catch (Throwable t) {
+                                thrown = t;
                                 if (correlationId != 0x00) {
                                     Exception response;
                                     if (t instanceof IOException) {
@@ -160,6 +168,9 @@ public abstract class ServerCommon extends Common {
                                     log.error("null correlationId so error not sent to client", t);
                                 }
                             } finally {
+                                if (serverMessageEventHandler != null) {
+                                    serverMessageEventHandler.afterEvent(thrown);
+                                }
                                 IoUtils.safeClose(dis);
                             }
                         }

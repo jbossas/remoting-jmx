@@ -32,6 +32,7 @@ import javax.management.remote.JMXServiceURL;
 import org.jboss.remoting3.Channel;
 import org.jboss.remotingjmx.Capability;
 import org.jboss.remotingjmx.MBeanServerManager;
+import org.jboss.remotingjmx.ServerMessageEventHandler;
 import org.jboss.remotingjmx.VersionedConnection;
 
 /**
@@ -59,9 +60,9 @@ public class VersionTwo {
         return parameterConnection.getConnection();
     }
 
-    public static void startServer(final Channel channel, final MBeanServerManager mbeanServerManager, final Executor executor)
+    public static void startServer(final Channel channel, final MBeanServerManager mbeanServerManager, final Executor executor, final ServerMessageEventHandler serverMessageEventHandler)
             throws IOException {
-        ParameterProxy proxy = new ParameterProxy(channel, mbeanServerManager, executor);
+        ParameterProxy proxy = new ParameterProxy(channel, mbeanServerManager, executor, serverMessageEventHandler);
         proxy.start();
     }
 

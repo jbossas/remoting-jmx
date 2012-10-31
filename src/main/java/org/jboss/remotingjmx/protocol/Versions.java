@@ -37,6 +37,7 @@ import org.jboss.logging.Logger;
 import org.jboss.remoting3.Channel;
 import org.jboss.remotingjmx.Capability;
 import org.jboss.remotingjmx.MBeanServerManager;
+import org.jboss.remotingjmx.ServerMessageEventHandler;
 import org.jboss.remotingjmx.VersionedConnection;
 import org.jboss.remotingjmx.protocol.v1.VersionOne;
 import org.jboss.remotingjmx.protocol.v2.VersionTwo;
@@ -133,12 +134,12 @@ public class Versions {
     }
 
     public void startServer(final byte version, final Channel channel, final MBeanServerManager serverManager,
-            final Executor executor) throws IOException {
+            final Executor executor, final ServerMessageEventHandler serverMessageEventHandler) throws IOException {
         if (supportedVersions.containsKey(version)) {
             if (version == VersionOne.getVersionIdentifier()) {
-                VersionOne.startServer(channel, serverManager.getDefaultMBeanServer(), executor);
+                VersionOne.startServer(channel, serverManager.getDefaultMBeanServer(), executor, serverMessageEventHandler);
             } else if (version == VersionTwo.getVersionIdentifier()) {
-                VersionTwo.startServer(channel, serverManager, executor);
+                VersionTwo.startServer(channel, serverManager, executor, serverMessageEventHandler);
             }
             return;
         } else {
