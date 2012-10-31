@@ -103,6 +103,7 @@ import org.jboss.marshalling.Marshaller;
 import org.jboss.marshalling.Unmarshaller;
 import org.jboss.remoting3.Channel;
 import org.jboss.remoting3.MessageInputStream;
+import org.jboss.remotingjmx.ServerMessageEventHandler;
 import org.jboss.remotingjmx.VersionedProxy;
 import org.jboss.remotingjmx.WrappedMBeanServerConnection;
 import org.xnio.IoUtils;
@@ -122,17 +123,19 @@ class ServerProxy extends Common implements VersionedProxy {
     private final WrappedMBeanServerConnection server;
     private UUID connectionId;
     private final Executor executor;
+    private final ServerMessageEventHandler serverMessageEventHandler;
     // Registry of handlers for the incoming messages.
     private final Map<Byte, Common.MessageHandler> handlerRegistry;
     private final RemoteNotificationManager remoteNotificationManager;
 
-    ServerProxy(final Channel channel, final WrappedMBeanServerConnection server, final Executor executor) {
+    ServerProxy(final Channel channel, final WrappedMBeanServerConnection server, final Executor executor, final ServerMessageEventHandler serverMessageEventHandler) {
         super(channel);
         this.channel = channel;
         this.server = server;
         this.handlerRegistry = createHandlerRegistry();
         this.remoteNotificationManager = new RemoteNotificationManager();
         this.executor = executor;
+        this.serverMessageEventHandler = serverMessageEventHandler;
     }
 
     private Map<Byte, Common.MessageHandler> createHandlerRegistry() {
@@ -213,9 +216,14 @@ class ServerProxy extends Common implements VersionedProxy {
 
                         @Override
                         public void run() {
+                            Throwable thrown = null;
                             try {
+                                if (serverMessageEventHandler != null) {
+                                    serverMessageEventHandler.beforeEvent();
+                                }
                                 mh.handle(dis, correlationId);
                             } catch (Throwable t) {
+                                thrown = t;
                                 if (correlationId != 0x00) {
                                     Exception response;
                                     if (t instanceof IOException) {
@@ -232,6 +240,9 @@ class ServerProxy extends Common implements VersionedProxy {
                                     log.error("null correlationId so error not sent to client", t);
                                 }
                             } finally {
+                                if (serverMessageEventHandler != null) {
+                                    serverMessageEventHandler.afterEvent(thrown);
+                                }
                                 IoUtils.safeClose(dis);
                             }
                         }
