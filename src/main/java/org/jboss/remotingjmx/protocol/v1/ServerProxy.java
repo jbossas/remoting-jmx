@@ -277,11 +277,13 @@ class ServerProxy extends Common implements VersionedProxy {
         public void handleError(Channel channel, IOException error) {
             log.warn("Channel closing due to error", error);
             remoteNotificationManager.removeNotificationListener();
+            server.connectionClosed(ServerProxy.this);
         }
 
         @Override
         public void handleEnd(Channel channel) {
             remoteNotificationManager.removeNotificationListener();
+            server.connectionClosed(ServerProxy.this);
         }
 
     }

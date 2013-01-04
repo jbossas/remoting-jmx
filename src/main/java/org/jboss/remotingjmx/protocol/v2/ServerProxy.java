@@ -163,6 +163,7 @@ class ServerProxy extends ServerCommon implements VersionedProxy {
     @Override
     void end() {
         remoteNotificationManager.removeNotificationListener();
+        server.connectionClosed(this);
     }
 
     void start() throws IOException {
@@ -186,6 +187,7 @@ class ServerProxy extends ServerCommon implements VersionedProxy {
             log.warn("Unable to close channel");
             // Can't rely on the Receiver to have called this if we can't close down.
             remoteNotificationManager.removeNotificationListener();
+            server.connectionClosed(this);
         }
     }
 

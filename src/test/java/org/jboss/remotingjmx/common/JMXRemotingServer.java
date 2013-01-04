@@ -231,6 +231,12 @@ public class JMXRemotingServer {
             endpoint.close();
         }
 
+        if (connectorServer != null) {
+            String[] ids = connectorServer.getConnectionIds();
+            if (ids.length > 0) {
+                throw new RuntimeException("Connections still registered with server despite being stopped.");
+            }
+        }
     }
 
     public static void main(String[] args) throws IOException {
