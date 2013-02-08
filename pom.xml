@@ -29,12 +29,12 @@
 
     <groupId>org.jboss.remotingjmx</groupId>
     <artifactId>remoting-jmx</artifactId>
-    <version>1.2.0.Alpha1-SNAPSHOT</version>
+    <version>1.1.1.CR1-SNAPSHOT</version>
 
     <parent>
         <groupId>org.jboss</groupId>
         <artifactId>jboss-parent</artifactId>
-        <version>9</version>
+        <version>10</version>
     </parent>
     
     <licenses>
@@ -167,7 +167,7 @@
         <dependency>
             <groupId>org.jboss.remoting3</groupId>
             <artifactId>jboss-remoting</artifactId>
-            <version>3.2.12.GA</version>
+            <version>3.2.14.GA</version>
         </dependency>
         <dependency>
             <groupId>org.jboss.sasl</groupId>
