@@ -21,6 +21,8 @@
  */
 package org.jboss.remotingjmx;
 
+import static org.jboss.remotingjmx.Constants.HTTPS_PROTOCOL;
+import static org.jboss.remotingjmx.Constants.HTTP_PROTOCOL;
 import static org.jboss.remotingjmx.Constants.PROTOCOL;
 
 import java.io.IOException;
@@ -44,7 +46,7 @@ public class RemotingConnectorProvider implements JMXConnectorProvider {
     public JMXConnector newJMXConnector(JMXServiceURL serviceURL, Map<String, ?> environment) throws IOException {
         String protocol = serviceURL.getProtocol();
 
-        if (PROTOCOL.equals(protocol)) {
+        if (PROTOCOL.equals(protocol) || HTTP_PROTOCOL.equals(protocol) || HTTPS_PROTOCOL.equals(PROTOCOL)) {
             return new RemotingConnector(serviceURL, environment);
         }
 

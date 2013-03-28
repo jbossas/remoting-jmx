@@ -23,6 +23,8 @@ package org.jboss.remotingjmx;
 
 import static org.jboss.remotingjmx.Constants.CHANNEL_NAME;
 import static org.jboss.remotingjmx.Constants.CONNECTION_PROVIDER_URI;
+import static org.jboss.remotingjmx.Constants.HTTP;
+import static org.jboss.remotingjmx.Constants.HTTPS;
 import static org.jboss.remotingjmx.Util.convert;
 import static org.xnio.Options.SASL_POLICY_NOANONYMOUS;
 import static org.xnio.Options.SASL_POLICY_NOPLAINTEXT;
@@ -55,6 +57,7 @@ import org.jboss.remoting3.Channel;
 import org.jboss.remoting3.Connection;
 import org.jboss.remoting3.Endpoint;
 import org.jboss.remoting3.Remoting;
+import org.jboss.remoting3.remote.HttpUpgradeConnectionProviderFactory;
 import org.jboss.remoting3.remote.RemoteConnectionProviderFactory;
 import org.xnio.IoFuture;
 import org.xnio.OptionMap;
@@ -191,6 +194,8 @@ class RemotingConnector implements JMXConnector {
         final Xnio xnio = Xnio.getInstance();
         endpoint = Remoting.createEndpoint("endpoint", xnio, OptionMap.create(Options.THREAD_DAEMON, true));
         endpoint.addConnectionProvider(CONNECTION_PROVIDER_URI, new RemoteConnectionProviderFactory(), OptionMap.EMPTY);
+        endpoint.addConnectionProvider(HTTP, new HttpUpgradeConnectionProviderFactory(), OptionMap.create(Options.SSL_ENABLED, false));
+        endpoint.addConnectionProvider(HTTPS, new HttpUpgradeConnectionProviderFactory(), OptionMap.create(Options.SSL_ENABLED, true));
 
         // The credentials.
         CallbackHandler handler = null;

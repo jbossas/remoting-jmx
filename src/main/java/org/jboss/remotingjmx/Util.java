@@ -23,6 +23,8 @@
 package org.jboss.remotingjmx;
 
 import static org.jboss.remotingjmx.Constants.CONNECTION_PROVIDER_URI;
+import static org.jboss.remotingjmx.Constants.HTTPS_PROTOCOL;
+import static org.jboss.remotingjmx.Constants.HTTP_PROTOCOL;
 
 import java.io.IOException;
 import java.net.URI;
@@ -42,7 +44,14 @@ public class Util {
     }
 
     public static URI convert(final JMXServiceURL serviceUrl) throws IOException {
-        String scheme = CONNECTION_PROVIDER_URI;
+        String scheme;
+        if(serviceUrl.getProtocol().equals(HTTP_PROTOCOL)) {
+            scheme = "http";
+        } else if(serviceUrl.getProtocol().equals(HTTPS_PROTOCOL)) {
+            scheme = "https";
+        } else {
+            scheme = CONNECTION_PROVIDER_URI;
+        }
         String host = serviceUrl.getHost();
         int port = serviceUrl.getPort();
 
