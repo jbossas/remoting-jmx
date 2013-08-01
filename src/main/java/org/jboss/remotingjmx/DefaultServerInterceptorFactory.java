@@ -1,6 +1,6 @@
 /*
  * JBoss, Home of Professional Open Source.
- * Copyright 2012, Red Hat Middleware LLC, and individual contributors
+ * Copyright 2013, Red Hat, Inc., and individual contributors
  * as indicated by the @author tags. See the copyright.txt file in the
  * distribution for a full listing of individual contributors.
  *
@@ -19,25 +19,36 @@
  * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
+
 package org.jboss.remotingjmx;
+
+import java.io.IOException;
 
 import org.jboss.remoting3.Channel;
 
 /**
+ * A default implementation of {@link ServerMessageInterceptorFactory} so we can avoid null checks all over the place.
  *
- * @author <a href="kabir.khan@jboss.com">Kabir Khan</a>
- * @deprecated Experimental, may change
+ * @author <a href="mailto:darran.lofthouse@jboss.com">Darran Lofthouse</a>
  */
-@Deprecated
-public interface ServerMessageEventHandlerFactory {
+class DefaultServerInterceptorFactory implements ServerMessageInterceptorFactory {
 
-    /**
-     * Creates a server message event handler when a channel is opened
-     *
-     * @param channel the opened channel
-     * @return the created event handler
-     * @deprecated Experimental, may change
-     */
-    @Deprecated
-    ServerMessageEventHandler create(Channel channel);
+    private static final ServerMessageInterceptor INTERCEPTOR_INSTANCE = new ServerMessageInterceptor() {
+
+        @Override
+        public void handleEvent(Event event) throws IOException {
+            event.run();
+        }
+    };
+
+    static final ServerMessageInterceptorFactory FACTORY_INSTANCE = new DefaultServerInterceptorFactory();
+
+    private DefaultServerInterceptorFactory() {
+    }
+
+    @Override
+    public ServerMessageInterceptor create(Channel channel) {
+        return INTERCEPTOR_INSTANCE;
+    }
+
 }

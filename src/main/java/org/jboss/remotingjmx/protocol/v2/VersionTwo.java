@@ -32,11 +32,11 @@ import javax.management.remote.JMXServiceURL;
 import org.jboss.remoting3.Channel;
 import org.jboss.remotingjmx.Capability;
 import org.jboss.remotingjmx.MBeanServerManager;
-import org.jboss.remotingjmx.ServerMessageEventHandler;
+import org.jboss.remotingjmx.ServerMessageInterceptor;
 import org.jboss.remotingjmx.VersionedConnection;
 
 /**
- * The entry point to VersionThree
+ * The entry point to VersionTwo
  *
  * @author <a href="mailto:darran.lofthouse@jboss.com">Darran Lofthouse</a>
  */
@@ -61,8 +61,8 @@ public class VersionTwo {
     }
 
     public static void startServer(final Channel channel, final MBeanServerManager mbeanServerManager, final Executor executor,
-            final ServerMessageEventHandler serverMessageEventHandler) throws IOException {
-        ParameterProxy proxy = new ParameterProxy(channel, mbeanServerManager, executor, serverMessageEventHandler);
+            final ServerMessageInterceptor serverMessageInterceptor) throws IOException {
+        ParameterProxy proxy = new ParameterProxy(channel, mbeanServerManager, executor, serverMessageInterceptor);
         proxy.start();
     }
 

@@ -39,7 +39,8 @@ import org.jboss.logging.Logger;
 import org.jboss.marshalling.Marshaller;
 import org.jboss.remoting3.Channel;
 import org.jboss.remoting3.MessageInputStream;
-import org.jboss.remotingjmx.ServerMessageEventHandler;
+import org.jboss.remotingjmx.ServerMessageInterceptor;
+import org.jboss.remotingjmx.ServerMessageInterceptor.Event;
 import org.xnio.IoUtils;
 
 /**
@@ -52,12 +53,12 @@ public abstract class ServerCommon extends Common {
     private static final Logger log = Logger.getLogger(ServerCommon.class);
 
     private final Executor executor;
-    private final ServerMessageEventHandler serverMessageEventHandler;
+    private final ServerMessageInterceptor serverMessageInterceptor;
 
-    ServerCommon(Channel channel, Executor executor, ServerMessageEventHandler serverMessageEventHandler) {
+    ServerCommon(Channel channel, Executor executor, ServerMessageInterceptor serverMessageInterceptor) {
         super(channel);
         this.executor = executor;
-        this.serverMessageEventHandler = serverMessageEventHandler;
+        this.serverMessageInterceptor = serverMessageInterceptor;
     }
 
     protected void sendWelcomeMessage() throws IOException {
@@ -144,14 +145,15 @@ public abstract class ServerCommon extends Common {
 
                         @Override
                         public void run() {
-                            Throwable thrown = null;
                             try {
-                                if (serverMessageEventHandler != null) {
-                                    serverMessageEventHandler.beforeEvent();
-                                }
-                                mh.handle(dis, correlationId);
+                                serverMessageInterceptor.handleEvent(new Event() {
+
+                                    @Override
+                                    public void run() throws IOException {
+                                        mh.handle(dis, correlationId);
+                                    }
+                                });
                             } catch (Throwable t) {
-                                thrown = t;
                                 if (correlationId != 0x00) {
                                     Exception response;
                                     if (t instanceof IOException) {
@@ -168,9 +170,6 @@ public abstract class ServerCommon extends Common {
                                     log.error("null correlationId so error not sent to client", t);
                                 }
                             } finally {
-                                if (serverMessageEventHandler != null) {
-                                    serverMessageEventHandler.afterEvent(thrown);
-                                }
                                 IoUtils.safeClose(dis);
                             }
                         }

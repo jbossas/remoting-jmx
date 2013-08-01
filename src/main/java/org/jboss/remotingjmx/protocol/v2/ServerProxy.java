@@ -98,7 +98,7 @@ import org.jboss.marshalling.AbstractClassResolver;
 import org.jboss.marshalling.Marshaller;
 import org.jboss.marshalling.Unmarshaller;
 import org.jboss.remoting3.Channel;
-import org.jboss.remotingjmx.ServerMessageEventHandler;
+import org.jboss.remotingjmx.ServerMessageInterceptor;
 import org.jboss.remotingjmx.VersionedProxy;
 import org.jboss.remotingjmx.WrappedMBeanServerConnection;
 
@@ -122,8 +122,8 @@ class ServerProxy extends ServerCommon implements VersionedProxy {
     private final RemoteNotificationManager remoteNotificationManager;
 
     ServerProxy(final Channel channel, final WrappedMBeanServerConnection server, final Executor executor,
-            final ServerMessageEventHandler serverMessageEventHandler) {
-        super(channel, executor, serverMessageEventHandler);
+            final ServerMessageInterceptor serverMessageInterceptor) {
+        super(channel, executor, serverMessageInterceptor);
         this.channel = channel;
         this.server = server;
         handlerRegistry = createHandlerRegistry();

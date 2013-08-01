@@ -52,8 +52,8 @@ public class RemotingConnectorServer extends JMXConnectorServer {
     }
 
     public RemotingConnectorServer(final MBeanServer mbeanServer, final Endpoint endpoint,
-            ServerMessageEventHandlerFactory serverMessageEventHandlerFactory) {
-        this(mbeanServer, endpoint, Executors.newCachedThreadPool(), Collections.EMPTY_MAP, serverMessageEventHandlerFactory);
+            ServerMessageInterceptorFactory serverMessageInterceptorFactory) {
+        this(mbeanServer, endpoint, Executors.newCachedThreadPool(), Collections.EMPTY_MAP, serverMessageInterceptorFactory);
     }
 
     public RemotingConnectorServer(final MBeanServer mbeanServer, final Endpoint endpoint, final Map<String, ?> environment) {
@@ -61,8 +61,8 @@ public class RemotingConnectorServer extends JMXConnectorServer {
     }
 
     public RemotingConnectorServer(final MBeanServer mbeanServer, final Endpoint endpoint, final Map<String, ?> environment,
-            ServerMessageEventHandlerFactory serverMessageEventHandlerFactory) {
-        this(mbeanServer, endpoint, Executors.newCachedThreadPool(), environment, serverMessageEventHandlerFactory);
+            ServerMessageInterceptorFactory serverMessageInterceptorFactory) {
+        this(mbeanServer, endpoint, Executors.newCachedThreadPool(), environment, serverMessageInterceptorFactory);
     }
 
     public RemotingConnectorServer(final MBeanServer mbeanServer, final Endpoint endpoint, Executor executor) {
@@ -70,7 +70,7 @@ public class RemotingConnectorServer extends JMXConnectorServer {
     }
 
     public RemotingConnectorServer(final MBeanServer mbeanServer, final Endpoint endpoint, Executor executor,
-            final Map<String, ?> environment, ServerMessageEventHandlerFactory serverMessageEventHandlerFactory) {
+            final Map<String, ?> environment, ServerMessageInterceptorFactory serverMessageInterceptorFactory) {
         super(mbeanServer);
         MBeanServerManager serverManager = new MBeanServerManager() {
             private final WrappedMBeanServerConnection connection = new WrappedMBeanServerConnection() {
@@ -111,7 +111,7 @@ public class RemotingConnectorServer extends JMXConnectorServer {
         };
 
         connectorServer = new DelegatingRemotingConnectorServer(serverManager, endpoint, executor, environment,
-                serverMessageEventHandlerFactory);
+                serverMessageInterceptorFactory);
     }
 
     /*
