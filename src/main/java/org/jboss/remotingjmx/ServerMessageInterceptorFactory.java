@@ -26,37 +26,16 @@ import org.jboss.remoting3.Channel;
 /**
  *
  * @author <a href="kabir.khan@jboss.com">Kabir Khan</a>
- * @deprecated Experimental, may change
+ * @author <a href="mailto:darran.lofthouse@jboss.com">Darran Lofthouse</a>
  */
-@Deprecated
-public abstract class ServerMessageEventHandler {
+public interface ServerMessageInterceptorFactory {
 
     /**
-     * @deprecated Experimental, may change
-     */
-    @Deprecated
-    protected ServerMessageEventHandler(Channel channel) {
-        // No need to store the channel, leave that to the subclasses
-    }
-
-    /**
-     * Called before handling a protocol message on the server.
+     * Creates a server message interceptor when a channel is opened
      *
-     * @param channel the channel handling the protocol message
-     * @deprecated Experimental, may change
+     * @param channel the opened channel
+     * @return the created event handler
      */
-    @Deprecated
-    public void beforeEvent() {
-    }
+    ServerMessageInterceptor create(Channel channel);
 
-    /**
-     * Called after handling a protocol message on the server completed either normally or throwing an error
-     *
-     * @param channel the channel handling the protocol message
-     * @param thrown the exception thrown if handling the message resulted in an error
-     * @deprecated Experimental, may change
-     */
-    @Deprecated
-    public void afterEvent(Throwable thrown) {
-    }
 }

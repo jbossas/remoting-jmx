@@ -72,7 +72,7 @@ public class DelegatingRemotingConnectorServer {
     private volatile Registration registration;
     private final Executor executor;
     private final Versions versions;
-    private final ServerMessageEventHandlerFactory serverMessageEventHandlerFactory;
+    private final ServerMessageInterceptorFactory serverMessageInterceptorFactory;
 
     public DelegatingRemotingConnectorServer(final MBeanServerLocator mbeanServerLocator, final Endpoint endpoint) {
         this(mbeanServerLocator, endpoint, Executors.newCachedThreadPool(), Collections.EMPTY_MAP);
@@ -84,8 +84,8 @@ public class DelegatingRemotingConnectorServer {
     }
 
     public DelegatingRemotingConnectorServer(final MBeanServerLocator mbeanServerLocator, final Endpoint endpoint,
-            final Map<String, ?> environment, ServerMessageEventHandlerFactory serverMessageEventHandlerFactory) {
-        this(mbeanServerLocator, endpoint, Executors.newCachedThreadPool(), environment, serverMessageEventHandlerFactory);
+            final Map<String, ?> environment, ServerMessageInterceptorFactory serverMessageInterceptorFactory) {
+        this(mbeanServerLocator, endpoint, Executors.newCachedThreadPool(), environment, serverMessageInterceptorFactory);
     }
 
     public DelegatingRemotingConnectorServer(final MBeanServerLocator mbeanServerLocator, final Endpoint endpoint,
@@ -95,22 +95,22 @@ public class DelegatingRemotingConnectorServer {
 
     public DelegatingRemotingConnectorServer(final MBeanServerLocator mbeanServerLocator, final Endpoint endpoint,
             final Executor executor, final Map<String, ?> environment,
-            final ServerMessageEventHandlerFactory serverMessageEventHandlerFactory) {
+            final ServerMessageInterceptorFactory serverMessageInterceptorFactory) {
         this.mbeanServerManager = new DelegatingMBeanServerManager(mbeanServerLocator);
         this.endpoint = endpoint;
         this.executor = executor;
         versions = new Versions(environment);
-        this.serverMessageEventHandlerFactory = serverMessageEventHandlerFactory;
+        this.serverMessageInterceptorFactory = serverMessageInterceptorFactory != null ? serverMessageInterceptorFactory : DefaultServerInterceptorFactory.FACTORY_INSTANCE;
     }
 
     DelegatingRemotingConnectorServer(final MBeanServerManager mbeanServerManager, final Endpoint endpoint,
             final Executor executor, final Map<String, ?> environment,
-            final ServerMessageEventHandlerFactory serverMessageEventHandlerFactory) {
+            final ServerMessageInterceptorFactory serverMessageInterceptorFactory) {
         this.mbeanServerManager = mbeanServerManager;
         this.endpoint = endpoint;
         this.executor = executor;
         versions = new Versions(environment);
-        this.serverMessageEventHandlerFactory = serverMessageEventHandlerFactory;
+        this.serverMessageInterceptorFactory = serverMessageInterceptorFactory != null ? serverMessageInterceptorFactory : DefaultServerInterceptorFactory.FACTORY_INSTANCE;
     }
 
     /*
@@ -286,13 +286,11 @@ public class DelegatingRemotingConnectorServer {
 
             try {
                 writeVersionHeader(channel, false);
-                channel.receiveMessage(new ClientVersionReceiver(
-                        serverMessageEventHandlerFactory != null ? serverMessageEventHandlerFactory.create(channel) : null));
+                channel.receiveMessage(new ClientVersionReceiver(serverMessageInterceptorFactory.create(channel)));
             } catch (IOException e) {
                 log.error("Unable to send header, closing channel", e);
                 IoUtils.safeClose(channel);
             }
-
         }
 
         public void registrationTerminated() {
@@ -302,10 +300,10 @@ public class DelegatingRemotingConnectorServer {
 
     private class ClientVersionReceiver implements Channel.Receiver {
 
-        final ServerMessageEventHandler serverMessageEventHandler;
+        final ServerMessageInterceptor serverMessageInterceptor;
 
-        public ClientVersionReceiver(ServerMessageEventHandler serverMessageEventHandler) {
-            this.serverMessageEventHandler = serverMessageEventHandler;
+        public ClientVersionReceiver(ServerMessageInterceptor serverMessageInterceptor) {
+            this.serverMessageInterceptor = serverMessageInterceptor;
         }
 
         public void handleMessage(Channel channel, MessageInputStream messageInputStream) {
@@ -339,7 +337,7 @@ public class DelegatingRemotingConnectorServer {
 
                 // The VersionedProxy is responsible for registering with the RemotingConnectorServer which
                 // could vary depending on the version of the protocol.
-                versions.startServer(version, channel, mbeanServerManager, executor, serverMessageEventHandler);
+                versions.startServer(version, channel, mbeanServerManager, executor, serverMessageInterceptor);
             } catch (IOException e) {
                 log.error("Error determining version selected by client.");
             } finally {

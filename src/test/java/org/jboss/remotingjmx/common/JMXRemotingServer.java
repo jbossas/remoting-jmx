@@ -64,7 +64,7 @@ import org.jboss.remoting3.spi.NetworkServerProvider;
 import org.jboss.remotingjmx.DelegatingRemotingConnectorServer;
 import org.jboss.remotingjmx.MBeanServerLocator;
 import org.jboss.remotingjmx.RemotingConnectorServer;
-import org.jboss.remotingjmx.ServerMessageEventHandlerFactory;
+import org.jboss.remotingjmx.ServerMessageInterceptorFactory;
 import org.jboss.remotingjmx.Version;
 import org.jboss.sasl.callback.VerifyPasswordCallback;
 import org.xnio.OptionMap;
@@ -109,7 +109,7 @@ public class JMXRemotingServer {
     private final ServerAuthenticationProvider authenticationProvider;
     private final String excludedVersions;
     private final MBeanServerLocator mbeanServerLocator;
-    private final ServerMessageEventHandlerFactory serverMessageEventHandlerFactory;
+    private final ServerMessageInterceptorFactory serverMessageInterceptorFactory;
 
     private Endpoint endpoint;
     private AcceptingChannel<? extends ConnectedStreamChannel> server;
@@ -137,7 +137,7 @@ public class JMXRemotingServer {
                 : new DefaultAuthenticationProvider();
         excludedVersions = config.excludedVersions;
         mbeanServerLocator = config.mbeanServerLocator;
-        this.serverMessageEventHandlerFactory = config.serverMessageEventHandlerFactory;
+        this.serverMessageInterceptorFactory = config.serverMessageInterceptorFactory;
     }
 
     public void start() throws IOException {
@@ -161,11 +161,11 @@ public class JMXRemotingServer {
         }
         // Initialise the components that will provide JMX connectivity.
         if (mbeanServerLocator == null) {
-            connectorServer = new RemotingConnectorServer(mbeanServer, endpoint, configMap, serverMessageEventHandlerFactory);
+            connectorServer = new RemotingConnectorServer(mbeanServer, endpoint, configMap, serverMessageInterceptorFactory);
             connectorServer.start();
         } else {
             delegatingServer = new DelegatingRemotingConnectorServer(mbeanServerLocator, endpoint, configMap,
-                    serverMessageEventHandlerFactory);
+                    serverMessageInterceptorFactory);
             delegatingServer.start();
         }
 
@@ -383,7 +383,7 @@ public class JMXRemotingServer {
         public ServerAuthenticationProvider authenticationProvider = null;
         public String excludedVersions = null;
         public MBeanServerLocator mbeanServerLocator = null;
-        public ServerMessageEventHandlerFactory serverMessageEventHandlerFactory = null;
+        public ServerMessageInterceptorFactory serverMessageInterceptorFactory = null;
     }
 
 }

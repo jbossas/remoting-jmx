@@ -46,6 +46,7 @@ import javax.management.remote.JMXServiceURL;
 import junit.framework.Assert;
 
 import org.jboss.remoting3.Channel;
+import org.jboss.remotingjmx.ServerMessageInterceptor.Event;
 import org.jboss.remotingjmx.common.JMXRemotingServer;
 import org.jboss.remotingjmx.common.JMXRemotingServer.JMXRemotingConfig;
 import org.jboss.remotingjmx.protocol.Versions;
@@ -60,7 +61,7 @@ import org.junit.Test;
  *
  * @author <a href="mailto:darran.lofthouse@jboss.com">Darran Lofthouse</a>
  */
-public class ServerMessageEventHandlerTest {
+public class ServerMessageInterceptorTest {
 
     private static final String DEFAULT_DOMAIN = "org.jboss.remotingjmx";
 
@@ -82,7 +83,7 @@ public class ServerMessageEventHandlerTest {
         config.mbeanServer = mbeanServer;
         config.host = bindAddress;
         config.mbeanServerLocator = mbeanServerLocator;
-        config.serverMessageEventHandlerFactory = new TestServerMessageEventHandlerFactory();
+        config.serverMessageInterceptorFactory = new TestServerMessageInterceptorFactory();
 
         remotingServer = new JMXRemotingServer(config);
         remotingServer.start();
@@ -140,9 +141,9 @@ public class ServerMessageEventHandlerTest {
         JMXConnector connector = JMXConnectorFactory.connect(serviceUrl, environment);
 
         MBeanServerConnection connection = connector.getMBeanServerConnection();
-        TestServerMessageEventHandler.clear();
+        TestServerMessageInterceptor.clear();
         connection.getDefaultDomain();
-        TestServerMessageEventHandler.check();
+        TestServerMessageInterceptor.check();
 
         connector.close();
     }
@@ -170,30 +171,40 @@ public class ServerMessageEventHandlerTest {
         }
     }
 
-    private static class TestServerMessageEventHandlerFactory implements ServerMessageEventHandlerFactory {
+    private static class TestServerMessageInterceptorFactory implements ServerMessageInterceptorFactory {
         @Override
-        public ServerMessageEventHandler create(Channel channel) {
-            return new TestServerMessageEventHandler(channel);
+        public ServerMessageInterceptor create(Channel channel) {
+            return new TestServerMessageInterceptor();
         }
     }
 
-    private static class TestServerMessageEventHandler extends ServerMessageEventHandler {
+    private static class TestServerMessageInterceptor implements ServerMessageInterceptor {
         static final Object LOCK = new Object();
         static volatile boolean before;
         static volatile CountDownLatch after;
         static volatile Throwable error;
 
-        protected TestServerMessageEventHandler(Channel channel) {
-            super(channel);
+        @Override
+        public void handleEvent(Event event) throws IOException {
+            beforeEvent();
+            try {
+                event.run();
+                afterEvent(null);
+            } catch (Throwable t) {
+                afterEvent(t);
+                if (t instanceof IOException) {
+                    throw (IOException) t;
+                } else {
+                    throw new IOException(t);
+                }
+            }
         }
 
-        @Override
-        public void beforeEvent() {
+        private void beforeEvent() {
             before = true;
         }
 
-        @Override
-        public void afterEvent(Throwable thrown) {
+        private void afterEvent(Throwable thrown) {
             error = thrown;
             after.countDown();
         }

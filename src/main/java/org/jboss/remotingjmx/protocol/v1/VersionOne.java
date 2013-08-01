@@ -29,7 +29,7 @@ import java.util.concurrent.Executor;
 
 import org.jboss.remoting3.Channel;
 import org.jboss.remotingjmx.Capability;
-import org.jboss.remotingjmx.ServerMessageEventHandler;
+import org.jboss.remotingjmx.ServerMessageInterceptor;
 import org.jboss.remotingjmx.VersionedConnection;
 import org.jboss.remotingjmx.WrappedMBeanServerConnection;
 
@@ -59,8 +59,8 @@ public class VersionOne {
     }
 
     public static void startServer(final Channel channel, final WrappedMBeanServerConnection server, final Executor executor,
-            final ServerMessageEventHandler serverMessageEventHandler) throws IOException {
-        ServerProxy proxy = new ServerProxy(channel, server, executor, serverMessageEventHandler);
+            final ServerMessageInterceptor serverMessageInterceptor) throws IOException {
+        ServerProxy proxy = new ServerProxy(channel, server, executor, serverMessageInterceptor);
         proxy.start();
     }
 
