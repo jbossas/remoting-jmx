@@ -25,6 +25,7 @@ import static org.jboss.remotingjmx.Constants.CHANNEL_NAME;
 import static org.jboss.remotingjmx.Constants.CONNECTION_PROVIDER_URI;
 import static org.jboss.remotingjmx.Constants.HTTP;
 import static org.jboss.remotingjmx.Constants.HTTPS;
+import static org.jboss.remotingjmx.Constants.JBOSS_LOCAL_USER;
 import static org.jboss.remotingjmx.Util.convert;
 import static org.xnio.Options.SASL_POLICY_NOANONYMOUS;
 import static org.xnio.Options.SASL_POLICY_NOPLAINTEXT;
@@ -199,6 +200,7 @@ class RemotingConnector implements JMXConnector {
 
         // The credentials.
         CallbackHandler handler = null;
+        boolean disableLocalAuth = true;
         if (env != null) {
             handler = (CallbackHandler) env.get(CallbackHandler.class.getName());
             if (handler == null && env.containsKey(CREDENTIALS)) {
@@ -207,10 +209,11 @@ class RemotingConnector implements JMXConnector {
         }
         if (handler == null) {
             handler = new AnonymousCallbackHandler();
+            disableLocalAuth = false;
         }
 
         // open a connection
-        final IoFuture<Connection> futureConnection = endpoint.connect(convert(serviceUrl), getOptionMap(), handler);
+        final IoFuture<Connection> futureConnection = endpoint.connect(convert(serviceUrl), getOptionMap(disableLocalAuth), handler);
         IoFuture.Status result = futureConnection.await(5, TimeUnit.SECONDS);
 
         if (result == IoFuture.Status.DONE) {
@@ -224,7 +227,7 @@ class RemotingConnector implements JMXConnector {
         return connection;
     }
 
-    private OptionMap getOptionMap() {
+    private OptionMap getOptionMap(boolean disableLocalAuth) {
         OptionMap.Builder builder = OptionMap.builder();
         builder.set(SASL_POLICY_NOANONYMOUS, Boolean.FALSE);
         builder.set(SASL_POLICY_NOPLAINTEXT, Boolean.FALSE);
@@ -235,6 +238,10 @@ class RemotingConnector implements JMXConnector {
 
         builder.set(Options.SSL_ENABLED, true);
         builder.set(Options.SSL_STARTTLS, true);
+
+        if (disableLocalAuth) {
+            builder.set(Options.SASL_DISALLOWED_MECHANISMS, Sequence.of(JBOSS_LOCAL_USER));
+        }
 
         return builder.getMap();
     }

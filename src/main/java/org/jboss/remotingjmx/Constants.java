@@ -67,4 +67,6 @@ public class Constants {
     static final String JMX = "JMX";
     static final byte[] JMX_BYTES = JMX.getBytes();
 
+    static final String JBOSS_LOCAL_USER = "JBOSS-LOCAL-USER";
+
 }
