@@ -369,6 +369,7 @@ class ClientConnection extends ClientCommon implements VersionedConnection {
                         mbeanRegistrationException(response.e);
                         mbeanException(response.e);
                         notCompliantMBeanException(response.e);
+                        runtimeMBeanException(response.e);
                         throw toIoException(response.e);
                     default:
                         throw new IOException("Unable to obtain createMBean, status=" + result.toString());
@@ -426,6 +427,7 @@ class ClientConnection extends ClientCommon implements VersionedConnection {
                         mbeanException(response.e);
                         notCompliantMBeanException(response.e);
                         instanceNotFoundException(response.e);
+                        runtimeMBeanException(response.e);
                         throw toIoException(response.e);
                     default:
                         throw new IOException("Unable to obtain isRegistered, status=" + result.toString());
@@ -490,6 +492,7 @@ class ClientConnection extends ClientCommon implements VersionedConnection {
                         mbeanRegistrationException(response.e);
                         mbeanException(response.e);
                         notCompliantMBeanException(response.e);
+                        runtimeMBeanException(response.e);
                         throw toIoException(response.e);
                     default:
                         throw new IOException("Unable to invoke createMBean, status=" + result.toString());
@@ -558,6 +561,7 @@ class ClientConnection extends ClientCommon implements VersionedConnection {
                         mbeanRegistrationException(response.e);
                         mbeanException(response.e);
                         notCompliantMBeanException(response.e);
+                        runtimeMBeanException(response.e);
                         throw toIoException(response.e);
                     default:
                         throw new IOException("Unable to invoke createMBean, status=" + result.toString());
@@ -601,6 +605,7 @@ class ClientConnection extends ClientCommon implements VersionedConnection {
 
                         instanceNotFoundException(response.e);
                         mbeanRegistrationException(response.e);
+                        runtimeMBeanException(response.e);
                         throw toIoException(response.e);
                     default:
                         throw new IOException("Unable to invoke unregisterMBean, status=" + result.toString());
@@ -641,6 +646,7 @@ class ClientConnection extends ClientCommon implements VersionedConnection {
                             return response.value;
                         }
                         instanceNotFoundException(response.e);
+                        runtimeMBeanException(response.e);
                         throw toIoException(response.e);
                     default:
                         throw new IOException("Unable to invoke getObjectInstance, status=" + result.toString());
@@ -683,6 +689,7 @@ class ClientConnection extends ClientCommon implements VersionedConnection {
                         if (response.e == null) {
                             return response.value;
                         }
+                        runtimeMBeanException(response.e);
                         throw toIoException(response.e);
                     default:
                         throw new IOException("Unable to invoke queryMBeans, status=" + result.toString());
@@ -725,6 +732,7 @@ class ClientConnection extends ClientCommon implements VersionedConnection {
                         if (response.e == null) {
                             return response.value;
                         }
+                        runtimeMBeanException(response.e);
                         throw toIoException(response.e);
                     default:
                         throw new IOException("Unable to obtain isRegistered, status=" + result.toString());
@@ -762,6 +770,7 @@ class ClientConnection extends ClientCommon implements VersionedConnection {
                         if (response.e == null) {
                             return response.value;
                         }
+                        runtimeMBeanException(response.e);
                         throw toIoException(response.e);
                     case FAILED:
                         throw future.getException();
@@ -794,6 +803,7 @@ class ClientConnection extends ClientCommon implements VersionedConnection {
                         if (response.e == null) {
                             return response.value;
                         }
+                        runtimeMBeanException(response.e);
                         throw toIoException(response.e);
                     case FAILED:
                         throw future.getException();
@@ -843,6 +853,7 @@ class ClientConnection extends ClientCommon implements VersionedConnection {
                         attributeNotFoundException(response.e);
                         instanceNotFoundException(response.e);
                         reflectionException(response.e);
+                        runtimeMBeanException(response.e);
                         throw toIoException(response.e);
                     default:
                         throw new IOException("Unable to obtain isRegistered, status=" + result.toString());
@@ -891,6 +902,7 @@ class ClientConnection extends ClientCommon implements VersionedConnection {
                         }
                         instanceNotFoundException(response.e);
                         reflectionException(response.e);
+                        runtimeMBeanException(response.e);
                         throw toIoException(response.e);
                     default:
                         throw new IOException("Unable to invoke getAttributes, status=" + result.toString());
@@ -941,6 +953,7 @@ class ClientConnection extends ClientCommon implements VersionedConnection {
                         invalidAttributeValueException(response.e);
                         mbeanException(response.e);
                         reflectionException(response.e);
+                        runtimeMBeanException(response.e);
                         throw toIoException(response.e);
                     default:
                         throw new IOException("Unable to invoke setAttribute, status=" + result.toString());
@@ -986,6 +999,7 @@ class ClientConnection extends ClientCommon implements VersionedConnection {
                         }
                         instanceNotFoundException(response.e);
                         reflectionException(response.e);
+                        runtimeMBeanException(response.e);
                         throw toIoException(response.e);
                     default:
                         throw new IOException("Unable to invoke setAttributes, status=" + result.toString());
@@ -1084,6 +1098,7 @@ class ClientConnection extends ClientCommon implements VersionedConnection {
                         if (response.e == null) {
                             return response.value;
                         }
+                        runtimeMBeanException(response.e);
                         throw toIoException(response.e);
                     case FAILED:
                         throw future.getException();
@@ -1117,6 +1132,7 @@ class ClientConnection extends ClientCommon implements VersionedConnection {
                         if (response.e == null) {
                             return response.value;
                         }
+                        runtimeMBeanException(response.e);
                         throw toIoException(response.e);
                     case FAILED:
                         throw future.getException();
@@ -1176,6 +1192,7 @@ class ClientConnection extends ClientCommon implements VersionedConnection {
 
                         localNotificationManager.cancel(notificationId);
                         instanceNotFoundException(response.e);
+                        runtimeMBeanException(response.e);
                         throw toIoException(response.e);
                     default:
                         localNotificationManager.cancel(notificationId);
@@ -1228,6 +1245,7 @@ class ClientConnection extends ClientCommon implements VersionedConnection {
                             return;
                         }
 
+                        runtimeMBeanException(response.e);
                         instanceNotFoundException(response.e);
                         throw toIoException(response.e);
                     default:
@@ -1277,6 +1295,7 @@ class ClientConnection extends ClientCommon implements VersionedConnection {
                             return;
                         }
 
+                        runtimeMBeanException(response.e);
                         instanceNotFoundException(response.e);
                         throw toIoException(response.e);
                     default:
@@ -1333,6 +1352,7 @@ class ClientConnection extends ClientCommon implements VersionedConnection {
                             return;
                         }
 
+                        runtimeMBeanException(response.e);
                         instanceNotFoundException(response.e);
                         throw toIoException(response.e);
                     default:
@@ -1381,6 +1401,7 @@ class ClientConnection extends ClientCommon implements VersionedConnection {
 
                         instanceNotFoundException(response.e);
                         listenerNotFoundException(response.e);
+                        runtimeMBeanException(response.e);
                         throw toIoException(response.e);
                     default:
                         throw new IOException("Unable to invoke removeNotificationListener, status=" + result.toString());
@@ -1435,6 +1456,7 @@ class ClientConnection extends ClientCommon implements VersionedConnection {
                         instanceNotFoundException(response.e);
                         introspectionException(response.e);
                         reflectionException(response.e);
+                        runtimeMBeanException(response.e);
                         throw toIoException(response.e);
                     default:
                         throw new IOException("Unable to obtain isRegistered, status=" + result.toString());
@@ -1477,6 +1499,7 @@ class ClientConnection extends ClientCommon implements VersionedConnection {
                             return response.value;
                         }
                         instanceNotFoundException(response.e);
+                        runtimeMBeanException(response.e);
                         throw toIoException(response.e);
                     default:
                         throw new IOException("Unable to obtain isRegistered, status=" + result.toString());
