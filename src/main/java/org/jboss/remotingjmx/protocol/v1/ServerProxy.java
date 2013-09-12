@@ -706,10 +706,20 @@ class ServerProxy extends Common implements VersionedProxy {
             MBeanServerConnection connection = server.getMBeanServerConnection();
             if (connection instanceof MBeanServer) {
                 final MBeanServer server = (MBeanServer) connection;
+                //This privileged block is needed!
+                //This classloader switch is an internal call to do other things.
+                //When running WildFly with RBAC, normally, if there is a subject, only superuser
+                //or administrator can call this method on the MBeanServer, meaning that the 'other things' will fail.
+                //Tbe privileged block clears the subject so the internal call will work
                 ClassLoader loader = AccessController.doPrivileged(new PrivilegedExceptionAction<ClassLoader>() {
                     @Override
                     public ClassLoader run() throws Exception {
-                        return server.getClassLoaderFor(name);
+                        ClassLoader loader = server.getClassLoaderFor(name);
+                        //if the loader was null, chances are it was the bootstrap classloader so try that
+                        if (loader == null){
+                            loader = ClassLoader.getSystemClassLoader();
+                        }
+                        return loader;
                     }
                 });
                 resolver.switchClassLoader(loader);
@@ -724,10 +734,20 @@ class ServerProxy extends Common implements VersionedProxy {
             MBeanServerConnection connection = server.getMBeanServerConnection();
             if (connection instanceof MBeanServer) {
                 final MBeanServer server = (MBeanServer) connection;
+                //This privileged block is needed!
+                //This classloader switch is an internal call to do other things.
+                //When running WildFly with RBAC, normally, if there is a subject, only superuser
+                //or administrator can call this method on the MBeanServer, meaning that the 'other things' will fail.
+                //Tbe privileged block clears the subject so the internal call will work
                 ClassLoader loader = AccessController.doPrivileged(new PrivilegedExceptionAction<ClassLoader>() {
                     @Override
                     public ClassLoader run() throws Exception {
-                        return server.getClassLoader(name);
+                        ClassLoader loader = server.getClassLoader(name);
+                        //if the loader was null, chances are it was the bootstrap classloader so try that
+                        if (loader == null){
+                            loader = ClassLoader.getSystemClassLoader();
+                        }
+                        return loader;
                     }
                 });
 

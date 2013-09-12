@@ -29,11 +29,20 @@ import static org.junit.Assert.fail;
 
 import java.util.Set;
 
+import javax.management.Attribute;
+import javax.management.DynamicMBean;
 import javax.management.InstanceNotFoundException;
 import javax.management.MBeanInfo;
 import javax.management.MBeanServerConnection;
 import javax.management.ObjectInstance;
 import javax.management.ObjectName;
+import javax.management.RuntimeMBeanException;
+import javax.management.modelmbean.ModelMBeanAttributeInfo;
+import javax.management.modelmbean.ModelMBeanConstructorInfo;
+import javax.management.modelmbean.ModelMBeanInfoSupport;
+import javax.management.modelmbean.ModelMBeanNotificationInfo;
+import javax.management.modelmbean.ModelMBeanOperationInfo;
+import javax.management.modelmbean.RequiredModelMBean;
 import javax.management.remote.JMXConnector;
 import javax.management.remote.JMXConnectorFactory;
 import javax.management.remote.JMXServiceURL;
@@ -295,5 +304,35 @@ public class BasicClientTest extends AbstractTestBase {
         MBeanServerConnection connection = connector.getMBeanServerConnection();
         RemotingMBeanServerConnection rmsc = (RemotingMBeanServerConnection) connection;
         assertNotNull("The underlying connection.", rmsc.getConnection());
+    }
+
+    @Test
+    public void testInvokeForMBeanInBootstrapClassLoader() throws Exception {
+        ObjectName beanName = new ObjectName(DEFAULT_DOMAIN, "test", "testQueryNames");
+        assertFalse(mbeanServer.isRegistered(beanName));
+
+        System.out.println(StringBuffer.class.getClassLoader());
+
+        MBeanServerConnection connection = connector.getMBeanServerConnection();
+        ModelMBeanInfoSupport info = new ModelMBeanInfoSupport(StringBuffer.class.getName(), "-",
+                new ModelMBeanAttributeInfo[0],
+                new ModelMBeanConstructorInfo[] {
+                    new ModelMBeanConstructorInfo("-", StringBuffer.class.getConstructor())
+                },
+                new ModelMBeanOperationInfo[]{
+                        new ModelMBeanOperationInfo("-", StringBuffer.class.getMethod("append", String.class))
+                },
+                new ModelMBeanNotificationInfo[0]);
+        RequiredModelMBean mbean = new RequiredModelMBean(info);
+        mbean.setManagedResource(new StringBuffer(), "ObjectReference");
+        mbeanServer.registerMBean(mbean, beanName);
+        try {
+            System.out.println(mbeanServer.queryMBeans(null, null));
+            connection.invoke(beanName, "append", new Object[]{"Test"}, new String[]{String.class.getName()});
+        } finally {
+            if (mbeanServer.isRegistered(beanName)) {
+                mbeanServer.unregisterMBean(beanName);
+            }
+        }
     }
 }
