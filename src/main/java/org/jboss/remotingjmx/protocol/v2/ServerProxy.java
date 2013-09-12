@@ -63,6 +63,10 @@ import static org.jboss.remotingjmx.protocol.v2.Constants.UNREGISTER_MBEAN;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
+import java.security.PrivilegedActionException;
+import java.security.PrivilegedExceptionAction;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -560,10 +564,16 @@ class ServerProxy extends ServerCommon implements VersionedProxy {
         try {
             MBeanServerConnection connection = server.getMBeanServerConnection();
             if (connection instanceof MBeanServer) {
-                MBeanServer server = (MBeanServer) connection;
-                resolver.switchClassLoader(server.getClassLoaderFor(name));
+                final MBeanServer server = (MBeanServer) connection;
+                ClassLoader loader = AccessController.doPrivileged(new PrivilegedExceptionAction<ClassLoader>() {
+                    @Override
+                    public ClassLoader run() throws Exception {
+                        return server.getClassLoaderFor(name);
+                    }
+                });
+                resolver.switchClassLoader(loader);
             }
-        } catch (InstanceNotFoundException e) {
+        } catch (Exception e) {
             log.debugf(e, "Could not get class loader for %s", name);
         }
     }
@@ -572,10 +582,17 @@ class ServerProxy extends ServerCommon implements VersionedProxy {
         try {
             MBeanServerConnection connection = server.getMBeanServerConnection();
             if (connection instanceof MBeanServer) {
-                MBeanServer server = (MBeanServer) connection;
-                resolver.switchClassLoader(server.getClassLoader(name));
+                final MBeanServer server = (MBeanServer) connection;
+                ClassLoader loader = AccessController.doPrivileged(new PrivilegedExceptionAction<ClassLoader>() {
+                    @Override
+                    public ClassLoader run() throws Exception {
+                        return server.getClassLoader(name);
+                    }
+                });
+
+                resolver.switchClassLoader(loader);
             }
-        } catch (InstanceNotFoundException e) {
+        } catch (Exception e) {
             log.debugf(e, "Could not get class loader for %s", name);
         }
     }
