@@ -29,14 +29,11 @@ import static org.junit.Assert.fail;
 
 import java.util.Set;
 
-import javax.management.Attribute;
-import javax.management.DynamicMBean;
 import javax.management.InstanceNotFoundException;
 import javax.management.MBeanInfo;
 import javax.management.MBeanServerConnection;
 import javax.management.ObjectInstance;
 import javax.management.ObjectName;
-import javax.management.RuntimeMBeanException;
 import javax.management.modelmbean.ModelMBeanAttributeInfo;
 import javax.management.modelmbean.ModelMBeanConstructorInfo;
 import javax.management.modelmbean.ModelMBeanInfoSupport;
