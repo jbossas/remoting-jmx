@@ -83,6 +83,7 @@ import javax.management.InstanceAlreadyExistsException;
 import javax.management.InstanceNotFoundException;
 import javax.management.IntrospectionException;
 import javax.management.InvalidAttributeValueException;
+import javax.management.JMRuntimeException;
 import javax.management.ListenerNotFoundException;
 import javax.management.MBeanException;
 import javax.management.MBeanInfo;
@@ -97,7 +98,6 @@ import javax.management.ObjectInstance;
 import javax.management.ObjectName;
 import javax.management.QueryExp;
 import javax.management.ReflectionException;
-import javax.management.RuntimeMBeanException;
 
 import org.jboss.logging.Logger;
 import org.jboss.marshalling.AbstractClassResolver;
@@ -105,7 +105,6 @@ import org.jboss.marshalling.Marshaller;
 import org.jboss.marshalling.Unmarshaller;
 import org.jboss.remoting3.Channel;
 import org.jboss.remoting3.MessageInputStream;
-import org.jboss.remoting3.security.UserInfo;
 import org.jboss.remotingjmx.ServerMessageInterceptor;
 import org.jboss.remotingjmx.ServerMessageInterceptor.Event;
 import org.jboss.remotingjmx.VersionedProxy;
@@ -234,7 +233,7 @@ class ServerProxy extends Common implements VersionedProxy {
                                     Exception response;
                                     if (t instanceof IOException) {
                                         response = (Exception) t;
-                                    } else if (t instanceof RuntimeMBeanException) {
+                                    } else if (t instanceof JMRuntimeException) {
                                         response = (Exception) t;
                                     } else {
                                         response = new IOException("Internal server error.");
