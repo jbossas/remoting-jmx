@@ -92,7 +92,6 @@ import javax.management.ObjectInstance;
 import javax.management.ObjectName;
 import javax.management.QueryExp;
 import javax.management.ReflectionException;
-import javax.management.RuntimeMBeanException;
 import javax.security.auth.Subject;
 
 import org.jboss.logging.Logger;
