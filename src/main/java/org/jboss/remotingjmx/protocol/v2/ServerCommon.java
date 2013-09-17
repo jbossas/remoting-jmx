@@ -33,7 +33,7 @@ import java.io.DataOutput;
 import java.io.IOException;
 import java.util.concurrent.Executor;
 
-import javax.management.RuntimeMBeanException;
+import javax.management.JMRuntimeException;
 
 import org.jboss.logging.Logger;
 import org.jboss.marshalling.Marshaller;
@@ -158,7 +158,7 @@ public abstract class ServerCommon extends Common {
                                     Exception response;
                                     if (t instanceof IOException) {
                                         response = (Exception) t;
-                                    } else if (t instanceof RuntimeMBeanException) {
+                                    } else if (t instanceof JMRuntimeException) {
                                         response = (Exception) t;
                                     } else {
                                         response = new IOException("Internal server error.");
