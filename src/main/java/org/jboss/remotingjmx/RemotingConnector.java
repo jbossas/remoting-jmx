@@ -23,6 +23,7 @@ package org.jboss.remotingjmx;
 
 import static org.jboss.remotingjmx.Constants.CHANNEL_NAME;
 import static org.jboss.remotingjmx.Constants.CONNECTION_PROVIDER_URI;
+import static org.jboss.remotingjmx.Constants.EXCLUDED_SASL_MECHANISMS;
 import static org.jboss.remotingjmx.Constants.HTTP;
 import static org.jboss.remotingjmx.Constants.HTTPS;
 import static org.jboss.remotingjmx.Constants.JBOSS_LOCAL_USER;
@@ -33,10 +34,13 @@ import static org.xnio.Options.SASL_POLICY_NOPLAINTEXT;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import javax.management.ListenerNotFoundException;
@@ -198,22 +202,34 @@ class RemotingConnector implements JMXConnector {
         endpoint.addConnectionProvider(HTTP, new HttpUpgradeConnectionProviderFactory(), OptionMap.create(Options.SSL_ENABLED, false));
         endpoint.addConnectionProvider(HTTPS, new HttpUpgradeConnectionProviderFactory(), OptionMap.create(Options.SSL_ENABLED, true));
 
+        Set<String> disabledMechanisms = new HashSet<String>();
+
         // The credentials.
         CallbackHandler handler = null;
-        boolean disableLocalAuth = true;
         if (env != null) {
             handler = (CallbackHandler) env.get(CallbackHandler.class.getName());
             if (handler == null && env.containsKey(CREDENTIALS)) {
                 handler = new UsernamePasswordCallbackHandler((String[]) env.get(CREDENTIALS));
+                disabledMechanisms.add(JBOSS_LOCAL_USER);
+            }
+            Object list;
+            if (env.containsKey(EXCLUDED_SASL_MECHANISMS) && (list = env.get(EXCLUDED_SASL_MECHANISMS)) != null) {
+               String[] mechanisms;
+               if (list instanceof String[]) {
+                   mechanisms = (String[])list;
+               } else {
+                   mechanisms = list.toString().split(",");
+               }
+
+               disabledMechanisms.addAll(Arrays.asList(mechanisms));
             }
         }
         if (handler == null) {
             handler = new AnonymousCallbackHandler();
-            disableLocalAuth = false;
         }
 
         // open a connection
-        final IoFuture<Connection> futureConnection = endpoint.connect(convert(serviceUrl), getOptionMap(disableLocalAuth), handler);
+        final IoFuture<Connection> futureConnection = endpoint.connect(convert(serviceUrl), getOptionMap(disabledMechanisms), handler);
         IoFuture.Status result = futureConnection.await(5, TimeUnit.SECONDS);
 
         if (result == IoFuture.Status.DONE) {
@@ -227,7 +243,7 @@ class RemotingConnector implements JMXConnector {
         return connection;
     }
 
-    private OptionMap getOptionMap(boolean disableLocalAuth) {
+    private OptionMap getOptionMap(Set<String> disabledMechanisms) {
         OptionMap.Builder builder = OptionMap.builder();
         builder.set(SASL_POLICY_NOANONYMOUS, Boolean.FALSE);
         builder.set(SASL_POLICY_NOPLAINTEXT, Boolean.FALSE);
@@ -239,8 +255,8 @@ class RemotingConnector implements JMXConnector {
         builder.set(Options.SSL_ENABLED, true);
         builder.set(Options.SSL_STARTTLS, true);
 
-        if (disableLocalAuth) {
-            builder.set(Options.SASL_DISALLOWED_MECHANISMS, Sequence.of(JBOSS_LOCAL_USER));
+        if (disabledMechanisms != null && disabledMechanisms.size() > 0) {
+            builder.set(Options.SASL_DISALLOWED_MECHANISMS, Sequence.of(disabledMechanisms));
         }
 
         return builder.getMap();

@@ -51,6 +51,11 @@ public class Constants {
      */
     public static final String EXCLUDED_VERSIONS = "org.jboss.remoting-jmx.excluded-versions";
 
+    /**
+     * A comma separated list of SASL mechanisms that should be excluded when negotiating the connection to the server.
+     */
+    public static final String EXCLUDED_SASL_MECHANISMS = "org.jboss.remoting-jmx.excluded-sasl-mechanisms";
+
     // Note: These two do not need to be the same.
     static final String PROTOCOL = "remoting-jmx";
     static final String HTTP_PROTOCOL = "http-remoting-jmx";
