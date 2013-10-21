@@ -41,6 +41,10 @@ import java.util.Map;
 import javax.management.remote.JMXConnector;
 import javax.management.remote.JMXConnectorFactory;
 import javax.management.remote.JMXServiceURL;
+import javax.security.auth.callback.Callback;
+import javax.security.auth.callback.CallbackHandler;
+import javax.security.auth.callback.UnsupportedCallbackException;
+import javax.security.sasl.SaslException;
 
 import org.jboss.logging.Logger;
 import org.jboss.remotingjmx.common.JMXRemotingServer;
@@ -132,6 +136,14 @@ public class SecurityClientTest {
         remotingServer.start();
 
         Map<String, Object> env = new HashMap<String, Object>(1);
+        // This should not disable local auth.
+        env.put(CallbackHandler.class.getName(), new CallbackHandler() {
+
+            @Override
+            public void handle(Callback[] callbacks) throws IOException, UnsupportedCallbackException {
+                throw new UnsupportedCallbackException(callbacks[0]);
+            }
+        });
 
         JMXConnector connector = JMXConnectorFactory.connect(serviceURL, env);
 
@@ -140,6 +152,42 @@ public class SecurityClientTest {
         connector.close();
 
         remotingServer.stop();
+    }
+
+    @Test(expected=SaslException.class)
+    public void testLocalAuthenticationDisabled() throws Exception {
+        log.info("testLocalAuthentication - Begin");
+        config.saslMechanisms = Collections.singleton(JBOSS_LOCAL_USER);
+
+        JMXRemotingServer remotingServer = new JMXRemotingServer(config);
+        remotingServer.start();
+
+        Map<String, Object> env = new HashMap<String, Object>(1);
+        env.put("org.jboss.remoting-jmx.excluded-sasl-mechanisms", JBOSS_LOCAL_USER);
+
+        try {
+            JMXConnector connector = JMXConnectorFactory.connect(serviceURL, env);
+        } finally {
+            remotingServer.stop();
+        }
+    }
+
+    @Test(expected=SaslException.class)
+    public void testLocalAuthenticationAutoDisabled() throws Exception {
+        log.info("testLocalAuthentication - Begin");
+        config.saslMechanisms = Collections.singleton(JBOSS_LOCAL_USER);
+
+        JMXRemotingServer remotingServer = new JMXRemotingServer(config);
+        remotingServer.start();
+
+        Map<String, Object> env = new HashMap<String, Object>(1);
+        env.put(JMXConnector.CREDENTIALS, new String[] { "DigestUser", "DigestPassword" });
+
+        try {
+            JMXConnector connector = JMXConnectorFactory.connect(serviceURL, env);
+        } finally {
+            remotingServer.stop();
+        }
     }
 
     @Test
