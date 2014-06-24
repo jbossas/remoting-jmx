@@ -28,6 +28,8 @@ import static org.jboss.remotingjmx.Constants.HTTP;
 import static org.jboss.remotingjmx.Constants.HTTPS;
 import static org.jboss.remotingjmx.Constants.JBOSS_LOCAL_USER;
 import static org.jboss.remotingjmx.Util.convert;
+import static org.jboss.remotingjmx.Util.getTimeoutValue;
+import static org.jboss.remotingjmx.Util.Timeout;
 import static org.xnio.Options.SASL_POLICY_NOANONYMOUS;
 import static org.xnio.Options.SASL_POLICY_NOPLAINTEXT;
 
@@ -73,6 +75,7 @@ import org.xnio.Xnio;
 
 /**
  * @author <a href="mailto:darran.lofthouse@jboss.com">Darran Lofthouse</a>
+ * @author <a href="mailto:brad.maxwell@redhat.com">Brad Maxwell</a>
  */
 class RemotingConnector implements JMXConnector {
 
@@ -164,7 +167,7 @@ class RemotingConnector implements JMXConnector {
 
         // Now open the channel
         final IoFuture<Channel> futureChannel = connection.openChannel(serviceName, OptionMap.EMPTY);
-        IoFuture.Status result = futureChannel.await(5, TimeUnit.SECONDS);
+        IoFuture.Status result = futureChannel.await(getTimeoutValue(Timeout.CHANNEL, combinedEnvironment), TimeUnit.SECONDS);
         if (result == IoFuture.Status.DONE) {
             channel = futureChannel.get();
         } else if (result == IoFuture.Status.FAILED) {
@@ -230,7 +233,7 @@ class RemotingConnector implements JMXConnector {
 
         // open a connection
         final IoFuture<Connection> futureConnection = endpoint.connect(convert(serviceUrl), getOptionMap(disabledMechanisms), handler);
-        IoFuture.Status result = futureConnection.await(5, TimeUnit.SECONDS);
+        IoFuture.Status result = futureConnection.await(getTimeoutValue(Timeout.CONNECTION, env), TimeUnit.SECONDS);
 
         if (result == IoFuture.Status.DONE) {
             connection = futureConnection.get();
