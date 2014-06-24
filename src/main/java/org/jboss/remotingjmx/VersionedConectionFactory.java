@@ -45,6 +45,9 @@ import org.xnio.AbstractIoFuture;
 import org.xnio.IoFuture;
 import org.xnio.IoUtils;
 
+import static org.jboss.remotingjmx.Util.getTimeoutValue;
+import static org.jboss.remotingjmx.Util.Timeout;
+
 /**
  * The VersionedConnectionFactory to negotiate the version on the client side and return an appropriate VersionedConnection for
  * the negotiated version.
@@ -53,6 +56,7 @@ import org.xnio.IoUtils;
  * guaranteed there will not be concurrent negotiations occurring.
  *
  * @author <a href="mailto:darran.lofthouse@jboss.com">Darran Lofthouse</a>
+ * @author <a href="mailto:brad.maxwell@redhat.com">Brad Maxwell</a>
  */
 class VersionedConectionFactory {
 
@@ -64,7 +68,7 @@ class VersionedConectionFactory {
         // for a single negotiation process so negotiate the connection sequentially.
 
         IoFuture<InitialHeader> futureHeader = ClientVersionReceiver.getInitialHeader(channel);
-        IoFuture.Status result = futureHeader.await(5, TimeUnit.SECONDS);
+        IoFuture.Status result = futureHeader.await(getTimeoutValue(Timeout.VERSIONED_CONNECTION, environment), TimeUnit.SECONDS);
         switch (result) {
             case DONE:
                 break;
