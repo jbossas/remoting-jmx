@@ -22,7 +22,7 @@
 
 package org.jboss.remotingjmx;
 
-import static junit.framework.Assert.assertEquals;
+import static org.junit.Assert.assertEquals;
 
 import java.util.HashMap;
 import java.util.Map;
