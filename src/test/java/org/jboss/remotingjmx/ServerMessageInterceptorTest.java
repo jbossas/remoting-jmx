@@ -43,7 +43,7 @@ import javax.management.remote.JMXConnector;
 import javax.management.remote.JMXConnectorFactory;
 import javax.management.remote.JMXServiceURL;
 
-import junit.framework.Assert;
+import org.junit.Assert;
 
 import org.jboss.remoting3.Channel;
 import org.jboss.remotingjmx.ServerMessageInterceptor.Event;
