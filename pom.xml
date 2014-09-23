@@ -142,12 +142,12 @@
         <dependency>
             <groupId>org.jboss.logmanager</groupId>
             <artifactId>jboss-logmanager</artifactId>
-            <version>1.5.1.Final</version>
+            <version>1.5.3.Final</version>
         </dependency>    
         <dependency>
             <groupId>org.jboss.logging</groupId>
             <artifactId>jboss-logging</artifactId>
-            <version>3.1.2.GA</version>
+            <version>3.1.4.GA</version>
         </dependency>
         <dependency>
             <groupId>org.jboss.logging</groupId>
@@ -157,32 +157,32 @@
         <dependency>
             <groupId>org.jboss.marshalling</groupId>
             <artifactId>jboss-marshalling</artifactId>
-            <version>1.4.0.Final</version>
+            <version>1.4.8.Final</version>
         </dependency>
         <dependency>
             <groupId>org.jboss.marshalling</groupId>
             <artifactId>jboss-marshalling-river</artifactId>
-            <version>1.4.0.Final</version>
+            <version>1.4.8.Final</version>
         </dependency>        
         <dependency>
             <groupId>org.jboss.remoting3</groupId>
             <artifactId>jboss-remoting</artifactId>
-            <version>3.2.16.GA</version>
+            <version>3.3.3.Final</version>
         </dependency>
         <dependency>
             <groupId>org.jboss.sasl</groupId>
             <artifactId>jboss-sasl</artifactId>
-            <version>1.0.3.Final</version>
+            <version>1.0.4.Final</version>
         </dependency>
         <dependency>
             <groupId>org.jboss.xnio</groupId>
             <artifactId>xnio-api</artifactId>
-            <version>3.0.7.GA</version>
+            <version>3.0.10.GA</version>
         </dependency>
         <dependency>
             <groupId>org.jboss.xnio</groupId>
             <artifactId>xnio-nio</artifactId>
-            <version>3.0.7.GA</version>
+            <version>3.0.10.GA</version>
         </dependency>
         <dependency>
             <groupId>junit</groupId>
