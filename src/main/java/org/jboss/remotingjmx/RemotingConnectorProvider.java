@@ -46,7 +46,7 @@ public class RemotingConnectorProvider implements JMXConnectorProvider {
     public JMXConnector newJMXConnector(JMXServiceURL serviceURL, Map<String, ?> environment) throws IOException {
         String protocol = serviceURL.getProtocol();
 
-        if (PROTOCOL.equals(protocol) || HTTP_PROTOCOL.equals(protocol) || HTTPS_PROTOCOL.equals(PROTOCOL)) {
+        if (PROTOCOL.equals(protocol) || HTTP_PROTOCOL.equals(protocol) || HTTPS_PROTOCOL.equals(protocol)) {
             return new RemotingConnector(serviceURL, environment);
         }
 
