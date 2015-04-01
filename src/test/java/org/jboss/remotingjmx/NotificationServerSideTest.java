@@ -27,10 +27,10 @@ import static org.junit.Assert.assertEquals;
 import java.util.Set;
 
 import javax.management.MBeanServerConnection;
-import javax.management.Notification;
 import javax.management.NotificationFilter;
 import javax.management.ObjectName;
 
+import org.jboss.remotingjmx.common.Listener.Pair;
 import org.jboss.remotingjmx.common.ListenerBean;
 import org.jboss.remotingjmx.common.NotificationBean;
 import org.jboss.remotingjmx.common.StringNotificationFilter;
@@ -91,9 +91,9 @@ public class NotificationServerSideTest extends AbstractTestBase {
         String theMessage = "Notification Message 2";
         connection.invoke(notificationName, "notify", new Object[] { theMessage }, new String[] { String.class.getName() });
 
-        Set<Notification> notifications = listenerBean.getRecievedNotifications();
+        Set<Pair> notifications = listenerBean.getRecievedNotifications();
         assertEquals(1, notifications.size());
-        assertEquals(theMessage, notifications.iterator().next().getUserData());
+        assertEquals(theMessage, notifications.iterator().next().notification.getUserData());
 
         connection.removeNotificationListener(notificationName, listenerName);
         connection.invoke(notificationName, "notify", new Object[] { theMessage }, new String[] { String.class.getName() });
@@ -114,9 +114,9 @@ public class NotificationServerSideTest extends AbstractTestBase {
         connection.invoke(notificationName, "notify", new Object[] { thrower }, new String[] { String.class.getName() });
         connection.invoke(notificationName, "notify", new Object[] { keeper }, new String[] { String.class.getName() });
 
-        Set<Notification> notifications = listenerBean.getRecievedNotifications();
+        Set<Pair> notifications = listenerBean.getRecievedNotifications();
         assertEquals(1, notifications.size());
-        assertEquals(keeper, notifications.iterator().next().getUserData());
+        assertEquals(keeper, notifications.iterator().next().notification.getUserData());
 
         connection.removeNotificationListener(notificationName, listenerName);
         connection.invoke(notificationName, "notify", new Object[] { thrower }, new String[] { String.class.getName() });

@@ -53,7 +53,6 @@ public class NotificationBean extends NotificationBroadcasterSupport implements 
 
     @Override
     public void addNotificationListener(NotificationListener listener, NotificationFilter filter, Object handback) {
-        // TODO Auto-generated method stub
         super.addNotificationListener(listener, filter, handback);
     }
 

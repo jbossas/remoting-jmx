@@ -20,18 +20,21 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
+
 package org.jboss.remotingjmx;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 
 import java.util.Set;
 
 import javax.management.MBeanServerConnection;
-import javax.management.Notification;
 import javax.management.NotificationFilter;
+import javax.management.NotificationListener;
 import javax.management.ObjectName;
 
 import org.jboss.remotingjmx.common.Listener;
+import org.jboss.remotingjmx.common.Listener.Pair;
 import org.jboss.remotingjmx.common.NotificationBean;
 import org.jboss.remotingjmx.common.StringNotificationFilter;
 import org.junit.After;
@@ -54,8 +57,15 @@ public class NotificationClientSideTest extends AbstractTestBase {
     @Before
     public void register() throws Exception {
         notificationName = new ObjectName(DEFAULT_DOMAIN, "test", "notification");
+        notificationBean = new NotificationBean() {
 
-        notificationBean = new NotificationBean();
+            @Override
+            public void addNotificationListener(NotificationListener listener, NotificationFilter filter, Object handback) {
+                assertNull(handback);
+                super.addNotificationListener(listener, filter, handback);
+            }
+
+        };
         mbeanServer.registerMBean(notificationBean, notificationName);
         connection = connector.getMBeanServerConnection();
         listener = new Listener();
@@ -80,14 +90,17 @@ public class NotificationClientSideTest extends AbstractTestBase {
     public void testAllNotifications() throws Exception {
         assertEquals(0, listener.getRecievedNotifications().size());
 
-        connection.addNotificationListener(notificationName, listener, null, null);
+        String handback = "HANDBACK";
+        connection.addNotificationListener(notificationName, listener, null, handback);
 
         String theMessage = "Notification Message 3";
         connection.invoke(notificationName, "notify", new Object[] { theMessage }, new String[] { String.class.getName() });
 
-        Set<Notification> notifications = listener.getNotEmptyNotofications(2000);
+        Set<Pair> notifications = listener.getNotEmptyNotofications(2000);
         assertEquals(1, notifications.size());
-        assertEquals(theMessage, notifications.iterator().next().getUserData());
+        Pair p = notifications.iterator().next();
+        assertEquals(theMessage, p.notification.getUserData());
+        assertEquals(handback, p.handback);
 
         connection.removeNotificationListener(notificationName, listener);
         connection.invoke(notificationName, "notify", new Object[] { theMessage }, new String[] { String.class.getName() });
@@ -108,9 +121,9 @@ public class NotificationClientSideTest extends AbstractTestBase {
         connection.invoke(notificationName, "notify", new Object[] { thrower }, new String[] { String.class.getName() });
         connection.invoke(notificationName, "notify", new Object[] { keeper }, new String[] { String.class.getName() });
 
-        Set<Notification> notifications = listener.getNotEmptyNotofications(2000);
+        Set<Pair> notifications = listener.getNotEmptyNotofications(2000);
         assertEquals(1, notifications.size());
-        assertEquals(keeper, notifications.iterator().next().getUserData());
+        assertEquals(keeper, notifications.iterator().next().notification.getUserData());
 
         connection.removeNotificationListener(notificationName, listener);
         connection.invoke(notificationName, "notify", new Object[] { thrower }, new String[] { String.class.getName() });

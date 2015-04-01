@@ -258,7 +258,7 @@ class ClientConnection extends ClientCommon implements VersionedConnection {
             Association association = get(id);
             if (association != null) {
 
-                association.listener.handleNotification(n, handback);
+                association.listener.handleNotification(n, association.handBack);
             } else {
                 // If an invalid ID is received don't throw an error, instead just send
                 // a message to the server canceling the notification by id.
@@ -1170,7 +1170,7 @@ class ClientConnection extends ClientCommon implements VersionedConnection {
                         marshaller.writeObject(filter);
 
                         marshaller.writeByte(OBJECT);
-                        marshaller.writeObject(handback);
+                        marshaller.writeObject(null);
 
                         marshaller.close();
                     }

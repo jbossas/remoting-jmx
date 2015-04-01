@@ -24,8 +24,9 @@ package org.jboss.remotingjmx.common;
 
 import java.util.Set;
 
-import javax.management.Notification;
 import javax.management.NotificationListener;
+
+import org.jboss.remotingjmx.common.Listener.Pair;
 
 /**
  * The interface to the ListenerBean
@@ -34,6 +35,6 @@ import javax.management.NotificationListener;
  */
 public interface ListenerBeanMBean extends NotificationListener {
 
-    Set<Notification> getRecievedNotifications();
+    Set<Pair> getRecievedNotifications();
 
 }

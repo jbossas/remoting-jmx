@@ -35,28 +35,36 @@ import javax.management.NotificationListener;
  */
 public class Listener implements NotificationListener {
 
-    private final Set<Notification> notifications = new HashSet<Notification>();
+    private final Set<Pair> notifications = new HashSet<Pair>();
 
     public synchronized void handleNotification(Notification notification, Object handback) {
-        notifications.add(notification);
+        Pair p = new Pair();
+        p.notification = notification;
+        p.handback = handback;
+        notifications.add(p);
         notifyAll();
     }
 
-    public synchronized Set<Notification> getRecievedNotifications() {
+    public synchronized Set<Pair> getRecievedNotifications() {
         try {
-            return new HashSet<Notification>(notifications);
+            return new HashSet<Pair>(notifications);
         } finally {
             notifications.clear();
         }
     }
 
-    public synchronized Set<Notification> getNotEmptyNotofications(long timeout) throws InterruptedException {
+    public synchronized Set<Pair> getNotEmptyNotofications(long timeout) throws InterruptedException {
         long start = System.currentTimeMillis();
         while (notifications.size() == 0 && System.currentTimeMillis() - start < timeout) {
             wait(10);
         }
 
         return getRecievedNotifications();
+    }
+
+    public static class Pair {
+        public Notification notification;
+        public Object handback;
     }
 
 }
