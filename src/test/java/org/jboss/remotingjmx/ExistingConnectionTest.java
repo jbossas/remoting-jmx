@@ -51,6 +51,7 @@ import javax.management.ObjectName;
 import javax.management.remote.JMXConnector;
 import javax.management.remote.JMXConnectorFactory;
 import javax.management.remote.JMXServiceURL;
+import javax.net.ssl.SSLSession;
 import javax.security.auth.callback.Callback;
 import javax.security.auth.callback.CallbackHandler;
 import javax.security.auth.callback.NameCallback;
@@ -304,6 +305,11 @@ public class ExistingConnectionTest extends AbstractTestBase {
         public IoFuture<Channel> openChannel(String serviceType, OptionMap optionMap) {
             channelOpened = true;
             return wrapped.openChannel(serviceType, optionMap);
+        }
+
+        @Override
+        public SSLSession getSslSession() {
+            throw new IllegalStateException("No obtaining the Ssl session expected.");
         }
     }
 
