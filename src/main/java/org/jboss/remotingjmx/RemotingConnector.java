@@ -86,7 +86,7 @@ class RemotingConnector implements JMXConnector {
 
     private Endpoint endpoint;
     private Connection connection;
-    private boolean closed = false;
+    private ConnectorState state = ConnectorState.UNUSED;
     private Channel channel;
     private VersionedConnection versionedConnection;
     private ShutDownHook shutDownHook;
@@ -116,11 +116,15 @@ class RemotingConnector implements JMXConnector {
         }
     }
 
-    private void internalConnect(Map<String, ?> env) throws IOException {
+    private synchronized void internalConnect(Map<String, ?> env) throws IOException {
         // Once closed a connector is not allowed to connect again.
         // NB If a connect call fails clients are permitted to try the call again.
-        if (closed) {
-            throw new IOException("Connector already closed.");
+        switch (state) {
+            case CLOSED:
+                throw new IOException("Connector already closed.");
+            case OPEN:
+                return;
+            case UNUSED: // Just to complete the switch.
         }
 
         if (log.isTraceEnabled()) {
@@ -266,7 +270,7 @@ class RemotingConnector implements JMXConnector {
     }
 
     private void verifyConnected() throws IOException {
-        if (closed) {
+        if (state == ConnectorState.CLOSED) {
             throw new IOException("Connector already closed.");
         } else if (versionedConnection == null) {
             throw new IOException("Connector not connected.");
@@ -286,9 +290,15 @@ class RemotingConnector implements JMXConnector {
         return versionedConnection.getMBeanServerConnection(delegationSubject);
     }
 
-    public void close() throws IOException {
+    public synchronized void close() throws IOException {
         log.trace("close()");
-        closed = true;
+        switch (state) {
+            case UNUSED:
+            case CLOSED:
+                return;
+            case OPEN:
+                state = ConnectorState.CLOSED;
+        }
 
         final ShutDownHook shutDownHook;
         if ((shutDownHook = this.shutDownHook) != null) {
@@ -397,7 +407,7 @@ class RemotingConnector implements JMXConnector {
             super(new Runnable() {
 
                 public void run() {
-                    if (closed == false) {
+                    if (state == ConnectorState.OPEN) {
                         try {
                             shutDownHook = null;
                             close();
@@ -407,6 +417,10 @@ class RemotingConnector implements JMXConnector {
                 }
             });
         }
+    }
+
+    private enum ConnectorState {
+        UNUSED, OPEN, CLOSED;
     }
 
 }
