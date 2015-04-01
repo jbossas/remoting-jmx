@@ -171,9 +171,9 @@ class RemotingConnector implements JMXConnector {
         if (result == IoFuture.Status.DONE) {
             channel = futureChannel.get();
         } else if (result == IoFuture.Status.FAILED) {
-            throw new IOException(futureChannel.getException());
+            throw futureChannel.getException();
         } else {
-            throw new RuntimeException("Operation failed with status " + result);
+            throw new IOException("Operation failed with status " + result);
         }
 
         versionedConnection = VersionedConectionFactory.createVersionedConnection(channel, env, serviceUrl);
@@ -240,7 +240,7 @@ class RemotingConnector implements JMXConnector {
         } else if (result == IoFuture.Status.FAILED) {
             throw futureConnection.getException();
         } else {
-            throw new RuntimeException("Operation failed with status " + result);
+            throw new IOException("Operation failed with status " + result);
         }
 
         return connection;
