@@ -22,9 +22,15 @@
 
 package org.jboss.remotingjmx;
 
-import static org.jboss.remotingjmx.Constants.CONNECTION_PROVIDER_URI;
-import static org.jboss.remotingjmx.Constants.HTTPS_PROTOCOL;
-import static org.jboss.remotingjmx.Constants.HTTP_PROTOCOL;
+import static org.jboss.remotingjmx.Constants.HTTPS_SCHEME;
+import static org.jboss.remotingjmx.Constants.HTTP_SCHEME;
+import static org.jboss.remotingjmx.Constants.PROTOCOL_HTTPS_REMOTING_JMX;
+import static org.jboss.remotingjmx.Constants.PROTOCOL_HTTP_REMOTING_JMX;
+import static org.jboss.remotingjmx.Constants.PROTOCOL_REMOTE;
+import static org.jboss.remotingjmx.Constants.PROTOCOL_REMOTE_HTTP;
+import static org.jboss.remotingjmx.Constants.PROTOCOL_REMOTE_HTTPS;
+import static org.jboss.remotingjmx.Constants.PROTOCOL_REMOTING_JMX;
+import static org.jboss.remotingjmx.Constants.REMOTE_SCHEME;
 
 import java.io.IOException;
 import java.net.URI;
@@ -33,6 +39,8 @@ import java.util.Map;
 
 import javax.management.remote.JMXServiceURL;
 
+import org.jboss.logging.Logger;
+
 /**
  * A holder for utility methods.
  *
@@ -40,6 +48,8 @@ import javax.management.remote.JMXServiceURL;
  * @author <a href="mailto:brad.maxwell@redhat.com">Brad Maxwell</a>
  */
 public class Util {
+
+    private static final Logger log = Logger.getLogger(Util.class);
 
     private static Integer DEFAULT_TIMEOUT_SECONDS = 30;
 
@@ -64,15 +74,36 @@ public class Util {
     private Util() {
     }
 
+    private static void warnDeprecated(String usedProtocol, String recommendedProtocol) {
+        log.warnf("The protocol '%s' is deprecated, instead you should use '%s'.", usedProtocol, recommendedProtocol);
+    }
+
+    @SuppressWarnings("deprecation")
     public static URI convert(final JMXServiceURL serviceUrl) throws IOException {
-        String scheme;
-        if(serviceUrl.getProtocol().equals(HTTP_PROTOCOL)) {
-            scheme = "http";
-        } else if(serviceUrl.getProtocol().equals(HTTPS_PROTOCOL)) {
-            scheme = "https";
-        } else {
-            scheme = CONNECTION_PROVIDER_URI;
+        String urlProtocol = serviceUrl.getProtocol();
+        final String scheme;
+
+        // This deliberately allows the fall through from the deprecated case.
+        switch (urlProtocol) {
+            case PROTOCOL_REMOTING_JMX:
+                warnDeprecated(PROTOCOL_REMOTING_JMX, PROTOCOL_REMOTE);
+            case PROTOCOL_REMOTE:
+                scheme = REMOTE_SCHEME;
+                break;
+            case PROTOCOL_HTTP_REMOTING_JMX:
+                warnDeprecated(PROTOCOL_HTTP_REMOTING_JMX, PROTOCOL_REMOTE_HTTP);
+            case PROTOCOL_REMOTE_HTTP:
+                scheme = HTTP_SCHEME;
+                break;
+            case PROTOCOL_HTTPS_REMOTING_JMX:
+                warnDeprecated(PROTOCOL_HTTPS_REMOTING_JMX, PROTOCOL_REMOTE_HTTPS);
+            case PROTOCOL_REMOTE_HTTPS:
+                scheme = HTTPS_SCHEME;
+                break;
+            default:
+                throw new IllegalArgumentException(String.format("Unrecognised protocol '%s'", urlProtocol));
         }
+
         String host = serviceUrl.getHost();
         int port = serviceUrl.getPort();
 
@@ -89,7 +120,7 @@ public class Util {
         if(timeoutSeconds != null)
             return timeoutSeconds;
 
-        // Check for generic system property 
+        // Check for generic system property
         timeoutSeconds = Integer.getInteger(Timeout.GENERIC.toString());
         if(timeoutSeconds != null)
             return timeoutSeconds;
@@ -116,8 +147,8 @@ public class Util {
             if(object instanceof Integer)
                 return (Integer) object;
 
-            if(object instanceof String) 
-                return Integer.valueOf((String) object); 
+            if(object instanceof String)
+                return Integer.valueOf((String) object);
         } catch(NumberFormatException  nfe) {
         }
         return null;

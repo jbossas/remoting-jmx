@@ -22,7 +22,7 @@
 
 package org.jboss.remotingjmx;
 
-import static org.jboss.remotingjmx.Constants.CONNECTION_PROVIDER_URI;
+import static org.jboss.remotingjmx.Constants.REMOTE_SCHEME;
 import static org.jboss.remotingjmx.common.Constants.PROTOCOL;
 import static org.jboss.remotingjmx.common.JMXRemotingServer.DEFAULT_PORT;
 import static org.junit.Assert.assertEquals;
@@ -105,10 +105,10 @@ public class ExistingConnectionTest extends AbstractTestBase {
 
         final Xnio xnio = Xnio.getInstance();
         Endpoint endpoint = endpoint = Remoting.createEndpoint("endpoint", xnio, OptionMap.EMPTY);
-        endpoint.addConnectionProvider(CONNECTION_PROVIDER_URI, new RemoteConnectionProviderFactory(), OptionMap.EMPTY);
+        endpoint.addConnectionProvider(REMOTE_SCHEME, new RemoteConnectionProviderFactory(), OptionMap.EMPTY);
         // open a connection
 
-        final IoFuture<Connection> futureConnection = endpoint.connect(new URI(CONNECTION_PROVIDER_URI, null, bindAddress,
+        final IoFuture<Connection> futureConnection = endpoint.connect(new URI(REMOTE_SCHEME, null, bindAddress,
                 DEFAULT_PORT, null, null, null), getOptionMap(), new AnonymousCallbackHandler());
         IoFuture.Status result = futureConnection.await(5, TimeUnit.SECONDS);
 
@@ -148,7 +148,7 @@ public class ExistingConnectionTest extends AbstractTestBase {
 
         // At this point use the Endpoint within JMXRemotingServer to establish a connection to this second server.
         final IoFuture<Connection> futureConnection = super.remotingServer.getEndpoint().connect(
-                new URI(CONNECTION_PROVIDER_URI, null, bindAddress, DEFAULT_PORT + 1, null, null, null), getOptionMap(),
+                new URI(REMOTE_SCHEME, null, bindAddress, DEFAULT_PORT + 1, null, null, null), getOptionMap(),
                 new AnonymousCallbackHandler());
         IoFuture.Status result = futureConnection.await(5, TimeUnit.SECONDS);
 

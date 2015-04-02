@@ -21,9 +21,12 @@
  */
 package org.jboss.remotingjmx;
 
-import static org.jboss.remotingjmx.Constants.HTTPS_PROTOCOL;
-import static org.jboss.remotingjmx.Constants.HTTP_PROTOCOL;
-import static org.jboss.remotingjmx.Constants.PROTOCOL;
+import static org.jboss.remotingjmx.Constants.PROTOCOL_HTTPS_REMOTING_JMX;
+import static org.jboss.remotingjmx.Constants.PROTOCOL_HTTP_REMOTING_JMX;
+import static org.jboss.remotingjmx.Constants.PROTOCOL_REMOTE;
+import static org.jboss.remotingjmx.Constants.PROTOCOL_REMOTE_HTTP;
+import static org.jboss.remotingjmx.Constants.PROTOCOL_REMOTE_HTTPS;
+import static org.jboss.remotingjmx.Constants.PROTOCOL_REMOTING_JMX;
 
 import java.io.IOException;
 import java.util.Map;
@@ -43,16 +46,22 @@ public class RemotingConnectorProvider implements JMXConnectorProvider {
 
     private static final Logger log = Logger.getLogger(RemotingConnectorProvider.class);
 
+    @SuppressWarnings("deprecation")
     public JMXConnector newJMXConnector(JMXServiceURL serviceURL, Map<String, ?> environment) throws IOException {
         String protocol = serviceURL.getProtocol();
+        switch (protocol) {
+            case PROTOCOL_REMOTE:
+            case PROTOCOL_REMOTING_JMX:
+            case PROTOCOL_REMOTE_HTTP:
+            case PROTOCOL_HTTP_REMOTING_JMX:
+            case PROTOCOL_REMOTE_HTTPS:
+            case PROTOCOL_HTTPS_REMOTING_JMX:
+                return new RemotingConnector(serviceURL, environment);
+            default:
+                log.tracef("Protocol (%s) not recognised by this provider.", protocol);
 
-        if (PROTOCOL.equals(protocol) || HTTP_PROTOCOL.equals(protocol) || HTTPS_PROTOCOL.equals(protocol)) {
-            return new RemotingConnector(serviceURL, environment);
+                return null;
         }
-
-        log.tracef("Protocol (%s) not recognised by this provider.", protocol);
-
-        return null;
     }
 
     /**

@@ -22,10 +22,10 @@
 package org.jboss.remotingjmx;
 
 import static org.jboss.remotingjmx.Constants.CHANNEL_NAME;
-import static org.jboss.remotingjmx.Constants.CONNECTION_PROVIDER_URI;
+import static org.jboss.remotingjmx.Constants.REMOTE_SCHEME;
 import static org.jboss.remotingjmx.Constants.EXCLUDED_SASL_MECHANISMS;
-import static org.jboss.remotingjmx.Constants.HTTP;
-import static org.jboss.remotingjmx.Constants.HTTPS;
+import static org.jboss.remotingjmx.Constants.HTTP_SCHEME;
+import static org.jboss.remotingjmx.Constants.HTTPS_SCHEME;
 import static org.jboss.remotingjmx.Constants.JBOSS_LOCAL_USER;
 import static org.jboss.remotingjmx.Util.convert;
 import static org.jboss.remotingjmx.Util.getTimeoutValue;
@@ -205,9 +205,9 @@ class RemotingConnector implements JMXConnector {
 
         final Xnio xnio = Xnio.getInstance();
         endpoint = Remoting.createEndpoint("endpoint", xnio, OptionMap.create(Options.THREAD_DAEMON, true));
-        endpoint.addConnectionProvider(CONNECTION_PROVIDER_URI, new RemoteConnectionProviderFactory(), OptionMap.EMPTY);
-        endpoint.addConnectionProvider(HTTP, new HttpUpgradeConnectionProviderFactory(), OptionMap.create(Options.SSL_ENABLED, false));
-        endpoint.addConnectionProvider(HTTPS, new HttpUpgradeConnectionProviderFactory(), OptionMap.create(Options.SSL_ENABLED, true));
+        endpoint.addConnectionProvider(REMOTE_SCHEME, new RemoteConnectionProviderFactory(), OptionMap.EMPTY);
+        endpoint.addConnectionProvider(HTTP_SCHEME, new HttpUpgradeConnectionProviderFactory(), OptionMap.create(Options.SSL_ENABLED, false));
+        endpoint.addConnectionProvider(HTTPS_SCHEME, new HttpUpgradeConnectionProviderFactory(), OptionMap.create(Options.SSL_ENABLED, true));
 
         Set<String> disabledMechanisms = new HashSet<String>();
 

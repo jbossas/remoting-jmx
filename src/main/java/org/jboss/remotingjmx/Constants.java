@@ -56,15 +56,23 @@ public class Constants {
      */
     public static final String EXCLUDED_SASL_MECHANISMS = "org.jboss.remoting-jmx.excluded-sasl-mechanisms";
 
-    // Note: These two do not need to be the same.
-    static final String PROTOCOL = "remoting-jmx";
-    static final String HTTP_PROTOCOL = "http-remoting-jmx";
-    static final String HTTPS_PROTOCOL = "https-remoting-jmx";
-    static final String CONNECTION_PROVIDER_URI = "remote";
+
+    static final String PROTOCOL_REMOTE = "remote";
+    static final String PROTOCOL_REMOTE_HTTP = "remote+http";
+    static final String PROTOCOL_REMOTE_HTTPS = "remote+https";
+
+    @Deprecated
+    static final String PROTOCOL_REMOTING_JMX = "remoting-jmx";
+    @Deprecated
+    static final String PROTOCOL_HTTP_REMOTING_JMX = "http-remoting-jmx";
+    @Deprecated
+    static final String PROTOCOL_HTTPS_REMOTING_JMX = "https-remoting-jmx";
+
+    static final String REMOTE_SCHEME = "remote";
+    static final String HTTP_SCHEME = "http";
+    static final String HTTPS_SCHEME = "https";
 
     static final String CHANNEL_NAME = "jmx";
-    static final String HTTP = "http";
-    static final String HTTPS = "https";
 
     static final byte STABLE = 0x00;
     static final byte SNAPSHOT = 0x01;

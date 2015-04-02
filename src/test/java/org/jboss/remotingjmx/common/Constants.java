@@ -31,6 +31,6 @@ public class Constants {
 
     public static final String BIND_ADDRESS_PROPERTY = "org.jboss.remoting-jmx.bind_address";
     public static final String DEFAULT_BIND_ADDRESS = "localhost";
-    public static final String PROTOCOL = "remoting-jmx";
+    public static final String PROTOCOL = "remote";
 
 }
