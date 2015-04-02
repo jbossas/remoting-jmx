@@ -43,14 +43,12 @@ import javax.management.remote.JMXConnector;
 import javax.management.remote.JMXConnectorFactory;
 import javax.management.remote.JMXServiceURL;
 
-import org.junit.Assert;
-
 import org.jboss.remoting3.Channel;
-import org.jboss.remotingjmx.ServerMessageInterceptor.Event;
 import org.jboss.remotingjmx.common.JMXRemotingServer;
 import org.jboss.remotingjmx.common.JMXRemotingServer.JMXRemotingConfig;
 import org.jboss.remotingjmx.protocol.Versions;
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;

@@ -25,6 +25,7 @@ import static org.jboss.remotingjmx.Constants.JMX;
 import static org.jboss.remotingjmx.Constants.JMX_BYTES;
 import static org.jboss.remotingjmx.Constants.SNAPSHOT;
 import static org.jboss.remotingjmx.Constants.STABLE;
+import static org.jboss.remotingjmx.Util.getTimeoutValue;
 
 import java.io.DataInputStream;
 import java.io.IOException;
@@ -39,14 +40,12 @@ import javax.management.remote.JMXServiceURL;
 import org.jboss.logging.Logger;
 import org.jboss.remoting3.Channel;
 import org.jboss.remoting3.MessageInputStream;
+import org.jboss.remotingjmx.Util.Timeout;
 import org.jboss.remotingjmx.protocol.CancellableDataOutputStream;
 import org.jboss.remotingjmx.protocol.Versions;
 import org.xnio.AbstractIoFuture;
 import org.xnio.IoFuture;
 import org.xnio.IoUtils;
-
-import static org.jboss.remotingjmx.Util.getTimeoutValue;
-import static org.jboss.remotingjmx.Util.Timeout;
 
 /**
  * The VersionedConnectionFactory to negotiate the version on the client side and return an appropriate VersionedConnection for

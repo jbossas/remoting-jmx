@@ -22,14 +22,14 @@
 
 package org.jboss.remotingjmx;
 
+import static org.jboss.remotingjmx.Util.getTimeoutValue;
 import static org.junit.Assert.assertEquals;
 
 import java.util.HashMap;
 import java.util.Map;
 
+import org.jboss.remotingjmx.Util.Timeout;
 import org.junit.Test;
-
-import static org.jboss.remotingjmx.Util.*;
 
 /**
  * Test case to test the getTimeoutValue 

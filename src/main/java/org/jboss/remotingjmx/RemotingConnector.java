@@ -22,14 +22,13 @@
 package org.jboss.remotingjmx;
 
 import static org.jboss.remotingjmx.Constants.CHANNEL_NAME;
-import static org.jboss.remotingjmx.Constants.REMOTE_SCHEME;
 import static org.jboss.remotingjmx.Constants.EXCLUDED_SASL_MECHANISMS;
-import static org.jboss.remotingjmx.Constants.HTTP_SCHEME;
 import static org.jboss.remotingjmx.Constants.HTTPS_SCHEME;
+import static org.jboss.remotingjmx.Constants.HTTP_SCHEME;
 import static org.jboss.remotingjmx.Constants.JBOSS_LOCAL_USER;
+import static org.jboss.remotingjmx.Constants.REMOTE_SCHEME;
 import static org.jboss.remotingjmx.Util.convert;
 import static org.jboss.remotingjmx.Util.getTimeoutValue;
-import static org.jboss.remotingjmx.Util.Timeout;
 import static org.xnio.Options.SASL_POLICY_NOANONYMOUS;
 import static org.xnio.Options.SASL_POLICY_NOPLAINTEXT;
 
@@ -66,6 +65,7 @@ import org.jboss.remoting3.Endpoint;
 import org.jboss.remoting3.Remoting;
 import org.jboss.remoting3.remote.HttpUpgradeConnectionProviderFactory;
 import org.jboss.remoting3.remote.RemoteConnectionProviderFactory;
+import org.jboss.remotingjmx.Util.Timeout;
 import org.xnio.IoFuture;
 import org.xnio.OptionMap;
 import org.xnio.Options;

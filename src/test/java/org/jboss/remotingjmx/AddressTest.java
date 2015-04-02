@@ -22,8 +22,8 @@
 
 package org.jboss.remotingjmx;
 
-import static org.junit.Assert.assertEquals;
 import static org.jboss.remotingjmx.Util.convert;
+import static org.junit.Assert.assertEquals;
 
 import java.net.URI;
 
