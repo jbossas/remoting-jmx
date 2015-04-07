@@ -181,7 +181,7 @@ class RemotingConnector implements JMXConnector {
         }
 
         versionedConnection = VersionedConectionFactory.createVersionedConnection(channel, env, serviceUrl);
-
+        state = ConnectorState.OPEN;
         Runtime.getRuntime().addShutdownHook((shutDownHook = new ShutDownHook()));
     }
 
