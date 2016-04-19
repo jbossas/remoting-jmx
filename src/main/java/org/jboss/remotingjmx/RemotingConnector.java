@@ -290,12 +290,12 @@ class RemotingConnector implements JMXConnector {
         return versionedConnection.getMBeanServerConnection(delegationSubject);
     }
 
-    public synchronized void close() throws IOException {
+    public synchronized void close() {
         log.trace("close()");
         switch (state) {
-            case UNUSED:
             case CLOSED:
                 return;
+            case UNUSED:
             case OPEN:
                 state = ConnectorState.CLOSED;
         }
@@ -407,12 +407,9 @@ class RemotingConnector implements JMXConnector {
             super(new Runnable() {
 
                 public void run() {
-                    if (state == ConnectorState.OPEN) {
-                        try {
-                            shutDownHook = null;
-                            close();
-                        } catch (IOException ignored) {
-                        }
+                    if (state == ConnectorState.OPEN || state == ConnectorState.UNUSED) {
+                        shutDownHook = null;
+                        close();
                     }
                 }
             });
