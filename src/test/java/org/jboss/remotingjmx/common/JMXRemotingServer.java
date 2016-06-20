@@ -33,6 +33,7 @@ import java.lang.management.ManagementFactory;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.security.Principal;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -66,7 +67,13 @@ import org.jboss.remotingjmx.MBeanServerLocator;
 import org.jboss.remotingjmx.RemotingConnectorServer;
 import org.jboss.remotingjmx.ServerMessageInterceptorFactory;
 import org.jboss.remotingjmx.Version;
-import org.jboss.sasl.callback.VerifyPasswordCallback;
+import org.wildfly.security.auth.callback.AnonymousAuthorizationCallback;
+import org.wildfly.security.auth.callback.CallbackUtil;
+import org.wildfly.security.auth.callback.CredentialCallback;
+import org.wildfly.security.auth.callback.EvidenceVerifyCallback;
+import org.wildfly.security.credential.PasswordCredential;
+import org.wildfly.security.evidence.PasswordGuessEvidence;
+import org.wildfly.security.password.interfaces.ClearPassword;
 import org.xnio.OptionMap;
 import org.xnio.OptionMap.Builder;
 import org.xnio.Property;
@@ -277,7 +284,11 @@ public class JMXRemotingServer {
 
                     public void handle(Callback[] callbacks) throws IOException, UnsupportedCallbackException {
                         for (Callback current : callbacks) {
-                            throw new UnsupportedCallbackException(current, "ANONYMOUS mechanism so not expecting a callback");
+                            if (current instanceof AnonymousAuthorizationCallback) {
+                                ((AnonymousAuthorizationCallback) current).setAuthorized(true);
+                            } else {
+                                CallbackUtil.unsupported(current);
+                            }
                         }
                     }
 
@@ -302,9 +313,16 @@ public class JMXRemotingServer {
                             } else if (current instanceof PasswordCallback) {
                                 PasswordCallback pcb = (PasswordCallback) current;
                                 pcb.setPassword("DigestPassword".toCharArray());
-                            } else if (current instanceof VerifyPasswordCallback) {
-                                VerifyPasswordCallback vpc = (VerifyPasswordCallback) current;
-                                vpc.setVerified("DigestPassword".equals(vpc.getPassword()));
+                            } else if (current instanceof CredentialCallback) {
+                                CredentialCallback ccb = (CredentialCallback) current;
+                                if (ccb.isCredentialTypeSupported(PasswordCredential.class, ClearPassword.ALGORITHM_CLEAR)) {
+                                    ccb.setCredential(new PasswordCredential(ClearPassword.createRaw(ClearPassword.ALGORITHM_CLEAR, "DigestPassword".toCharArray())));
+                                } else {
+                                    CallbackUtil.unsupported(current);
+                                }
+                            } else if (current instanceof EvidenceVerifyCallback) {
+                                EvidenceVerifyCallback evcb = (EvidenceVerifyCallback) current;
+                                evcb.setVerified(evcb.applyToEvidence(PasswordGuessEvidence.class, e -> Boolean.valueOf(Arrays.equals(e.getGuess(), "DigestPassword".toCharArray()))) == Boolean.TRUE);
                             } else if (current instanceof AuthorizeCallback) {
                                 AuthorizeCallback acb = (AuthorizeCallback) current;
                                 acb.setAuthorized(acb.getAuthenticationID().equals(acb.getAuthorizationID()));
@@ -314,7 +332,7 @@ public class JMXRemotingServer {
                                     throw new IOException("Bad realm");
                                 }
                             } else {
-                                throw new UnsupportedCallbackException(current);
+                                CallbackUtil.unsupported(current);
                             }
                         }
 
