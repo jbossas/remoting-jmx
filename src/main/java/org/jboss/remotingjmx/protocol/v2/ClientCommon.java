@@ -157,6 +157,10 @@ abstract class ClientCommon extends Common {
 
         public void handle(DataInput input, int correlationId) {
             VersionedIoFuture<TypeExceptionHolder<T>> future = getClientRequestManager().getFuture(correlationId);
+            if (future == null) {
+                // spurious
+                return;
+            }
 
             try {
 

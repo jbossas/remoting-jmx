@@ -28,13 +28,11 @@ import static org.xnio.Options.SASL_POLICY_NOPLAINTEXT;
 import static org.xnio.Options.SASL_PROPERTIES;
 import static org.xnio.Options.SSL_ENABLED;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
-import java.security.Principal;
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -45,42 +43,27 @@ import java.util.Set;
 
 import javax.management.MBeanServer;
 import javax.management.remote.JMXConnectorServer;
-import javax.security.auth.callback.Callback;
-import javax.security.auth.callback.NameCallback;
-import javax.security.auth.callback.PasswordCallback;
-import javax.security.auth.callback.UnsupportedCallbackException;
-import javax.security.sasl.AuthorizeCallback;
-import javax.security.sasl.RealmCallback;
-import javax.security.sasl.SaslException;
 
 import org.jboss.logging.Logger;
 import org.jboss.remoting3.Endpoint;
-import org.jboss.remoting3.Remoting;
-import org.jboss.remoting3.remote.RemoteConnectionProviderFactory;
-import org.jboss.remoting3.security.AuthorizingCallbackHandler;
-import org.jboss.remoting3.security.ServerAuthenticationProvider;
-import org.jboss.remoting3.security.UserInfo;
-import org.jboss.remoting3.security.UserPrincipal;
 import org.jboss.remoting3.spi.NetworkServerProvider;
 import org.jboss.remotingjmx.DelegatingRemotingConnectorServer;
 import org.jboss.remotingjmx.MBeanServerLocator;
 import org.jboss.remotingjmx.RemotingConnectorServer;
 import org.jboss.remotingjmx.ServerMessageInterceptorFactory;
 import org.jboss.remotingjmx.Version;
-import org.wildfly.security.auth.callback.AnonymousAuthorizationCallback;
-import org.wildfly.security.auth.callback.CallbackUtil;
-import org.wildfly.security.auth.callback.CredentialCallback;
-import org.wildfly.security.auth.callback.EvidenceVerifyCallback;
-import org.wildfly.security.credential.PasswordCredential;
-import org.wildfly.security.evidence.PasswordGuessEvidence;
+import org.wildfly.security.auth.realm.SimpleMapBackedSecurityRealm;
+import org.wildfly.security.auth.server.MechanismConfiguration;
+import org.wildfly.security.auth.server.MechanismRealmConfiguration;
+import org.wildfly.security.auth.server.SaslAuthenticationFactory;
+import org.wildfly.security.auth.server.SecurityDomain;
 import org.wildfly.security.password.interfaces.ClearPassword;
+import org.wildfly.security.permission.PermissionVerifier;
+import org.wildfly.security.sasl.util.SaslFactories;
 import org.xnio.OptionMap;
 import org.xnio.OptionMap.Builder;
 import org.xnio.Property;
 import org.xnio.Sequence;
-import org.xnio.Xnio;
-import org.xnio.channels.AcceptingChannel;
-import org.xnio.channels.ConnectedStreamChannel;
 
 /**
  * A test server to test exposing the local MBeanServer using Remoting.
@@ -113,13 +96,13 @@ public class JMXRemotingServer {
     private final int listenerPort;
     private final MBeanServer mbeanServer;
     private final Set<String> saslMechanisms;
-    private final ServerAuthenticationProvider authenticationProvider;
     private final String excludedVersions;
     private final MBeanServerLocator mbeanServerLocator;
     private final ServerMessageInterceptorFactory serverMessageInterceptorFactory;
+    private final SecurityDomain securityDomain;
 
     private Endpoint endpoint;
-    private AcceptingChannel<? extends ConnectedStreamChannel> server;
+    private Closeable server;
 
     private JMXConnectorServer connectorServer;
     private DelegatingRemotingConnectorServer delegatingServer;
@@ -139,9 +122,18 @@ public class JMXRemotingServer {
         host = config.host;
         mbeanServer = config.mbeanServer != null ? config.mbeanServer : ManagementFactory.getPlatformMBeanServer();
         saslMechanisms = Collections.unmodifiableSet(config.saslMechanisms != null ? config.saslMechanisms
-                : Collections.EMPTY_SET);
-        authenticationProvider = config.authenticationProvider != null ? config.authenticationProvider
-                : new DefaultAuthenticationProvider();
+                : Collections.emptySet());
+        if (config.securityDomain != null) {
+            securityDomain = config.securityDomain;
+        } else {
+            final SecurityDomain.Builder builder = SecurityDomain.builder();
+            builder.setPermissionMapper((permissionMappable, roles) -> PermissionVerifier.ALL);
+            final SimpleMapBackedSecurityRealm realm = new SimpleMapBackedSecurityRealm();
+            realm.setPasswordMap("DigestUser", ClearPassword.createRaw(ClearPassword.ALGORITHM_CLEAR, "DigestPassword".toCharArray()));
+            builder.addRealm("default", realm).build();
+            builder.setDefaultRealmName("default");
+            securityDomain = builder.build();
+        }
         excludedVersions = config.excludedVersions;
         mbeanServerLocator = config.mbeanServerLocator;
         this.serverMessageInterceptorFactory = config.serverMessageInterceptorFactory;
@@ -152,15 +144,23 @@ public class JMXRemotingServer {
 
         // Initialise general Remoting - this step would be implemented elsewhere when
         // running within an application server.
-        final Xnio xnio = Xnio.getInstance();
-        endpoint = Remoting.createEndpoint("JMXRemoting", xnio, OptionMap.EMPTY);
-        endpoint.addConnectionProvider("remote", new RemoteConnectionProviderFactory(), OptionMap.EMPTY);
+        endpoint = Endpoint.getCurrent();
 
         final NetworkServerProvider nsp = endpoint.getConnectionProviderInterface("remote", NetworkServerProvider.class);
         final SocketAddress bindAddress = new InetSocketAddress(host, listenerPort);
         final OptionMap serverOptions = createOptionMap();
 
-        server = nsp.createServer(bindAddress, serverOptions, authenticationProvider, null);
+        SaslAuthenticationFactory authFactory =
+            SaslAuthenticationFactory.builder()
+                .setSecurityDomain(securityDomain)
+                .setMechanismConfigurationSelector(mechanismInformation ->
+                    MechanismConfiguration.builder()
+                        .addMechanismRealm(MechanismRealmConfiguration.builder().setRealmName(REALM).build())
+                        .build()
+                )
+                .setFactory(SaslFactories.getElytronSaslServerFactory())
+                .build();
+        server = nsp.createServer(bindAddress, serverOptions, authFactory, null);
 
         Map<String, Object> configMap = new HashMap<String, Object>();
         if (excludedVersions != null) {
@@ -233,17 +233,13 @@ public class JMXRemotingServer {
         if (server != null) {
             server.close();
         }
-
-        if (endpoint != null) {
-            endpoint.close();
-        }
-
-        if (connectorServer != null) {
-            String[] ids = connectorServer.getConnectionIds();
-            if (ids.length > 0) {
-                throw new RuntimeException("Connections still registered with server despite being stopped.");
-            }
-        }
+//      XXX Disable this for now; the semantics need to be revisited
+//        if (connectorServer != null) {
+//            String[] ids = connectorServer.getConnectionIds();
+//            if (ids.length > 0) {
+//                throw new RuntimeException("Connections still registered with server despite being stopped.");
+//            }
+//        }
     }
 
     public static void main(String[] args) throws IOException {
@@ -275,130 +271,12 @@ public class JMXRemotingServer {
         }
     }
 
-    private class DefaultAuthenticationProvider implements ServerAuthenticationProvider {
-
-        @Override
-        public AuthorizingCallbackHandler getCallbackHandler(String mechanismName) {
-            if (mechanismName.equals(ANONYMOUS)) {
-                return new AuthorizingCallbackHandler() {
-
-                    public void handle(Callback[] callbacks) throws IOException, UnsupportedCallbackException {
-                        for (Callback current : callbacks) {
-                            if (current instanceof AnonymousAuthorizationCallback) {
-                                ((AnonymousAuthorizationCallback) current).setAuthorized(true);
-                            } else {
-                                CallbackUtil.unsupported(current);
-                            }
-                        }
-                    }
-
-                    public UserInfo createUserInfo(Collection<Principal> principals) throws IOException {
-                        return JMXRemotingServer.createUserInfo(principals);
-                    }
-                };
-
-            }
-
-            if (mechanismName.equals(DIGEST_MD5) || mechanismName.equals(PLAIN)) {
-                return new AuthorizingCallbackHandler() {
-
-                    @Override
-                    public void handle(Callback[] callbacks) throws IOException, UnsupportedCallbackException {
-                        for (Callback current : callbacks) {
-                            if (current instanceof NameCallback) {
-                                NameCallback ncb = (NameCallback) current;
-                                if (ncb.getDefaultName().equals("DigestUser") == false) {
-                                    throw new IOException("Bad User");
-                                }
-                            } else if (current instanceof PasswordCallback) {
-                                PasswordCallback pcb = (PasswordCallback) current;
-                                pcb.setPassword("DigestPassword".toCharArray());
-                            } else if (current instanceof CredentialCallback) {
-                                CredentialCallback ccb = (CredentialCallback) current;
-                                if (ccb.isCredentialTypeSupported(PasswordCredential.class, ClearPassword.ALGORITHM_CLEAR)) {
-                                    ccb.setCredential(new PasswordCredential(ClearPassword.createRaw(ClearPassword.ALGORITHM_CLEAR, "DigestPassword".toCharArray())));
-                                } else {
-                                    CallbackUtil.unsupported(current);
-                                }
-                            } else if (current instanceof EvidenceVerifyCallback) {
-                                EvidenceVerifyCallback evcb = (EvidenceVerifyCallback) current;
-                                evcb.setVerified(evcb.applyToEvidence(PasswordGuessEvidence.class, e -> Boolean.valueOf(Arrays.equals(e.getGuess(), "DigestPassword".toCharArray()))) == Boolean.TRUE);
-                            } else if (current instanceof AuthorizeCallback) {
-                                AuthorizeCallback acb = (AuthorizeCallback) current;
-                                acb.setAuthorized(acb.getAuthenticationID().equals(acb.getAuthorizationID()));
-                            } else if (current instanceof RealmCallback) {
-                                RealmCallback rcb = (RealmCallback) current;
-                                if (rcb.getDefaultText().equals(REALM) == false) {
-                                    throw new IOException("Bad realm");
-                                }
-                            } else {
-                                CallbackUtil.unsupported(current);
-                            }
-                        }
-
-                    }
-
-                    public UserInfo createUserInfo(Collection<Principal> principals) throws IOException {
-                        return JMXRemotingServer.createUserInfo(principals);
-                    }
-                };
-
-            }
-
-            if (mechanismName.equals(JBOSS_LOCAL_USER)) {
-                return new AuthorizingCallbackHandler() {
-
-                    @Override
-                    public void handle(Callback[] callbacks) throws IOException, UnsupportedCallbackException {
-                        for (Callback current : callbacks) {
-                            if (current instanceof NameCallback) {
-                                NameCallback ncb = (NameCallback) current;
-                                if (DOLLAR_LOCAL.equals(ncb.getDefaultName()) == false) {
-                                    throw new SaslException("Only " + DOLLAR_LOCAL + " user is acceptable.");
-                                }
-                            } else if (current instanceof AuthorizeCallback) {
-                                AuthorizeCallback acb = (AuthorizeCallback) current;
-                                acb.setAuthorized(acb.getAuthenticationID().equals(acb.getAuthorizationID()));
-                            } else {
-                                throw new UnsupportedCallbackException(current);
-                            }
-                        }
-
-                    }
-
-                    public UserInfo createUserInfo(Collection<Principal> principals) throws IOException {
-                        return JMXRemotingServer.createUserInfo(principals);
-                    }
-                };
-
-            }
-
-            return null;
-        }
-
-    }
-
-    private static UserInfo createUserInfo(final Collection<Principal> users) {
-        return new UserInfo() {
-
-            public String getUserName() {
-                for (Principal current : users) {
-                    if (current instanceof UserPrincipal) {
-                        return current.getName();
-                    }
-                }
-                return null;
-            }
-        };
-
-    }
-
     public static class JMXRemotingConfig {
         public String host = "localhost";
         public int port = -1;
         public MBeanServer mbeanServer = null;
         public Set<String> saslMechanisms = null;
-        public ServerAuthenticationProvider authenticationProvider = null;
+        public SecurityDomain securityDomain = null;
         public String excludedVersions = null;
         public MBeanServerLocator mbeanServerLocator = null;
         public ServerMessageInterceptorFactory serverMessageInterceptorFactory = null;

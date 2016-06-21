@@ -23,10 +23,7 @@ package org.jboss.remotingjmx;
 
 import static org.jboss.remotingjmx.Constants.CHANNEL_NAME;
 import static org.jboss.remotingjmx.Constants.EXCLUDED_SASL_MECHANISMS;
-import static org.jboss.remotingjmx.Constants.HTTPS_SCHEME;
-import static org.jboss.remotingjmx.Constants.HTTP_SCHEME;
 import static org.jboss.remotingjmx.Constants.JBOSS_LOCAL_USER;
-import static org.jboss.remotingjmx.Constants.REMOTE_SCHEME;
 import static org.jboss.remotingjmx.Util.convert;
 import static org.jboss.remotingjmx.Util.getTimeoutValue;
 import static org.xnio.Options.SASL_POLICY_NOANONYMOUS;
@@ -62,16 +59,12 @@ import org.jboss.logging.Logger;
 import org.jboss.remoting3.Channel;
 import org.jboss.remoting3.Connection;
 import org.jboss.remoting3.Endpoint;
-import org.jboss.remoting3.Remoting;
-import org.jboss.remoting3.remote.HttpUpgradeConnectionProviderFactory;
-import org.jboss.remoting3.remote.RemoteConnectionProviderFactory;
 import org.jboss.remotingjmx.Util.Timeout;
 import org.xnio.IoFuture;
 import org.xnio.OptionMap;
 import org.xnio.Options;
 import org.xnio.Property;
 import org.xnio.Sequence;
-import org.xnio.Xnio;
 
 /**
  * @author <a href="mailto:darran.lofthouse@jboss.com">Darran Lofthouse</a>
@@ -203,40 +196,30 @@ class RemotingConnector implements JMXConnector {
             return (Connection) env.get(Connection.class.getName());
         }
 
-        final Xnio xnio = Xnio.getInstance();
-        endpoint = Remoting.createEndpoint("endpoint", xnio, OptionMap.create(Options.THREAD_DAEMON, true));
-        endpoint.addConnectionProvider(REMOTE_SCHEME, new RemoteConnectionProviderFactory(), OptionMap.EMPTY);
-        endpoint.addConnectionProvider(HTTP_SCHEME, new HttpUpgradeConnectionProviderFactory(), OptionMap.create(Options.SSL_ENABLED, false));
-        endpoint.addConnectionProvider(HTTPS_SCHEME, new HttpUpgradeConnectionProviderFactory(), OptionMap.create(Options.SSL_ENABLED, true));
+        endpoint = Endpoint.getCurrent();
 
         Set<String> disabledMechanisms = new HashSet<String>();
 
         // The credentials.
-        CallbackHandler handler = null;
-        if (env != null) {
-            handler = (CallbackHandler) env.get(CallbackHandler.class.getName());
-            if (handler == null && env.containsKey(CREDENTIALS)) {
-                handler = new UsernamePasswordCallbackHandler((String[]) env.get(CREDENTIALS));
-                disabledMechanisms.add(JBOSS_LOCAL_USER);
-            }
-            Object list;
-            if (env.containsKey(EXCLUDED_SASL_MECHANISMS) && (list = env.get(EXCLUDED_SASL_MECHANISMS)) != null) {
-               String[] mechanisms;
-               if (list instanceof String[]) {
-                   mechanisms = (String[])list;
-               } else {
-                   mechanisms = list.toString().split(",");
-               }
-
-               disabledMechanisms.addAll(Arrays.asList(mechanisms));
-            }
+        CallbackHandler handler;
+        handler = (CallbackHandler) env.get(CallbackHandler.class.getName());
+        if (handler == null && env.containsKey(CREDENTIALS)) {
+            disabledMechanisms.add(JBOSS_LOCAL_USER);
         }
-        if (handler == null) {
-            handler = new AnonymousCallbackHandler();
+        Object list;
+        if (env.containsKey(EXCLUDED_SASL_MECHANISMS) && (list = env.get(EXCLUDED_SASL_MECHANISMS)) != null) {
+           String[] mechanisms;
+           if (list instanceof String[]) {
+               mechanisms = (String[])list;
+           } else {
+               mechanisms = list.toString().split(",");
+           }
+
+           disabledMechanisms.addAll(Arrays.asList(mechanisms));
         }
 
         // open a connection
-        final IoFuture<Connection> futureConnection = endpoint.connect(convert(serviceUrl), getOptionMap(disabledMechanisms), handler);
+        final IoFuture<Connection> futureConnection = endpoint.connect(convert(serviceUrl), getOptionMap(disabledMechanisms));
         IoFuture.Status result = futureConnection.await(getTimeoutValue(Timeout.CONNECTION, env), TimeUnit.SECONDS);
 
         if (result == IoFuture.Status.DONE) {
