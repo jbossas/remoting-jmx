@@ -26,6 +26,7 @@ import static org.jboss.remotingjmx.Constants.PROTOCOL_HTTP_REMOTING_JMX;
 import static org.jboss.remotingjmx.Constants.PROTOCOL_REMOTE;
 import static org.jboss.remotingjmx.Constants.PROTOCOL_REMOTE_HTTP;
 import static org.jboss.remotingjmx.Constants.PROTOCOL_REMOTE_HTTPS;
+import static org.jboss.remotingjmx.Constants.PROTOCOL_REMOTE_TLS;
 import static org.jboss.remotingjmx.Constants.PROTOCOL_REMOTING_JMX;
 
 import java.io.IOException;
@@ -51,6 +52,7 @@ public class RemotingConnectorProvider implements JMXConnectorProvider {
         String protocol = serviceURL.getProtocol();
         switch (protocol) {
             case PROTOCOL_REMOTE:
+            case PROTOCOL_REMOTE_TLS:
             case PROTOCOL_REMOTING_JMX:
             case PROTOCOL_REMOTE_HTTP:
             case PROTOCOL_HTTP_REMOTING_JMX:

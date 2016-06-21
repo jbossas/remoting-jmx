@@ -58,6 +58,7 @@ public class Constants {
 
 
     static final String PROTOCOL_REMOTE = "remote";
+    static final String PROTOCOL_REMOTE_TLS = "remote+tls";
     static final String PROTOCOL_REMOTE_HTTP = "remote+http";
     static final String PROTOCOL_REMOTE_HTTPS = "remote+https";
 
