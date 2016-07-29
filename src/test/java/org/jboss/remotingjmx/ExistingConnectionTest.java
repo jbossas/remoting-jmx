@@ -69,6 +69,8 @@ import org.wildfly.security.auth.AuthenticationException;
 import org.wildfly.security.auth.client.AuthenticationConfiguration;
 import org.wildfly.security.auth.client.AuthenticationContext;
 import org.wildfly.security.auth.client.MatchRule;
+import org.wildfly.security.auth.client.PeerIdentity;
+import org.wildfly.security.auth.client.PeerIdentityContext;
 import org.wildfly.security.auth.server.SecurityIdentity;
 import org.xnio.IoFuture;
 import org.xnio.OptionMap;
@@ -318,6 +320,19 @@ public class ExistingConnectionTest extends AbstractTestBase {
         public SSLSession getSslSession() {
             throw new IllegalStateException("No obtaining the Ssl session expected.");
         }
+
+        public PeerIdentity getConnectionPeerIdentity() throws SecurityException {
+            return wrapped.getConnectionPeerIdentity();
+        }
+
+        public PeerIdentity getConnectionAnonymousIdentity() {
+            return wrapped.getConnectionAnonymousIdentity();
+        }
+
+        public PeerIdentityContext getPeerIdentityContext() {
+            return wrapped.getPeerIdentityContext();
+        }
+
     }
 
     private class TestOpenListener implements OpenListener {
