@@ -70,8 +70,8 @@ public class Constants {
     static final String PROTOCOL_HTTPS_REMOTING_JMX = "https-remoting-jmx";
 
     static final String REMOTE_SCHEME = "remote";
-    static final String HTTP_SCHEME = "http";
-    static final String HTTPS_SCHEME = "https";
+    static final String HTTP_SCHEME = "remote+http";
+    static final String HTTPS_SCHEME = "remote+https";
 
     static final String CHANNEL_NAME = "jmx";
 
