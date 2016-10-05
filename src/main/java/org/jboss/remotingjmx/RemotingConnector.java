@@ -21,6 +21,7 @@
  */
 package org.jboss.remotingjmx;
 
+import static java.security.AccessController.doPrivileged;
 import static org.jboss.remotingjmx.Constants.CHANNEL_NAME;
 import static org.jboss.remotingjmx.Constants.EXCLUDED_SASL_MECHANISMS;
 import static org.jboss.remotingjmx.Constants.JBOSS_LOCAL_USER;
@@ -31,6 +32,7 @@ import static org.xnio.Options.SASL_POLICY_NOPLAINTEXT;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -60,6 +62,10 @@ import org.jboss.remoting3.Channel;
 import org.jboss.remoting3.Connection;
 import org.jboss.remoting3.Endpoint;
 import org.jboss.remotingjmx.Util.Timeout;
+import org.wildfly.security.auth.client.AuthenticationConfiguration;
+import org.wildfly.security.auth.client.AuthenticationContext;
+import org.wildfly.security.auth.client.AuthenticationContextConfigurationClient;
+import org.wildfly.security.auth.client.MatchRule;
 import org.xnio.IoFuture;
 import org.xnio.OptionMap;
 import org.xnio.Options;
@@ -73,6 +79,7 @@ import org.xnio.Sequence;
 class RemotingConnector implements JMXConnector {
 
     private static final Logger log = Logger.getLogger(RemotingConnectorServer.class);
+    private static final AuthenticationContextConfigurationClient AUTH_CONFIGURATION_CLIENT = doPrivileged(AuthenticationContextConfigurationClient.ACTION);
 
     private final JMXServiceURL serviceUrl;
     private final Map<String, ?> environment;
@@ -200,12 +207,25 @@ class RemotingConnector implements JMXConnector {
 
         Set<String> disabledMechanisms = new HashSet<String>();
 
+        final URI uri = convert(serviceUrl);
+        AuthenticationContext captured = AuthenticationContext.captureCurrent();
+        AuthenticationConfiguration mergedConfiguration = AUTH_CONFIGURATION_CLIENT.getAuthenticationConfiguration(uri, captured);
+
         // The credentials.
         CallbackHandler handler;
         handler = (CallbackHandler) env.get(CallbackHandler.class.getName());
-        if (handler == null && env.containsKey(CREDENTIALS)) {
-            disabledMechanisms.add(JBOSS_LOCAL_USER);
+        if (handler != null) {
+            mergedConfiguration = mergedConfiguration.useCallbackHandler(handler);
         }
+
+        if (handler == null && env.containsKey(CREDENTIALS)) {
+            String[] credentials = (String[]) env.get(CREDENTIALS);
+            mergedConfiguration = mergedConfiguration.useName(credentials[0]).usePassword(credentials[1]);
+            disabledMechanisms.add(JBOSS_LOCAL_USER);
+        } else {
+            mergedConfiguration = mergedConfiguration.useAnonymous();
+        }
+
         Object list;
         if (env.containsKey(EXCLUDED_SASL_MECHANISMS) && (list = env.get(EXCLUDED_SASL_MECHANISMS)) != null) {
            String[] mechanisms;
@@ -219,7 +239,8 @@ class RemotingConnector implements JMXConnector {
         }
 
         // open a connection
-        final IoFuture<Connection> futureConnection = endpoint.connect(convert(serviceUrl), getOptionMap(disabledMechanisms));
+        final AuthenticationContext context = AuthenticationContext.empty().with(MatchRule.ALL, mergedConfiguration);
+        final IoFuture<Connection> futureConnection = endpoint.connect(convert(serviceUrl), getOptionMap(disabledMechanisms), context);
         IoFuture.Status result = futureConnection.await(getTimeoutValue(Timeout.CONNECTION, env), TimeUnit.SECONDS);
 
         if (result == IoFuture.Status.DONE) {
@@ -335,54 +356,6 @@ class RemotingConnector implements JMXConnector {
 
         log.debugf("Our connection id is '%s'", connectionId);
         return connectionId;
-    }
-
-    /*
-     * The inner classes for use by the RemotingConnector.
-     */
-
-    private class AnonymousCallbackHandler implements CallbackHandler {
-
-        public void handle(Callback[] callbacks) throws IOException, UnsupportedCallbackException {
-            for (Callback current : callbacks) {
-                if (current instanceof NameCallback) {
-                    NameCallback ncb = (NameCallback) current;
-                    ncb.setName("anonymous");
-                } else {
-                    throw new UnsupportedCallbackException(current);
-                }
-            }
-        }
-
-    }
-
-    private class UsernamePasswordCallbackHandler implements CallbackHandler {
-
-        private final String[] credentials;
-
-        private UsernamePasswordCallbackHandler(String[] credentials) {
-            this.credentials = credentials;
-        }
-
-        @Override
-        public void handle(Callback[] callbacks) throws IOException, UnsupportedCallbackException {
-            for (Callback current : callbacks) {
-                if (current instanceof NameCallback) {
-                    NameCallback ncb = (NameCallback) current;
-                    ncb.setName(credentials[0]);
-                } else if (current instanceof PasswordCallback) {
-                    PasswordCallback pcb = (PasswordCallback) current;
-                    pcb.setPassword(credentials[1].toCharArray());
-                } else if (current instanceof RealmCallback) {
-                    RealmCallback realmCallback = (RealmCallback) current;
-                    realmCallback.setText(realmCallback.getDefaultText());
-                } else {
-                    throw new UnsupportedCallbackException(current);
-                }
-            }
-
-        }
-
     }
 
     private class ShutDownHook extends Thread {
