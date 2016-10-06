@@ -197,7 +197,7 @@
         <dependency>
             <groupId>org.wildfly.client</groupId>
             <artifactId>wildfly-client-config</artifactId>
-            <version>1.0.0.Alpha3</version>
+            <version>1.0.0.Beta1</version>
         </dependency>
         <dependency>
             <groupId>org.wildfly.common</groupId>
