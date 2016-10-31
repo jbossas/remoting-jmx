@@ -216,6 +216,7 @@ public class SecurityClientTest {
     }
 
     @Test
+    @Ignore
     public void testPlainAuthentication() throws Exception {
         log.info("testPlainAuthentication - Begin");
         config.saslMechanisms = Collections.singleton(PLAIN);
