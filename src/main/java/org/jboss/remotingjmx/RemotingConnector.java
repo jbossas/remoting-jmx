@@ -216,14 +216,14 @@ class RemotingConnector implements JMXConnector {
         handler = (CallbackHandler) env.get(CallbackHandler.class.getName());
         if (handler != null) {
             mergedConfiguration = mergedConfiguration.useCallbackHandler(handler);
-        }
-
-        if (handler == null && env.containsKey(CREDENTIALS)) {
-            String[] credentials = (String[]) env.get(CREDENTIALS);
-            mergedConfiguration = mergedConfiguration.useName(credentials[0]).usePassword(credentials[1]).useRealm(null);
-            disabledMechanisms.add(JBOSS_LOCAL_USER);
         } else {
-            mergedConfiguration = mergedConfiguration.useAnonymous();
+            if (env.containsKey(CREDENTIALS)) {
+                String[] credentials = (String[]) env.get(CREDENTIALS);
+                mergedConfiguration = mergedConfiguration.useName(credentials[0]).usePassword(credentials[1]).useRealm(null);
+                disabledMechanisms.add(JBOSS_LOCAL_USER);
+            } else {
+                mergedConfiguration = mergedConfiguration.useAnonymous();
+            }
         }
 
         Object list;

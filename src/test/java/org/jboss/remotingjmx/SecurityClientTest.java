@@ -58,6 +58,7 @@ import org.wildfly.security.WildFlyElytronProvider;
 import org.wildfly.security.auth.client.AuthenticationConfiguration;
 import org.wildfly.security.auth.client.AuthenticationContext;
 import org.wildfly.security.auth.client.MatchRule;
+import org.wildfly.security.sasl.localuser.LocalUserClient;
 
 /**
  * Test case to test the various supported SASL mechanisms.
@@ -162,7 +163,12 @@ public class SecurityClientTest {
             }
         });
 
-        JMXConnector connector = JMXConnectorFactory.connect(serviceURL, env);
+        Map<String, String> mechanismProperties = new HashMap<>(1);
+        mechanismProperties.put(LocalUserClient.QUIET_AUTH, "true");
+        JMXConnector connector = AuthenticationContext.empty().with(
+                MatchRule.ALL,
+                AuthenticationConfiguration.EMPTY.allowSaslMechanisms("JBOSS-LOCAL-USER").useMechanismProperties(mechanismProperties)
+        ).runExFunction(e -> JMXConnectorFactory.connect(serviceURL, e), env);
 
         assertNotNull(connector.getConnectionId());
 
