@@ -62,6 +62,7 @@ import org.wildfly.security.credential.PasswordCredential;
 import org.wildfly.security.password.Password;
 import org.wildfly.security.password.interfaces.ClearPassword;
 import org.wildfly.security.permission.PermissionVerifier;
+import org.wildfly.security.sasl.util.PropertiesSaslServerFactory;
 import org.wildfly.security.sasl.util.SaslFactories;
 import org.xnio.OptionMap;
 import org.xnio.OptionMap.Builder;
@@ -165,7 +166,7 @@ public class JMXRemotingServer {
                         .addMechanismRealm(MechanismRealmConfiguration.builder().setRealmName(REALM).build())
                         .build()
                 )
-                .setFactory(SaslFactories.getElytronSaslServerFactory())
+                .setFactory(new PropertiesSaslServerFactory(SaslFactories.getElytronSaslServerFactory(), Collections.singletonMap("wildfly.sasl.local-user.default-user", "$local")))
                 .build();
         server = nsp.createServer(bindAddress, serverOptions, authFactory, null);
 
