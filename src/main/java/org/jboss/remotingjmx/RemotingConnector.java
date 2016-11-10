@@ -203,7 +203,7 @@ class RemotingConnector implements JMXConnector {
             return (Connection) env.get(Connection.class.getName());
         }
 
-        endpoint = Endpoint.getCurrent();
+        endpoint = Endpoint.builder().setEndpointName("endpoint").build();
 
         Set<String> disabledMechanisms = new HashSet<String>();
 
