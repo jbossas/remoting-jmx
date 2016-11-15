@@ -36,6 +36,7 @@ import static org.xnio.Options.SASL_POLICY_NOPLAINTEXT;
 import java.io.IOException;
 import java.net.SocketAddress;
 import java.net.URI;
+import java.security.Principal;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -56,6 +57,8 @@ import org.jboss.remoting3.Attachments;
 import org.jboss.remoting3.Channel;
 import org.jboss.remoting3.CloseHandler;
 import org.jboss.remoting3.Connection;
+import org.jboss.remoting3.ConnectionPeerIdentity;
+import org.jboss.remoting3.ConnectionPeerIdentityContext;
 import org.jboss.remoting3.Endpoint;
 import org.jboss.remoting3.OpenListener;
 import org.jboss.remotingjmx.common.JMXRemotingServer;
@@ -69,8 +72,6 @@ import org.wildfly.security.auth.AuthenticationException;
 import org.wildfly.security.auth.client.AuthenticationConfiguration;
 import org.wildfly.security.auth.client.AuthenticationContext;
 import org.wildfly.security.auth.client.MatchRule;
-import org.wildfly.security.auth.client.PeerIdentity;
-import org.wildfly.security.auth.client.PeerIdentityContext;
 import org.wildfly.security.auth.server.SecurityIdentity;
 import org.xnio.IoFuture;
 import org.xnio.OptionMap;
@@ -321,17 +322,26 @@ public class ExistingConnectionTest extends AbstractTestBase {
             throw new IllegalStateException("No obtaining the Ssl session expected.");
         }
 
-        public PeerIdentity getConnectionPeerIdentity() throws SecurityException {
+        @Override
+        public ConnectionPeerIdentity getConnectionPeerIdentity() throws SecurityException {
             return wrapped.getConnectionPeerIdentity();
         }
 
-        public PeerIdentity getConnectionAnonymousIdentity() {
+        @Override
+        public ConnectionPeerIdentity getConnectionAnonymousIdentity() {
             return wrapped.getConnectionAnonymousIdentity();
         }
 
-        public PeerIdentityContext getPeerIdentityContext() {
+        @Override
+        public ConnectionPeerIdentityContext getPeerIdentityContext() {
             return wrapped.getPeerIdentityContext();
         }
+
+        @Override
+        public Principal getPrincipal() {
+            return wrapped.getPrincipal();
+        }
+
 
     }
 

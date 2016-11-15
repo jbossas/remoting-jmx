@@ -34,7 +34,7 @@
     <parent>
         <groupId>org.jboss</groupId>
         <artifactId>jboss-parent</artifactId>
-        <version>10</version>
+        <version>21</version>
     </parent>
 
     <licenses>
@@ -145,13 +145,13 @@
         <dependency>
             <groupId>org.jboss.logmanager</groupId>
             <artifactId>jboss-logmanager</artifactId>
-            <version>2.0.0.Beta1</version>
+            <version>2.0.4.Final</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.jboss.logging</groupId>
             <artifactId>jboss-logging</artifactId>
-            <version>3.2.1.Final</version>
+            <version>3.3.0.Final</version>
         </dependency>
         <dependency>
             <groupId>org.jboss.logging</groupId>
@@ -166,33 +166,33 @@
         <dependency>
             <groupId>org.jboss.marshalling</groupId>
             <artifactId>jboss-marshalling</artifactId>
-            <version>1.4.10.Final</version>
+            <version>1.4.11.Final</version>
         </dependency>
         <dependency>
             <groupId>org.jboss.marshalling</groupId>
             <artifactId>jboss-marshalling-river</artifactId>
-            <version>1.4.10.Final</version>
+            <version>1.4.11.Final</version>
         </dependency>
         <dependency>
             <groupId>org.jboss.modules</groupId>
             <artifactId>jboss-modules</artifactId>
-            <version>1.5.1.Final</version>
+            <version>1.6.0.Beta3</version>
             <optional>true</optional>
         </dependency>
         <dependency>
             <groupId>org.jboss.remoting</groupId>
             <artifactId>jboss-remoting</artifactId>
-            <version>5.0.0.Beta7</version>
+            <version>5.0.0.Beta8</version>
         </dependency>
         <dependency>
             <groupId>org.jboss.xnio</groupId>
             <artifactId>xnio-api</artifactId>
-            <version>3.4.0.Final</version>
+            <version>3.4.1.Final</version>
         </dependency>
         <dependency>
             <groupId>org.jboss.xnio</groupId>
             <artifactId>xnio-nio</artifactId>
-            <version>3.4.0.Final</version>
+            <version>3.4.1.Final</version>
         </dependency>
         <dependency>
             <groupId>org.wildfly.client</groupId>
@@ -207,7 +207,7 @@
         <dependency>
             <groupId>org.wildfly.security</groupId>
             <artifactId>wildfly-elytron</artifactId>
-            <version>1.1.0.Beta12</version>
+            <version>1.1.0.Beta14</version>
         </dependency>
         <dependency>
             <groupId>org.jboss.threads</groupId>
