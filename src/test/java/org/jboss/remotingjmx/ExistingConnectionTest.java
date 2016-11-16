@@ -66,12 +66,8 @@ import org.jboss.remotingjmx.common.JMXRemotingServer.JMXRemotingConfig;
 import org.jboss.remotingjmx.common.MyBean;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.wildfly.security.auth.AuthenticationException;
-import org.wildfly.security.auth.client.AuthenticationConfiguration;
-import org.wildfly.security.auth.client.AuthenticationContext;
-import org.wildfly.security.auth.client.MatchRule;
 import org.wildfly.security.auth.server.SecurityIdentity;
 import org.xnio.IoFuture;
 import org.xnio.OptionMap;
@@ -84,7 +80,6 @@ import org.xnio.Sequence;
  *
  * @author <a href="mailto:darran.lofthouse@jboss.com">Darran Lofthouse</a>
  */
-@Ignore // cannot work as written for now
 public class ExistingConnectionTest extends AbstractTestBase {
 
     @Before
@@ -107,11 +102,7 @@ public class ExistingConnectionTest extends AbstractTestBase {
         Endpoint endpoint = Endpoint.getCurrent();
         // open a connection
 
-        final IoFuture<Connection> futureConnection = AuthenticationContext.empty().with(
-            MatchRule.ALL,
-            AuthenticationConfiguration.EMPTY.useAnonymous().allowSaslMechanisms("ANONYMOUS")
-        ).runExFunction(v -> endpoint.connect(new URI(REMOTE_SCHEME, null, bindAddress,
-                DEFAULT_PORT, null, null, null), getOptionMap()), null);
+        final IoFuture<Connection> futureConnection = endpoint.connect(new URI(REMOTE_SCHEME, null, bindAddress, DEFAULT_PORT, null, null, null), getOptionMap());
         IoFuture.Status result = futureConnection.await(5, TimeUnit.SECONDS);
 
         Connection connection;
@@ -137,6 +128,7 @@ public class ExistingConnectionTest extends AbstractTestBase {
         MBeanServer secondMbeanServer = MBeanServerFactory.createMBeanServer(DEFAULT_DOMAIN + "2");
 
         JMXRemotingConfig config = new JMXRemotingConfig();
+        config.endpoint = Endpoint.builder().build();
         config.mbeanServer = secondMbeanServer;
         config.host = bindAddress;
         config.port = DEFAULT_PORT + 1;

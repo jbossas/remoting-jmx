@@ -22,27 +22,21 @@
 package org.jboss.remotingjmx.common;
 
 import static org.jboss.remotingjmx.Constants.EXCLUDED_VERSIONS;
-import static org.xnio.Options.SASL_MECHANISMS;
-import static org.xnio.Options.SASL_POLICY_NOANONYMOUS;
-import static org.xnio.Options.SASL_POLICY_NOPLAINTEXT;
-import static org.xnio.Options.SASL_PROPERTIES;
-import static org.xnio.Options.SSL_ENABLED;
 
 import java.io.Closeable;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import java.security.Security;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 import javax.management.MBeanServer;
 import javax.management.remote.JMXConnectorServer;
+import javax.security.sasl.SaslServerFactory;
 
 import org.jboss.logging.Logger;
 import org.jboss.remoting3.Endpoint;
@@ -52,6 +46,7 @@ import org.jboss.remotingjmx.MBeanServerLocator;
 import org.jboss.remotingjmx.RemotingConnectorServer;
 import org.jboss.remotingjmx.ServerMessageInterceptorFactory;
 import org.jboss.remotingjmx.Version;
+import org.wildfly.security.WildFlyElytronProvider;
 import org.wildfly.security.auth.realm.SimpleMapBackedSecurityRealm;
 import org.wildfly.security.auth.realm.SimpleRealmEntry;
 import org.wildfly.security.auth.server.MechanismConfiguration;
@@ -62,12 +57,11 @@ import org.wildfly.security.credential.PasswordCredential;
 import org.wildfly.security.password.Password;
 import org.wildfly.security.password.interfaces.ClearPassword;
 import org.wildfly.security.permission.PermissionVerifier;
+import org.wildfly.security.sasl.util.FilterMechanismSaslServerFactory;
 import org.wildfly.security.sasl.util.PropertiesSaslServerFactory;
 import org.wildfly.security.sasl.util.SaslFactories;
 import org.xnio.OptionMap;
-import org.xnio.OptionMap.Builder;
-import org.xnio.Property;
-import org.xnio.Sequence;
+import org.xnio.Options;
 
 /**
  * A test server to test exposing the local MBeanServer using Remoting.
@@ -75,6 +69,8 @@ import org.xnio.Sequence;
  * @author <a href="mailto:darran.lofthouse@jboss.com">Darran Lofthouse</a>
  */
 public class JMXRemotingServer {
+
+    private static final WildFlyElytronProvider WILDFLY_ELYTRON_PROVIDER = new WildFlyElytronProvider();
 
     public static final String ANONYMOUS = "ANONYMOUS";
     public static final String DIGEST_MD5 = "DIGEST-MD5";
@@ -106,7 +102,9 @@ public class JMXRemotingServer {
     private final SecurityDomain securityDomain;
 
     private Endpoint endpoint;
+    private boolean closeEndpoint;
     private Closeable server;
+    private boolean providerRegistered;
 
     private JMXConnectorServer connectorServer;
     private DelegatingRemotingConnectorServer delegatingServer;
@@ -145,19 +143,30 @@ public class JMXRemotingServer {
         excludedVersions = config.excludedVersions;
         mbeanServerLocator = config.mbeanServerLocator;
         this.serverMessageInterceptorFactory = config.serverMessageInterceptorFactory;
+        if (config.endpoint != null) {
+            endpoint = config.endpoint;
+            closeEndpoint = true;
+        }
     }
 
     public void start() throws IOException {
         log.infof("Starting JMX Remoting Server %s", Version.getVersionString());
+        providerRegistered = Security.addProvider(WILDFLY_ELYTRON_PROVIDER) >= 0;
 
         // Initialise general Remoting - this step would be implemented elsewhere when
         // running within an application server.
-        endpoint = Endpoint.getCurrent();
+        if (endpoint == null) {
+            endpoint = Endpoint.getCurrent();
+        }
 
         final NetworkServerProvider nsp = endpoint.getConnectionProviderInterface("remote", NetworkServerProvider.class);
         final SocketAddress bindAddress = new InetSocketAddress(host, listenerPort);
-        final OptionMap serverOptions = createOptionMap();
+        final OptionMap serverOptions = OptionMap.create(Options.SSL_ENABLED, false);
 
+        SaslServerFactory saslServerFactory = new PropertiesSaslServerFactory(SaslFactories.getElytronSaslServerFactory(), Collections.singletonMap("wildfly.sasl.local-user.default-user", "$local"));
+        if (saslMechanisms.isEmpty() == false) {
+            saslServerFactory = new FilterMechanismSaslServerFactory(saslServerFactory, saslMechanisms::contains);
+        }
         SaslAuthenticationFactory authFactory =
             SaslAuthenticationFactory.builder()
                 .setSecurityDomain(securityDomain)
@@ -166,7 +175,7 @@ public class JMXRemotingServer {
                         .addMechanismRealm(MechanismRealmConfiguration.builder().setRealmName(REALM).build())
                         .build()
                 )
-                .setFactory(new PropertiesSaslServerFactory(SaslFactories.getElytronSaslServerFactory(), Collections.singletonMap("wildfly.sasl.local-user.default-user", "$local")))
+                .setFactory(saslServerFactory)
                 .build();
         server = nsp.createServer(bindAddress, serverOptions, authFactory, null);
 
@@ -190,43 +199,6 @@ public class JMXRemotingServer {
         return endpoint;
     }
 
-    // This duplicates the RealmSecurityProvider of AS7 to mimic the same security set-up
-    private OptionMap createOptionMap() {
-        List<String> mechanisms = new LinkedList<String>();
-        Set<Property> properties = new HashSet<Property>();
-        Builder builder = OptionMap.builder();
-
-        if (saslMechanisms.contains(JBOSS_LOCAL_USER)) {
-            mechanisms.add(JBOSS_LOCAL_USER);
-            builder.set(SASL_POLICY_NOPLAINTEXT, false);
-            properties.add(Property.of(LOCAL_DEFAULT_USER, DOLLAR_LOCAL));
-        }
-
-        if (saslMechanisms.contains(DIGEST_MD5)) {
-            mechanisms.add(DIGEST_MD5);
-            properties.add(Property.of(REALM_PROPERTY, REALM));
-
-        }
-
-        if (saslMechanisms.contains(PLAIN)) {
-            mechanisms.add(PLAIN);
-            builder.set(SASL_POLICY_NOPLAINTEXT, false);
-        }
-
-        if (saslMechanisms.isEmpty() || saslMechanisms.contains(ANONYMOUS)) {
-            mechanisms.add(ANONYMOUS);
-            builder.set(SASL_POLICY_NOANONYMOUS, false);
-        }
-
-        // TODO - SSL Options will be added in a subsequent task.
-        builder.set(SSL_ENABLED, false);
-
-        builder.set(SASL_MECHANISMS, Sequence.of(mechanisms));
-        builder.set(SASL_PROPERTIES, Sequence.of(properties));
-
-        return builder.getMap();
-    }
-
     public void stop() throws IOException {
         log.infof("Stopping JMX Remoting Server %s", Version.getVersionString());
 
@@ -241,6 +213,15 @@ public class JMXRemotingServer {
         if (server != null) {
             server.close();
         }
+
+        if (providerRegistered) {
+            Security.removeProvider(WILDFLY_ELYTRON_PROVIDER.getName());
+        }
+
+        if (closeEndpoint) {
+            endpoint.close();
+        }
+
 //      XXX Disable this for now; the semantics need to be revisited
 //        if (connectorServer != null) {
 //            String[] ids = connectorServer.getConnectionIds();
@@ -280,6 +261,7 @@ public class JMXRemotingServer {
     }
 
     public static class JMXRemotingConfig {
+        public Endpoint endpoint;
         public String host = "localhost";
         public int port = -1;
         public MBeanServer mbeanServer = null;

@@ -38,6 +38,7 @@ import javax.management.remote.JMXConnector;
 import javax.management.remote.JMXConnectorFactory;
 import javax.management.remote.JMXServiceURL;
 
+import org.jboss.remoting3.Endpoint;
 import org.jboss.remotingjmx.common.JMXRemotingServer;
 import org.jboss.remotingjmx.common.JMXRemotingServer.JMXRemotingConfig;
 import org.junit.AfterClass;
@@ -50,7 +51,6 @@ import org.junit.Test;
  *
  * @author <a href="mailto:darran.lofthouse@jboss.com">Darran Lofthouse</a>
  */
-@Ignore // this test cannot work as written
 public class ProxyConnectionTest {
 
     protected static final String DOMAIN_ONE = "org.jboss.remotingjmx.domain_one";
@@ -97,6 +97,7 @@ public class ProxyConnectionTest {
          * Set up the server for domain_one
          */
         JMXRemotingConfig config = new JMXRemotingConfig();
+        config.endpoint = Endpoint.builder().build();
         config.mbeanServer = domainOneMbeanServer;
         config.host = bindAddress;
         config.port = DEFAULT_PORT + 1;
@@ -110,6 +111,7 @@ public class ProxyConnectionTest {
          * Set up the server for domain_two
          */
         config = new JMXRemotingConfig();
+        config.endpoint = Endpoint.builder().build();
         config.host = bindAddress;
         config.port = DEFAULT_PORT;
         config.mbeanServerLocator = new TestMBeanServerLocator();

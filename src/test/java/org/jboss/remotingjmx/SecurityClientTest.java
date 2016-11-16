@@ -34,7 +34,6 @@ import static org.junit.Assert.fail;
 
 import java.io.IOException;
 import java.net.MalformedURLException;
-import java.security.Security;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -52,13 +51,7 @@ import org.jboss.remotingjmx.common.JMXRemotingServer;
 import org.jboss.remotingjmx.common.JMXRemotingServer.JMXRemotingConfig;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
-import org.wildfly.security.WildFlyElytronProvider;
-import org.wildfly.security.auth.client.AuthenticationConfiguration;
-import org.wildfly.security.auth.client.AuthenticationContext;
-import org.wildfly.security.auth.client.MatchRule;
-import org.wildfly.security.sasl.localuser.LocalUserClient;
 
 /**
  * Test case to test the various supported SASL mechanisms.
@@ -74,7 +67,6 @@ public class SecurityClientTest {
 
     @Before
     public void initialise() throws MalformedURLException {
-        Security.addProvider(new WildFlyElytronProvider());
         String bindAddress = System.getProperty(BIND_ADDRESS_PROPERTY, DEFAULT_BIND_ADDRESS);
         config = new JMXRemotingConfig();
         config.host = bindAddress;
@@ -96,10 +88,7 @@ public class SecurityClientTest {
 
         Map<String, Object> env = new HashMap<String, Object>(0);
 
-        JMXConnector connector = AuthenticationContext.empty().with(
-            MatchRule.ALL,
-            AuthenticationConfiguration.EMPTY.allowSaslMechanisms("ANONYMOUS").useAnonymous()
-        ).runExFunction(e -> JMXConnectorFactory.connect(serviceURL, e), env);
+        JMXConnector connector = JMXConnectorFactory.connect(serviceURL, env);
 
         assertNotNull(connector.getConnectionId());
 
@@ -111,7 +100,6 @@ public class SecurityClientTest {
     }
 
     @Test
-    @Ignore // until we've updated for Elytron mechanisms
     public void testDigestAuthentication() throws Exception {
         log.info("testDigestAuthentication - Begin");
         config.saslMechanisms = Collections.singleton(DIGEST_MD5);
@@ -122,10 +110,7 @@ public class SecurityClientTest {
         Map<String, Object> env = new HashMap<String, Object>(1);
         env.put(JMXConnector.CREDENTIALS, new String[] { "DigestUser", "DigestPassword" });
 
-        JMXConnector connector = AuthenticationContext.empty().with(
-            MatchRule.ALL,
-            AuthenticationConfiguration.EMPTY.allowSaslMechanisms("DIGEST-MD5").useName("DigestUser").usePassword("DigestPassword")
-        ).runExFunction(e -> JMXConnectorFactory.connect(serviceURL, e), env);
+        JMXConnector connector = JMXConnectorFactory.connect(serviceURL, env);
 
         assertNotNull(connector.getConnectionId());
 
@@ -134,10 +119,7 @@ public class SecurityClientTest {
         // Now Try A Bad Password
         env.put(JMXConnector.CREDENTIALS, new String[] { "DigestUser", "BadPassword" });
         try {
-            AuthenticationContext.empty().with(
-                MatchRule.ALL,
-                AuthenticationConfiguration.EMPTY.allowSaslMechanisms("DIGEST-MD5").useName("DigestUser").usePassword("BadPassword")
-            ).runExFunction(e -> JMXConnectorFactory.connect(serviceURL, e), env);
+            JMXConnectorFactory.connect(serviceURL, env);
             fail("Expected exception not thrown.");
         } catch (IOException expected) {
         }
@@ -163,12 +145,7 @@ public class SecurityClientTest {
             }
         });
 
-        Map<String, String> mechanismProperties = new HashMap<>(1);
-        mechanismProperties.put(LocalUserClient.QUIET_AUTH, "true");
-        JMXConnector connector = AuthenticationContext.empty().with(
-                MatchRule.ALL,
-                AuthenticationConfiguration.EMPTY.allowSaslMechanisms("JBOSS-LOCAL-USER").useMechanismProperties(mechanismProperties)
-        ).runExFunction(e -> JMXConnectorFactory.connect(serviceURL, e), env);
+        JMXConnector connector = JMXConnectorFactory.connect(serviceURL, env);
 
         assertNotNull(connector.getConnectionId());
 
@@ -178,7 +155,6 @@ public class SecurityClientTest {
     }
 
     @Test(expected=SaslException.class)
-    @Ignore // no really good Elytron analog here
     public void testLocalAuthenticationDisabled() throws Exception {
         log.info("testLocalAuthentication - Begin");
         config.saslMechanisms = Collections.singleton(JBOSS_LOCAL_USER);
@@ -190,17 +166,13 @@ public class SecurityClientTest {
         env.put("org.jboss.remoting-jmx.excluded-sasl-mechanisms", JBOSS_LOCAL_USER);
 
         try {
-            AuthenticationContext.empty().with(
-                MatchRule.ALL,
-                AuthenticationConfiguration.EMPTY.allowSaslMechanisms().forbidSaslMechanisms(JBOSS_LOCAL_USER)
-            ).runExFunction(e -> JMXConnectorFactory.connect(serviceURL, e), env);
+            JMXConnector connector = JMXConnectorFactory.connect(serviceURL, env);
         } finally {
             remotingServer.stop();
         }
     }
 
     @Test(expected=SaslException.class)
-    @Ignore // this test doesn't really make sense anymore
     public void testLocalAuthenticationAutoDisabled() throws Exception {
         log.info("testLocalAuthentication - Begin");
         config.saslMechanisms = Collections.singleton(JBOSS_LOCAL_USER);
@@ -212,17 +184,13 @@ public class SecurityClientTest {
         env.put(JMXConnector.CREDENTIALS, new String[] { "DigestUser", "DigestPassword" });
 
         try {
-            AuthenticationContext.empty().with(
-                MatchRule.ALL,
-                AuthenticationConfiguration.EMPTY.allowSaslMechanisms().forbidSaslMechanisms(JBOSS_LOCAL_USER)
-            ).runExFunction(e -> JMXConnectorFactory.connect(serviceURL, e), env);
+            JMXConnector connector = JMXConnectorFactory.connect(serviceURL, env);
         } finally {
             remotingServer.stop();
         }
     }
 
     @Test
-    @Ignore
     public void testPlainAuthentication() throws Exception {
         log.info("testPlainAuthentication - Begin");
         config.saslMechanisms = Collections.singleton(PLAIN);
@@ -233,10 +201,7 @@ public class SecurityClientTest {
         Map<String, Object> env = new HashMap<String, Object>(1);
         env.put(JMXConnector.CREDENTIALS, new String[] { "DigestUser", "DigestPassword" });
 
-        JMXConnector connector = AuthenticationContext.empty().with(
-            MatchRule.ALL,
-            AuthenticationConfiguration.EMPTY.allowSaslMechanisms("PLAIN").useName("DigestUser").usePassword("DigestPassword")
-        ).runExFunction(e -> JMXConnectorFactory.connect(serviceURL, e), env);
+        JMXConnector connector = JMXConnectorFactory.connect(serviceURL, env);
 
         assertNotNull(connector.getConnectionId());
 
@@ -245,10 +210,7 @@ public class SecurityClientTest {
         // Now Try A Bad Password
         env.put(JMXConnector.CREDENTIALS, new String[] { "DigestUser", "BadPassword" });
         try {
-            AuthenticationContext.empty().with(
-                MatchRule.ALL,
-                AuthenticationConfiguration.EMPTY.allowSaslMechanisms("PLAIN").useName("DigestUser").usePassword("BadPassword")
-            ).runExFunction(e -> JMXConnectorFactory.connect(serviceURL, e), env);
+            JMXConnectorFactory.connect(serviceURL, env);
             fail("Expected exception not thrown.");
         } catch (IOException expected) {
         }
