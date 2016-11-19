@@ -28,11 +28,12 @@ import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
-import java.security.Security;
+import java.security.Provider;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Supplier;
 
 import javax.management.MBeanServer;
 import javax.management.remote.JMXConnectorServer;
@@ -59,7 +60,7 @@ import org.wildfly.security.password.interfaces.ClearPassword;
 import org.wildfly.security.permission.PermissionVerifier;
 import org.wildfly.security.sasl.util.FilterMechanismSaslServerFactory;
 import org.wildfly.security.sasl.util.PropertiesSaslServerFactory;
-import org.wildfly.security.sasl.util.SaslFactories;
+import org.wildfly.security.sasl.util.SecurityProviderSaslServerFactory;
 import org.xnio.OptionMap;
 import org.xnio.Options;
 
@@ -84,8 +85,6 @@ public class JMXRemotingServer {
     static final String LOCAL_DEFAULT_USER = "jboss.sasl.local-user.default-user";
     static final String LOCAL_USER_CHALLENGE_PATH = "jboss.sasl.local-user.challenge-path";
 
-    private static final String DOLLAR_LOCAL = "$local";
-
     public static final int DEFAULT_PORT = 12345;
     private static final String PORT_PREFIX = "--port=";
     private static final String SASL_MECHANISM_PREFIX = "--sasl-mechanism=";
@@ -104,7 +103,6 @@ public class JMXRemotingServer {
     private Endpoint endpoint;
     private boolean closeEndpoint;
     private Closeable server;
-    private boolean providerRegistered;
 
     private JMXConnectorServer connectorServer;
     private DelegatingRemotingConnectorServer delegatingServer;
@@ -130,7 +128,7 @@ public class JMXRemotingServer {
         } else {
             final SecurityDomain.Builder builder = SecurityDomain.builder();
             builder.setPermissionMapper((permissionMappable, roles) -> PermissionVerifier.ALL);
-            final SimpleMapBackedSecurityRealm realm = new SimpleMapBackedSecurityRealm();
+            final SimpleMapBackedSecurityRealm realm = new SimpleMapBackedSecurityRealm(() -> new Provider[] {WILDFLY_ELYTRON_PROVIDER});
             final Map<String, SimpleRealmEntry> passwordMap = new HashMap<>();
             passwordMap.put("$local", null);
             Password digestUserPassword = ClearPassword.createRaw(ClearPassword.ALGORITHM_CLEAR, "DigestPassword".toCharArray());
@@ -151,7 +149,6 @@ public class JMXRemotingServer {
 
     public void start() throws IOException {
         log.infof("Starting JMX Remoting Server %s", Version.getVersionString());
-        providerRegistered = Security.addProvider(WILDFLY_ELYTRON_PROVIDER) >= 0;
 
         // Initialise general Remoting - this step would be implemented elsewhere when
         // running within an application server.
@@ -163,7 +160,7 @@ public class JMXRemotingServer {
         final SocketAddress bindAddress = new InetSocketAddress(host, listenerPort);
         final OptionMap serverOptions = OptionMap.create(Options.SSL_ENABLED, false);
 
-        SaslServerFactory saslServerFactory = new PropertiesSaslServerFactory(SaslFactories.getElytronSaslServerFactory(), Collections.singletonMap("wildfly.sasl.local-user.default-user", "$local"));
+        SaslServerFactory saslServerFactory = new PropertiesSaslServerFactory(new SecurityProviderSaslServerFactory(() -> new Provider[] {WILDFLY_ELYTRON_PROVIDER}), Collections.singletonMap("wildfly.sasl.local-user.default-user", "$local"));
         if (saslMechanisms.isEmpty() == false) {
             saslServerFactory = new FilterMechanismSaslServerFactory(saslServerFactory, saslMechanisms::contains);
         }
@@ -212,10 +209,6 @@ public class JMXRemotingServer {
         }
         if (server != null) {
             server.close();
-        }
-
-        if (providerRegistered) {
-            Security.removeProvider(WILDFLY_ELYTRON_PROVIDER.getName());
         }
 
         if (closeEndpoint) {

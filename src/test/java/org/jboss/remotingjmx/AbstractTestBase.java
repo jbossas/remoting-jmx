@@ -29,7 +29,6 @@ import static org.jboss.remotingjmx.common.Constants.PROTOCOL;
 import static org.jboss.remotingjmx.common.JMXRemotingServer.DEFAULT_PORT;
 
 import java.io.IOException;
-import java.security.Security;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -45,7 +44,6 @@ import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
-import org.wildfly.security.WildFlyElytronProvider;
 
 /**
  * The base class for the remote tests.
@@ -65,7 +63,6 @@ public abstract class AbstractTestBase {
 
     @BeforeClass
     public static void setupServer() throws IOException {
-        Security.addProvider(new WildFlyElytronProvider());
         setupServer(null);
     }
 
