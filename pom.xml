@@ -65,7 +65,7 @@
         <version.org.jboss.xnio>3.4.1.Final</version.org.jboss.xnio>
         <version.org.wildfly.client>1.0.0.Beta1</version.org.wildfly.client>
         <version.org.wildfly.common>1.2.0.Beta1</version.org.wildfly.common>
-        <version.org.wildfly.security>1.1.0.Beta14</version.org.wildfly.security>
+        <version.org.wildfly.security>1.1.0.Beta15</version.org.wildfly.security>
         <version.surefire.plugin>2.12</version.surefire.plugin>
     </properties>
 
