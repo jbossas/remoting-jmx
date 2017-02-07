@@ -334,6 +334,15 @@ public class ExistingConnectionTest extends AbstractTestBase {
             return wrapped.getPrincipal();
         }
 
+        @Override
+        public String getProtocol() {
+            return wrapped.getProtocol();
+        }
+
+        @Override
+        public boolean supportsRemoteAuth() {
+            return wrapped.supportsRemoteAuth();
+        }
 
     }
 
