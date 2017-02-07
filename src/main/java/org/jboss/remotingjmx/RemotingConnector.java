@@ -221,8 +221,6 @@ class RemotingConnector implements JMXConnector {
                 String[] credentials = (String[]) env.get(CREDENTIALS);
                 mergedConfiguration = mergedConfiguration.useName(credentials[0]).usePassword(credentials[1]).useRealm(null);
                 disabledMechanisms.add(JBOSS_LOCAL_USER);
-            } else {
-                mergedConfiguration = mergedConfiguration.useAnonymous();
             }
         }
 
