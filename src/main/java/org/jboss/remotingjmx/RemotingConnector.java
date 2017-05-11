@@ -33,6 +33,7 @@ import static org.xnio.Options.SASL_POLICY_NOPLAINTEXT;
 import java.io.Closeable;
 import java.io.IOException;
 import java.net.URI;
+import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -42,7 +43,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
-
 import javax.management.ListenerNotFoundException;
 import javax.management.MBeanServerConnection;
 import javax.management.NotificationFilter;
@@ -50,21 +50,18 @@ import javax.management.NotificationListener;
 import javax.management.remote.JMXConnector;
 import javax.management.remote.JMXServiceURL;
 import javax.security.auth.Subject;
-import javax.security.auth.callback.Callback;
 import javax.security.auth.callback.CallbackHandler;
-import javax.security.auth.callback.NameCallback;
-import javax.security.auth.callback.PasswordCallback;
-import javax.security.auth.callback.UnsupportedCallbackException;
-import javax.security.sasl.RealmCallback;
 
 import org.jboss.logging.Logger;
 import org.jboss.remoting3.Channel;
 import org.jboss.remoting3.Connection;
 import org.jboss.remoting3.Endpoint;
 import org.jboss.remotingjmx.Util.Timeout;
+import org.wildfly.client.config.ConfigXMLParseException;
 import org.wildfly.security.auth.client.AuthenticationConfiguration;
 import org.wildfly.security.auth.client.AuthenticationContext;
 import org.wildfly.security.auth.client.AuthenticationContextConfigurationClient;
+import org.wildfly.security.auth.client.ElytronXmlParser;
 import org.wildfly.security.auth.client.MatchRule;
 import org.xnio.IoFuture;
 import org.xnio.OptionMap;
@@ -208,7 +205,27 @@ class RemotingConnector implements JMXConnector {
         Set<String> disabledMechanisms = new HashSet<String>();
 
         final URI uri = convert(serviceUrl);
-        AuthenticationContext captured = AuthenticationContext.captureCurrent();
+
+        AuthenticationContext captured;
+        // Determine if an authentication configuration was defined in the environment
+        final Object authConfig = env.get("wildfly.config.url");
+        URI authConfigUri = null;
+        if (authConfig != null) {
+            if (authConfig instanceof URI) {
+                authConfigUri = (URI) authConfig;
+            } else {
+                authConfigUri = URI.create(authConfig.toString());
+            }
+        }
+        if (authConfigUri == null) {
+            captured = AuthenticationContext.captureCurrent();
+        } else {
+            try {
+                captured = ElytronXmlParser.parseAuthenticationClientConfiguration(authConfigUri).create();
+            } catch (GeneralSecurityException | ConfigXMLParseException e) {
+                throw new IOException("Failed to parse authentication configuration " + authConfig, e);
+            }
+        }
         AuthenticationConfiguration mergedConfiguration = AUTH_CONFIGURATION_CLIENT.getAuthenticationConfiguration(uri, captured);
 
         // The credentials.
