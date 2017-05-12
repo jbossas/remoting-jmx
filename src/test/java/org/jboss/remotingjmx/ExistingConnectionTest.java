@@ -237,6 +237,11 @@ public class ExistingConnectionTest extends AbstractTestBase {
         }
 
         @Override
+        public boolean isOpen() {
+            return wrapped.isOpen();
+        }
+
+        @Override
         public void awaitClosed() throws InterruptedException {
             throw new IllegalStateException("No close handling expected.");
         }
