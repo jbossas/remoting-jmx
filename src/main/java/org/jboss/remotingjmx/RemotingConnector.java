@@ -49,6 +49,7 @@ import javax.management.NotificationFilter;
 import javax.management.NotificationListener;
 import javax.management.remote.JMXConnector;
 import javax.management.remote.JMXServiceURL;
+import javax.net.ssl.SSLContext;
 import javax.security.auth.Subject;
 import javax.security.auth.callback.CallbackHandler;
 
@@ -228,6 +229,13 @@ class RemotingConnector implements JMXConnector {
         }
         AuthenticationConfiguration mergedConfiguration = AUTH_CONFIGURATION_CLIENT.getAuthenticationConfiguration(uri, captured);
 
+        SSLContext sslContext = null;
+        try {
+            SSLContext temp = AUTH_CONFIGURATION_CLIENT.getSSLContext(uri, captured);
+        } catch (GeneralSecurityException e) {
+            log.trace("No SSLContext available", e);
+        }
+
         // The credentials.
         CallbackHandler handler;
         handler = (CallbackHandler) env.get(CallbackHandler.class.getName());
@@ -254,7 +262,8 @@ class RemotingConnector implements JMXConnector {
         }
 
         // open a connection
-        final AuthenticationContext context = AuthenticationContext.empty().with(MatchRule.ALL, mergedConfiguration);
+        AuthenticationContext context = AuthenticationContext.empty().with(MatchRule.ALL, mergedConfiguration);
+        context = sslContext != null ? context.withSsl(MatchRule.ALL, () -> sslContext) : context;
         final IoFuture<Connection> futureConnection = endpoint.connect(convert(serviceUrl), getOptionMap(disabledMechanisms), context);
         IoFuture.Status result = futureConnection.await(getTimeoutValue(Timeout.CONNECTION, env), TimeUnit.SECONDS);
 
