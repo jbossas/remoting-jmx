@@ -167,7 +167,7 @@
         <dependency>
             <groupId>org.jboss.remoting3</groupId>
             <artifactId>jboss-remoting</artifactId>
-            <version>3.3.3.Final</version>
+            <version>3.3.9.Final</version>
         </dependency>
         <dependency>
             <groupId>org.jboss.sasl</groupId>
