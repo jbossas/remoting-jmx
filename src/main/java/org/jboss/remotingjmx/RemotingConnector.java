@@ -236,7 +236,7 @@ class RemotingConnector implements JMXConnector {
         }
 
         // open a connection
-        final IoFuture<Connection> futureConnection = endpoint.connect(convert(serviceUrl), getOptionMap(disabledMechanisms), handler);
+        final IoFuture<Connection> futureConnection = endpoint.connect(convert(serviceUrl), getOptionMap(disabledMechanisms, env), handler);
         IoFuture.Status result = futureConnection.await(getTimeoutValue(Timeout.CONNECTION, env), TimeUnit.SECONDS);
 
         if (result == IoFuture.Status.DONE) {
@@ -250,7 +250,7 @@ class RemotingConnector implements JMXConnector {
         return connection;
     }
 
-    private OptionMap getOptionMap(Set<String> disabledMechanisms) {
+    private OptionMap getOptionMap(Set<String> disabledMechanisms, Map<String, ?> env) {
         OptionMap.Builder builder = OptionMap.builder();
         builder.set(SASL_POLICY_NOANONYMOUS, Boolean.FALSE);
         builder.set(SASL_POLICY_NOPLAINTEXT, Boolean.FALSE);
@@ -261,6 +261,18 @@ class RemotingConnector implements JMXConnector {
 
         builder.set(Options.SSL_ENABLED, true);
         builder.set(Options.SSL_STARTTLS, true);
+
+        if(env.containsKey(RemoteConnectionProviderFactory.JBOSS_AS_REMOTE_USEPKCS.getName())) {
+            builder.set(RemoteConnectionProviderFactory.JBOSS_AS_REMOTE_USEPKCS, Boolean.valueOf(String.valueOf(env.get(RemoteConnectionProviderFactory.JBOSS_AS_REMOTE_USEPKCS.getName()))));
+        }
+
+        if(env.containsKey(RemoteConnectionProviderFactory.JBOSS_AS_REMOTE_KEYSTOREPASSWORD.getName())) {
+            builder.set(RemoteConnectionProviderFactory.JBOSS_AS_REMOTE_KEYSTOREPASSWORD, String.valueOf(env.get(RemoteConnectionProviderFactory.JBOSS_AS_REMOTE_KEYSTOREPASSWORD.getName())));
+        }
+
+        if(env.containsKey(RemoteConnectionProviderFactory.JBOSS_AS_REMOTE_SSLPROTOCOL.getName())) {
+            builder.set(RemoteConnectionProviderFactory.JBOSS_AS_REMOTE_SSLPROTOCOL, String.valueOf(env.get(RemoteConnectionProviderFactory.JBOSS_AS_REMOTE_SSLPROTOCOL.getName())));
+        }
 
         if (disabledMechanisms != null && disabledMechanisms.size() > 0) {
             builder.set(Options.SASL_DISALLOWED_MECHANISMS, Sequence.of(disabledMechanisms));
