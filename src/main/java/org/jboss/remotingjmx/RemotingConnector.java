@@ -229,9 +229,9 @@ class RemotingConnector implements JMXConnector {
         }
         AuthenticationConfiguration mergedConfiguration = AUTH_CONFIGURATION_CLIENT.getAuthenticationConfiguration(uri, captured);
 
-        SSLContext sslContext = null;
+        SSLContext tempContext = null;
         try {
-            SSLContext temp = AUTH_CONFIGURATION_CLIENT.getSSLContext(uri, captured);
+            tempContext = AUTH_CONFIGURATION_CLIENT.getSSLContext(uri, captured);
         } catch (GeneralSecurityException e) {
             log.trace("No SSLContext available", e);
         }
@@ -263,6 +263,7 @@ class RemotingConnector implements JMXConnector {
 
         // open a connection
         AuthenticationContext context = AuthenticationContext.empty().with(MatchRule.ALL, mergedConfiguration);
+        final SSLContext sslContext = tempContext;
         context = sslContext != null ? context.withSsl(MatchRule.ALL, () -> sslContext) : context;
         final IoFuture<Connection> futureConnection = endpoint.connect(convert(serviceUrl), getOptionMap(disabledMechanisms), context);
         IoFuture.Status result = futureConnection.await(getTimeoutValue(Timeout.CONNECTION, env), TimeUnit.SECONDS);
