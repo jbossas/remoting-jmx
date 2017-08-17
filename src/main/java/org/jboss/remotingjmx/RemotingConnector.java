@@ -125,6 +125,7 @@ class RemotingConnector implements JMXConnector {
             case OPEN:
                 return;
             case UNUSED: // Just to complete the switch.
+            case OPENING:
         }
 
         if (log.isTraceEnabled()) {
@@ -205,6 +206,8 @@ class RemotingConnector implements JMXConnector {
 
         final Xnio xnio = Xnio.getInstance();
         endpoint = Remoting.createEndpoint("endpoint", xnio, OptionMap.create(Options.THREAD_DAEMON, true));
+        state = ConnectorState.OPENING;
+
         endpoint.addConnectionProvider(REMOTE_SCHEME, new RemoteConnectionProviderFactory(), OptionMap.EMPTY);
         endpoint.addConnectionProvider(HTTP_SCHEME, new HttpUpgradeConnectionProviderFactory(), OptionMap.create(Options.SSL_ENABLED, false));
         endpoint.addConnectionProvider(HTTPS_SCHEME, new HttpUpgradeConnectionProviderFactory(), OptionMap.create(Options.SSL_ENABLED, true));
@@ -272,7 +275,7 @@ class RemotingConnector implements JMXConnector {
     private void verifyConnected() throws IOException {
         if (state == ConnectorState.CLOSED) {
             throw new IOException("Connector already closed.");
-        } else if (versionedConnection == null) {
+        } else if (versionedConnection == null || state == ConnectorState.OPENING) {
             throw new IOException("Connector not connected.");
         }
     }
@@ -293,6 +296,9 @@ class RemotingConnector implements JMXConnector {
     public synchronized void close() throws IOException {
         log.trace("close()");
         switch (state) {
+            case OPENING:
+                state = ConnectorState.UNUSED;
+                safeClose(endpoint);
             case UNUSED:
             case CLOSED:
                 return;
@@ -420,7 +426,7 @@ class RemotingConnector implements JMXConnector {
     }
 
     private enum ConnectorState {
-        UNUSED, OPEN, CLOSED;
+        UNUSED, OPENING, OPEN, CLOSED;
     }
 
 }
