@@ -29,7 +29,7 @@
 
     <groupId>org.jboss.remotingjmx</groupId>
     <artifactId>remoting-jmx</artifactId>
-    <version>3.0.0.CR2-SNAPSHOT</version>
+    <version>3.0.0.Final</version>
 
     <parent>
         <groupId>org.jboss</groupId>
