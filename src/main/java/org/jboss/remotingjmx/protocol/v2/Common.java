@@ -83,6 +83,16 @@ abstract class Common {
         final org.jboss.marshalling.Marshaller marshaller = this.getMarshaller(marshallerFactory);
         final OutputStream outputStream = new OutputStream() {
             @Override
+            public void write(final byte[] b) throws IOException {
+                dataOutput.write(b);
+            }
+
+            @Override
+            public void write(final byte[] b, final int off, final int len) throws IOException {
+                dataOutput.write(b, off, len);
+            }
+
+            @Override
             public void write(int b) throws IOException {
                 final int byteToWrite = b & 0xff;
                 dataOutput.write(byteToWrite);
