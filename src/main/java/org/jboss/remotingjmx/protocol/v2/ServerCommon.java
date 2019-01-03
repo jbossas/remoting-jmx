@@ -202,12 +202,40 @@ public abstract class ServerCommon extends Common {
 
         public void handleError(Channel channel, IOException error) {
             log.warn("Channel closing due to error", error);
-            end();
+            executor.execute(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        serverMessageInterceptor.handleEvent(new Event() {
+                            @Override
+                            public void run() {
+                                end();
+                            }
+                        });
+                    } catch (IOException e) {
+                        log.error(e);
+                    }
+                }
+            });
         }
 
         @Override
-        public void handleEnd(Channel channel) {
-            end();
+        public void handleEnd(final Channel channel) {
+            executor.execute(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        serverMessageInterceptor.handleEvent(new Event() {
+                            @Override
+                            public void run() {
+                                end();
+                            }
+                        });
+                    } catch (IOException e) {
+                        log.error(e);
+                    }
+                }
+            });
         }
 
     }
