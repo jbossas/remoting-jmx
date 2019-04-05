@@ -38,6 +38,7 @@ class ClientExecutorManager {
 
     private static final String REMOTING_JMX = "remoting-jmx";
     private static final String CLIENT_THREAD = "client-thread-";
+    private static final AtomicInteger THREAD_NUMBER = new AtomicInteger(1);
 
     private boolean manageExecutor = false;
     private final Executor executor;
@@ -49,10 +50,10 @@ class ClientExecutorManager {
             executor = Executors.newCachedThreadPool(new ThreadFactory() {
 
                 final ThreadGroup group = new ThreadGroup(REMOTING_JMX);
-                final AtomicInteger threadNumber = new AtomicInteger(1);
 
                 public Thread newThread(Runnable r) {
-                    return new Thread(group, r, REMOTING_JMX + " " + CLIENT_THREAD + threadNumber.getAndIncrement());
+                    group.setDaemon(true);
+                    return new Thread(group, r, REMOTING_JMX + " " + CLIENT_THREAD + THREAD_NUMBER.getAndIncrement());
                 }
             });
             manageExecutor = true;
