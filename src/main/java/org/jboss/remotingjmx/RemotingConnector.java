@@ -323,6 +323,11 @@ class RemotingConnector implements JMXConnector {
         log.trace("close()");
         switch (state) {
             case UNUSED:
+                /*
+                 * If the connection has not quite opened we do want to clean up anything partially opened but we
+                 * don't want to flag as 'CLOSED' as another connection could be attempted using this Connector.
+                 */
+                break;
             case CLOSED:
                 return;
             case OPEN:
@@ -336,9 +341,13 @@ class RemotingConnector implements JMXConnector {
         }
 
         safeClose(versionedConnection);
+        this.versionedConnection = null;
         safeClose(channel);
+        this.channel = null;
         safeClose(connection);
+        this.connection = null;
         safeClose(endpoint);
+        this.endpoint = null;
     }
 
     private void safeClose(final Channel channel) {
