@@ -22,6 +22,8 @@
 
 package org.jboss.remotingjmx.protocol.v2;
 
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.util.Map;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
@@ -43,17 +45,25 @@ class ClientExecutorManager {
     private boolean manageExecutor = false;
     private final Executor executor;
 
+    static final ThreadGroup THREAD_GROUP;
+    static {
+        THREAD_GROUP = AccessController.doPrivileged(new PrivilegedAction<ThreadGroup>() {
+            public ThreadGroup run() {
+                ThreadGroup t = Thread.currentThread().getThreadGroup();
+                while (t.getParent() != null) t = t.getParent();
+                return t;
+            }
+        });
+    }
+
     ClientExecutorManager(final Map<String, ?> environment) {
         if (environment != null && environment.containsKey(Executor.class.getName())) {
             executor = (Executor) environment.get(Executor.class.getName());
         } else {
             executor = Executors.newCachedThreadPool(new ThreadFactory() {
 
-                final ThreadGroup group = new ThreadGroup(REMOTING_JMX);
-
                 public Thread newThread(Runnable r) {
-                    group.setDaemon(true);
-                    return new Thread(group, r, REMOTING_JMX + " " + CLIENT_THREAD + THREAD_NUMBER.getAndIncrement());
+                    return new Thread(THREAD_GROUP, r, REMOTING_JMX + " " + CLIENT_THREAD + THREAD_NUMBER.getAndIncrement());
                 }
             });
             manageExecutor = true;
