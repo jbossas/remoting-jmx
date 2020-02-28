@@ -68,6 +68,9 @@ import java.io.DataInput;
 import java.io.DataInputStream;
 import java.io.DataOutput;
 import java.io.IOException;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -143,6 +146,17 @@ class ClientConnection extends Common implements VersionedConnection {
 
     private int nextCorrelationId = 1;
 
+    static final ThreadGroup THREAD_GROUP;
+    static {
+        THREAD_GROUP = AccessController.doPrivileged(new PrivilegedAction<ThreadGroup>() {
+            public ThreadGroup run() {
+                ThreadGroup t = Thread.currentThread().getThreadGroup();
+                while (t.getParent() != null) t = t.getParent();
+                return t;
+            }
+        });
+    }
+
     /**
      * The in-progress requests awaiting a response.
      */
@@ -174,11 +188,8 @@ class ClientConnection extends Common implements VersionedConnection {
         } else {
             executor = Executors.newCachedThreadPool(new ThreadFactory() {
 
-                final ThreadGroup group = new ThreadGroup(REMOTING_JMX);
-
                 public Thread newThread(Runnable r) {
-                    group.setDaemon(true);
-                    return new Thread(group, r, REMOTING_JMX + " " + CLIENT_THREAD + THREAD_NUMBER.getAndIncrement());
+                    return new Thread(THREAD_GROUP, r, REMOTING_JMX + " " + CLIENT_THREAD + THREAD_NUMBER.getAndIncrement());
                 }
             });
             manageExecutor = true;
