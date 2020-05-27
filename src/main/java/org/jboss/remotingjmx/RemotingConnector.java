@@ -76,7 +76,7 @@ import org.xnio.Sequence;
  */
 class RemotingConnector implements JMXConnector {
 
-    private static final Logger log = Logger.getLogger(RemotingConnectorServer.class);
+    private static final Logger log = Logger.getLogger(RemotingConnector.class);
     private static final AuthenticationContextConfigurationClient AUTH_CONFIGURATION_CLIENT = doPrivileged(AuthenticationContextConfigurationClient.ACTION);
 
     private final JMXServiceURL serviceUrl;
