@@ -65,7 +65,7 @@
         <version.org.jboss.xnio>3.8.4.Final</version.org.jboss.xnio>
         <version.org.wildfly.client>1.0.1.Final</version.org.wildfly.client>
         <version.org.wildfly.common>1.5.4.Final</version.org.wildfly.common>
-        <version.org.wildfly.security>1.14.1.Final</version.org.wildfly.security>
+        <version.org.wildfly.security>1.15.5.Final</version.org.wildfly.security>
         <version.surefire.plugin>2.12</version.surefire.plugin>
     </properties>
 
