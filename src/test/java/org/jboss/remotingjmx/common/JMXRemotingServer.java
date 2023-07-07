@@ -33,7 +33,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Supplier;
 
 import javax.management.MBeanServer;
 import javax.management.remote.JMXConnectorServer;
@@ -61,6 +60,7 @@ import org.wildfly.security.permission.PermissionVerifier;
 import org.wildfly.security.sasl.util.FilterMechanismSaslServerFactory;
 import org.wildfly.security.sasl.util.PropertiesSaslServerFactory;
 import org.wildfly.security.sasl.util.SecurityProviderSaslServerFactory;
+import org.wildfly.security.sasl.util.SortedMechanismSaslServerFactory;
 import org.xnio.OptionMap;
 import org.xnio.Options;
 
@@ -163,6 +163,8 @@ public class JMXRemotingServer {
         SaslServerFactory saslServerFactory = new PropertiesSaslServerFactory(new SecurityProviderSaslServerFactory(() -> new Provider[] {WILDFLY_ELYTRON_PROVIDER}), Collections.singletonMap("wildfly.sasl.local-user.default-user", "$local"));
         if (saslMechanisms.isEmpty() == false) {
             saslServerFactory = new FilterMechanismSaslServerFactory(saslServerFactory, saslMechanisms::contains);
+        } else {
+            saslServerFactory = new SortedMechanismSaslServerFactory(saslServerFactory, DIGEST_MD5, PLAIN, JBOSS_LOCAL_USER, ANONYMOUS);
         }
         SaslAuthenticationFactory authFactory =
             SaslAuthenticationFactory.builder()
